@@ -37,6 +37,26 @@ function normalizeProduct(raw: Record<string, unknown>) {
   };
 }
 
+function unwrapRows(payload: Record<string, unknown>) {
+  const source = Array.isArray(payload.Products)
+    ? payload.Products
+    : Array.isArray(payload.items)
+      ? payload.items
+      : [];
+
+  return source
+    .map((row) => {
+      if (!row || typeof row !== "object") return null;
+      const obj = row as Record<string, unknown>;
+      const nested = obj.Product;
+      if (nested && typeof nested === "object") {
+        return nested as Record<string, unknown>;
+      }
+      return obj;
+    })
+    .filter((row): row is Record<string, unknown> => Boolean(row));
+}
+
 function corsHeaders(origin: string | null) {
   const headers = new Headers({
     "Content-Type": "application/json; charset=utf-8",
@@ -106,7 +126,7 @@ export default async (req: Request) => {
         accessKey,
         Origin: ALLOWED_ORIGIN,
         Referer: SITE_URL,
-        "User-Agent": "daily-cost-jp-realtime/1.0",
+        "User-Agent": "daily-cost-jp-realtime/1.1",
       },
     });
 
@@ -117,12 +137,12 @@ export default async (req: Request) => {
     }
 
     const payload = await response.json() as Record<string, unknown>;
-    const rawItems = Array.isArray(payload.items) ? payload.items : [];
+    const rawItems = unwrapRows(payload);
     const products = rawItems
-      .map((item) => normalizeProduct(item as Record<string, unknown>))
+      .map((item) => normalizeProduct(item))
       .filter(Boolean);
 
-    headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=1800");
+    headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
     return new Response(JSON.stringify({
       query: q,
       page,
