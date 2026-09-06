@@ -18,6 +18,7 @@ params = {
     "keyword": "トイレットペーパー",
     "hits": 3,
     "formatVersion": 2,
+    "format": "json",
 }
 if AFFILIATE_ID:
     params["affiliateId"] = AFFILIATE_ID
@@ -45,8 +46,13 @@ except Exception as exc:
     print(f"Rakuten API request failed: {exc}", file=sys.stderr)
     sys.exit(1)
 
+print("Top-level keys:", sorted(data.keys()))
+print("count=", data.get("count"), "hits=", data.get("hits"), "pageCount=", data.get("pageCount"))
 items = data.get("items", [])
-print(f"Rakuten API connection OK: {len(items)} items returned")
+print(f"items length: {len(items)}")
+if "error" in data:
+    print("API error:", data.get("error"), data.get("error_description"))
+
 for index, item in enumerate(items[:3], start=1):
     print(
         f"{index}. {item.get('itemName', '')[:80]} | "
