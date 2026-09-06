@@ -1,3 +1,4 @@
+# Netlify config for daily-cost-api
 [build]
   publish = "netlify-public"
 
