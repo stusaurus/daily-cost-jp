@@ -28,8 +28,9 @@ extra_css = """
   .load-more:disabled{opacity:.55}
   .retry-btn{margin-top:10px;border:0;border-radius:10px;background:#252525;color:#fff;padding:10px 14px;font-weight:800}
   .price small{display:block;margin-top:2px;line-height:1.35}
-  .shipping-warning{margin-top:8px;padding:9px 10px;border:1px solid #e6b8b3;border-radius:10px;background:#fff4f2;color:#9d241c;font-size:11px;font-weight:700;line-height:1.5}
-  .product-result-link.is-checking{opacity:.65;pointer-events:none}
+  .shipping-price-loading{font-size:17px;color:#7a6f69;font-weight:800}
+  .shipping-price-unavailable{font-size:15px;color:#7a6f69;font-weight:800;line-height:1.35}
+  .shipping-price-note{margin-top:4px;font-size:10px;color:#7a6f69;line-height:1.45}
 </style>
 """
 
@@ -43,6 +44,11 @@ script = f"""
   let currentPage = 1;
   let pageCount = 1;
   let liveRows = [];
+  const shippingCache = new Map();
+  const shippingQueue = [];
+  let shippingQueueBusy = false;
+
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const loadMore = document.createElement('button');
   loadMore.type = 'button';
@@ -53,7 +59,7 @@ script = f"""
 
   const note = document.createElement('div');
   note.className = 'realtime-note';
-  note.textContent = '表示価格は商品本体の最安価格です。送料は含みません。楽天価格ナビでは「価格＋送料」の最安値を確認できます。送料別と確認できた商品だけ、楽天へ進む前に注意を表示します。';
+  note.textContent = '価格は「送料込み／送料無料」と楽天APIで確認できる同一商品の最安候補を表示します。送料別商品の送料額はAPIから取得できないため、価格＋送料の全ショップ横断最安と一致しない場合があります。';
   status.insertAdjacentElement('afterend', note);
 
   function setBusy(on) {{
@@ -68,34 +74,109 @@ script = f"""
     return response.json();
   }}
 
-  async function fetchShippingStatus(jan, price, name, brand) {{
-    const url = `${{SHIPPING_API}}?jan=${{encodeURIComponent(jan)}}&price=${{encodeURIComponent(price || 0)}}&name=${{encodeURIComponent(name || '')}}&brand=${{encodeURIComponent(brand || '')}}`;
+  async function fetchShippingBest(p) {{
+    const url = `${{SHIPPING_API}}?jan=${{encodeURIComponent(p.product_code || '')}}&price=${{encodeURIComponent(p.min_price || 0)}}&name=${{encodeURIComponent(p.name || '')}}&brand=${{encodeURIComponent(p.brand || '')}}`;
     const response = await fetch(url, {{ method: 'GET', mode: 'cors' }});
-    if (!response.ok) return {{shipping_status:'unknown'}};
+    if (!response.ok) return {{included_min_price:null}};
     return response.json();
+  }}
+
+  function shippingKey(p) {{
+    return p.product_id || `${{p.product_code || ''}}|${{p.name || ''}}`;
+  }}
+
+  function applyShippingResult(el, p, data) {{
+    const price = el.querySelector('.price');
+    const link = el.querySelector('.product-result-link');
+    if (!price || !link) return;
+
+    const includedPrice = Number(data && data.included_min_price || 0);
+    const includedUrl = String(data && data.included_offer_url || '');
+    if (includedPrice > 0) {{
+      price.innerHTML = `${{yen(includedPrice)}} <small>送料込み（送料無料）で買える最安値</small>`;
+      if (includedUrl) link.href = includedUrl;
+      link.textContent = 'この価格で楽天へ';
+      let detail = el.querySelector('.shipping-price-note');
+      if (!detail) {{
+        detail = document.createElement('div');
+        detail.className = 'shipping-price-note';
+        price.insertAdjacentElement('afterend', detail);
+      }}
+      detail.textContent = '楽天市場で送料込み／送料無料と確認できた購入候補の最安値';
+      link.dataset.shippingPrice = String(includedPrice);
+    }} else {{
+      price.innerHTML = '<span class="shipping-price-unavailable">送料込み価格を確認できません</span>';
+      link.textContent = '楽天で価格＋送料を確認';
+      link.dataset.shippingPrice = '';
+    }}
+  }}
+
+  async function processShippingQueue() {{
+    if (shippingQueueBusy) return;
+    shippingQueueBusy = true;
+    await sleep(1200);
+    while (shippingQueue.length) {{
+      const {{el, p}} = shippingQueue.shift();
+      if (!el.isConnected) continue;
+      const key = shippingKey(p);
+      try {{
+        let data = shippingCache.get(key);
+        if (!data) {{
+          data = await fetchShippingBest(p);
+          shippingCache.set(key, data);
+        }}
+        applyShippingResult(el, p, data);
+        if (typeof window.gtag === 'function') window.gtag('event','shipping_included_price_loaded',{{
+          product_id:p.product_id || '',
+          search_term:currentTerm,
+          included_min_price:Number(data && data.included_min_price || 0),
+          matched_by:data && data.matched_by || ''
+        }});
+      }} catch (err) {{
+        console.error('Shipping included price lookup failed', err);
+        applyShippingResult(el, p, {{included_min_price:null}});
+      }}
+      await sleep(1200);
+    }}
+    shippingQueueBusy = false;
+  }}
+
+  function enqueueShippingLookup(el, p) {{
+    if (el.dataset.shippingQueued === '1') return;
+    el.dataset.shippingQueued = '1';
+    const cached = shippingCache.get(shippingKey(p));
+    if (cached) {{
+      applyShippingResult(el, p, cached);
+      return;
+    }}
+    shippingQueue.push({{el, p}});
+    processShippingQueue();
   }}
 
   function decorateCards() {{
     const cards = Array.from(results.querySelectorAll('.card'));
+    const observer = 'IntersectionObserver' in window ? new IntersectionObserver((entries, obs) => {{
+      entries.forEach((entry) => {{
+        if (!entry.isIntersecting) return;
+        const index = Number(entry.target.dataset.liveIndex || -1);
+        const p = liveRows[index];
+        if (p) enqueueShippingLookup(entry.target, p);
+        obs.unobserve(entry.target);
+      }});
+    }}, {{rootMargin:'250px 0px'}}) : null;
+
     cards.forEach((el, index) => {{
       const p = liveRows[index];
       if (!p) return;
+      el.dataset.liveIndex = String(index);
       const price = el.querySelector('.price');
-      if (price) price.innerHTML = `${{yen(p.min_price)}}〜 <small>商品価格の最安（送料別の場合あり）</small>`;
+      if (price) price.innerHTML = '<span class="shipping-price-loading">送料込み最安値を確認中…</span>';
       const link = el.querySelector('.product-result-link');
       if (link) {{
-        link.textContent = '価格＋送料の最安を楽天で確認';
-        link.dataset.jan = p.product_code || '';
-        link.dataset.price = String(p.min_price || 0);
-        link.dataset.productName = p.name || '';
-        link.dataset.brand = p.brand || '';
-        link.dataset.shippingChecked = '0';
-        if (!el.querySelector('.shipping-holder')) {{
-          const holder = document.createElement('div');
-          holder.className = 'shipping-holder';
-          link.insertAdjacentElement('beforebegin', holder);
-        }}
+        link.textContent = '楽天で価格＋送料を確認';
       }}
+      if (observer) observer.observe(el);
+      else enqueueShippingLookup(el, p);
     }});
   }}
 
@@ -121,6 +202,7 @@ script = f"""
       currentTerm = term;
       currentPage = 1;
       liveRows = [];
+      shippingQueue.length = 0;
       status.textContent = `「${{term}}」を楽天から検索中…`;
       results.innerHTML = '';
       loadMore.style.display = 'none';
@@ -151,56 +233,13 @@ script = f"""
   document.querySelectorAll('.chip').forEach((b) => {{b.addEventListener('click', (e) => {{e.preventDefault();e.stopImmediatePropagation();q.value=b.dataset.q || '';liveSearch(q.value, false);}}, true);}});
   loadMore.addEventListener('click', async () => {{if (currentPage >= pageCount) return;currentPage += 1;await liveSearch(currentTerm, true);}});
 
-  results.addEventListener('click', async (e) => {{
+  results.addEventListener('click', (e) => {{
     const a = e.target.closest('.product-result-link');
-    if (!a) return;
-
-    if (a.dataset.shippingChecked === '1') {{
-      if (typeof window.gtag === 'function') window.gtag('event','product_result_click',{{product_id:a.dataset.id || '',search_term:currentTerm,shipping_status:'separate'}});
-      return;
-    }}
-
-    const jan = String(a.dataset.jan || '').trim();
-    const productName = String(a.dataset.productName || '').trim();
-    const brand = String(a.dataset.brand || '').trim();
-    if (!productName && !/^\\d{{8,14}}$/.test(jan)) {{
-      if (typeof window.gtag === 'function') window.gtag('event','product_result_click',{{product_id:a.dataset.id || '',search_term:currentTerm,shipping_status:'unknown'}});
-      return;
-    }}
-
-    e.preventDefault();
-    e.stopPropagation();
-    if (a.dataset.checking === '1') return;
-    a.dataset.checking = '1';
-    const originalText = a.textContent;
-    const href = a.href;
-    a.textContent = '送料区分を確認中…';
-    a.classList.add('is-checking');
-
-    try {{
-      const data = await fetchShippingStatus(jan, a.dataset.price || '0', productName, brand);
-      const shipping = data && data.shipping_status || 'unknown';
-      if (typeof window.gtag === 'function') window.gtag('event','shipping_status_check',{{product_id:a.dataset.id || '',shipping_status:shipping,matched_by:data.matched_by || '',exact_offer_count:Number(data.exact_offer_count || 0)}});
-
-      if (shipping === 'separate') {{
-        const holder = a.parentElement.querySelector('.shipping-holder');
-        if (holder) holder.innerHTML = '<div class="shipping-warning">送料別の商品です。送料は楽天サイトでご確認ください。</div>';
-        a.dataset.shippingChecked = '1';
-        a.textContent = '送料を確認して楽天へ';
-        return;
-      }}
-
-      if (typeof window.gtag === 'function') window.gtag('event','product_result_click',{{product_id:a.dataset.id || '',search_term:currentTerm,shipping_status:shipping}});
-      window.location.assign(href);
-    }} catch (err) {{
-      console.error('Shipping status check failed', err);
-      if (typeof window.gtag === 'function') window.gtag('event','product_result_click',{{product_id:a.dataset.id || '',search_term:currentTerm,shipping_status:'unknown'}});
-      window.location.assign(href);
-    }} finally {{
-      a.dataset.checking = '0';
-      a.classList.remove('is-checking');
-      if (a.dataset.shippingChecked !== '1') a.textContent = originalText;
-    }}
+    if (a && typeof window.gtag === 'function') window.gtag('event','product_result_click',{{
+      product_id:a.dataset.id || '',
+      search_term:currentTerm,
+      shipping_included_price:Number(a.dataset.shippingPrice || 0)
+    }});
   }});
 
   const initialTerm = new URLSearchParams(location.search).get('q');
