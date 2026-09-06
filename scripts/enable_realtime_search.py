@@ -9,11 +9,15 @@ if not PAGE.exists():
 html = PAGE.read_text(encoding="utf-8")
 
 html = html.replace("<span class=\"eyebrow\">毎朝自動更新</span>", "<span class=\"eyebrow\">楽天からリアルタイム検索</span>")
+html = html.replace("本日の検索対象：0製品", "商品名を入力して検索してください")
 html = html.replace("本日の検索対象：", "今日のおすすめ：")
-html = html.replace("現在は日用品カテゴリから毎朝取得した製品スナップショットを検索しています。", "検索時に楽天の商品価格ナビへ問い合わせ、現在取得できる製品候補を表示します。検索結果が取得できない場合のみ、毎朝更新の候補データを利用します。")
+html = html.replace(
+    "現在は日用品カテゴリから毎朝取得した製品スナップショットを検索しています。",
+    "検索時に楽天の商品価格ナビへ問い合わせ、その時点で取得できる製品候補を表示します。"
+)
 html = html.replace(
     "const initial=new URLSearchParams(location.search).get('q');if(initial)q.value=initial;run();",
-    "const initial=new URLSearchParams(location.search).get('q');if(initial)q.value=initial;if(!initial)run();"
+    "const initial=new URLSearchParams(location.search).get('q');if(initial)q.value=initial;if(!initial){status.textContent='商品名を入力して検索してください';results.innerHTML='';}"
 )
 
 extra_css = """
@@ -21,6 +25,7 @@ extra_css = """
   .realtime-note{font-size:11px;color:#5f6368;margin:4px 0 8px}
   .load-more{display:none;width:100%;min-height:46px;margin:14px 0 6px;border:1px solid #d8d1cb;border-radius:13px;background:#fff;color:#252525;font-weight:800;font-size:13px}
   .load-more:disabled{opacity:.55}
+  .retry-btn{margin-top:10px;border:0;border-radius:10px;background:#252525;color:#fff;padding:10px 14px;font-weight:800}
 </style>
 """
 
@@ -43,7 +48,7 @@ script = f"""
 
   const note = document.createElement('div');
   note.className = 'realtime-note';
-  note.textContent = '商品名・ブランド・JANコードから楽天の現在の製品候補を検索します。';
+  note.textContent = '商品名・ブランド・JANコードから、楽天で現在取得できる製品候補を検索します。';
   status.insertAdjacentElement('afterend', note);
 
   function setBusy(on) {{
@@ -70,6 +75,8 @@ script = f"""
     term = String(term || '').trim();
     if (term.length < 2) {{
       status.textContent = '2文字以上で検索してください。';
+      results.innerHTML = '';
+      loadMore.style.display = 'none';
       return;
     }}
     if (!append) {{
@@ -97,9 +104,9 @@ script = f"""
     }} catch (err) {{
       console.error('Realtime product search failed', err);
       if (!append) {{
-        q.value = currentTerm;
-        run();
-        status.textContent += '（リアルタイム取得に失敗したため毎朝更新データを表示）';
+        status.textContent = '楽天のリアルタイム検索に接続できませんでした。';
+        results.innerHTML = '<div class="empty">少し時間をおいて、もう一度検索してください。<br><button class="retry-btn" id="retryRealtime" type="button">もう一度検索</button></div>';
+        document.getElementById('retryRealtime')?.addEventListener('click', () => liveSearch(currentTerm, false));
       }}
       loadMore.style.display = 'none';
     }} finally {{
