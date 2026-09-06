@@ -48,12 +48,15 @@ except Exception as exc:
 
 print("Top-level keys:", sorted(data.keys()))
 print("count=", data.get("count"), "hits=", data.get("hits"), "pageCount=", data.get("pageCount"))
-items = data.get("items", [])
+items = data.get("Items") or data.get("items") or []
 print(f"items length: {len(items)}")
+if items and isinstance(items[0], dict):
+    print("First item keys:", sorted(items[0].keys()))
 if "error" in data:
     print("API error:", data.get("error"), data.get("error_description"))
 
 for index, item in enumerate(items[:3], start=1):
+    item = item.get("Item", item.get("item", item)) if isinstance(item, dict) else {}
     print(
         f"{index}. {item.get('itemName', '')[:80]} | "
         f"¥{item.get('itemPrice', '?')} | "
