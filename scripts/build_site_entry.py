@@ -67,8 +67,6 @@ def safer_parse_measure_quantity(title, category_kind):
         chosen_kind = kinds[0]
         chosen_total = totals[0]
 
-        # If the title also advertises a different standalone capacity, it is
-        # probably a selectable variant. Do not bind the minimum price to it.
         all_measures = re.findall(
             r"(\d+(?:\.\d+)?)\s*(kg|g|ml|l)",
             text,
@@ -104,8 +102,6 @@ def safer_parse_measure_quantity(title, category_kind):
     if not kind or not base:
         return None
 
-    # Support titles such as "【6個】...1490g" only when exactly one packaging
-    # count is visible. This prevents underestimating multi-pack detergent prices.
     pack_counts = [
         int(value)
         for value, pack_unit in re.findall(
@@ -160,8 +156,6 @@ def safer_parse_count_quantity(title, allowed_units):
         return None
 
     values = [float(m.group(1)) for m in singles]
-    # Multiple different standalone counts usually mean selectable variants.
-    # Allow them only when the largest value agrees with a known explicit total.
     if len(set(values)) > 1:
         return None
 
@@ -177,13 +171,44 @@ def safer_parse_count_quantity(title, allowed_units):
 
 
 def category_is_suitable(category_id, title):
+    # Selectable variants can make the displayed minimum price correspond to a
+    # different capacity/type than the one parsed from the title. Exclude them.
+    ambiguous_variant_terms = (
+        "種類を選べる",
+        "タイプを選べる",
+        "サイズを選べる",
+        "容量を選べる",
+        "個数を選べる",
+        "カラーを選べる",
+    )
+    if any(term in title for term in ambiguous_variant_terms):
+        return False
+
     exclusions = {
-        "tissue": ("ウェット", "ウエット", "おしり", "手口", "除菌シート", "ペーパータオル", "キッチンペーパー"),
+        "tissue": (
+            "ウェット", "ウエット", "おしり", "手口", "除菌シート",
+            "ペーパータオル", "キッチンペーパー", "ティッシュケース",
+            "ティッシュボックス", "ティッシュカバー", "ティッシュホルダー",
+            "シートバック", "収納ポケット", "車用ポケット",
+        ),
         "dish": ("ディスペンサー", "ハンドソープ", "ソープディスペンサー", "洗濯用"),
-        "water": ("炭酸", "スパークリング"),
+        "water": ("炭酸", "スパークリング", "ウォーターサーバー", "水筒"),
+        "coffee": ("コーヒーメーカー", "ドリッパー", "フィルター", "コーヒーミル", "マグカップ"),
     }
     if any(term in title for term in exclusions.get(category_id, ())):
         return False
+
+    if category_id == "tissue":
+        tissue_product_terms = (
+            "ティッシュペーパー",
+            "ボックスティッシュ",
+            "箱ティッシュ",
+            "ソフトパックティッシュ",
+            "パックティッシュ",
+            "ポケットティッシュ",
+        )
+        if not any(term in title for term in tissue_product_terms):
+            return False
 
     if category_id == "dish" and not any(term in title for term in ("食器", "台所", "キッチン", "ジョイ", "キュキュット", "チャーミー", "ヤシノミ")):
         return False
@@ -214,7 +239,7 @@ def fetch_page(category, page):
             "accessKey": core.ACCESS_KEY,
             "Origin": "https://stusaurus.github.io",
             "Referer": core.SITE_URL,
-            "User-Agent": "daily-cost-jp/0.5",
+            "User-Agent": "daily-cost-jp/0.6",
         },
     )
     with urllib.request.urlopen(request, timeout=30) as response:
@@ -236,8 +261,6 @@ def fetch_category(category):
         and category_is_suitable(category["id"], item.get("name", ""))
     ]
 
-    # If strict filtering leaves too little comparison data, safely inspect a
-    # second page while respecting the registered 1 QPS rate.
     metric, ranked = core.choose_ranked_items(filtered)
     if len(ranked) < 5:
         time.sleep(1.1)
