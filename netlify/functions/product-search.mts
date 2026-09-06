@@ -12,6 +12,13 @@ function safeFloat(value: unknown, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+function normalizeText(value: unknown) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s\u3000\-_/・.,!！?？()（）［］\[\]【】]/g, "");
+}
+
 function normalizeProduct(raw: Record<string, unknown>) {
   const productId = String(raw.productId || "").trim();
   const name = String(raw.productName || "").trim();
@@ -37,24 +44,30 @@ function normalizeProduct(raw: Record<string, unknown>) {
   };
 }
 
-function unwrapRows(payload: Record<string, unknown>) {
-  const source = Array.isArray(payload.Products)
-    ? payload.Products
-    : Array.isArray(payload.items)
-      ? payload.items
-      : [];
+function relevanceScore(product: ReturnType<typeof normalizeProduct>, query: string) {
+  if (!product) return -1;
+  const q = normalizeText(query);
+  const name = normalizeText(product.name);
+  const brand = normalizeText(product.brand);
+  const code = normalizeText(product.product_code);
+  const no = normalizeText(product.product_no);
+  let score = 0;
 
-  return source
-    .map((row) => {
-      if (!row || typeof row !== "object") return null;
-      const obj = row as Record<string, unknown>;
-      const nested = obj.Product;
-      if (nested && typeof nested === "object") {
-        return nested as Record<string, unknown>;
-      }
-      return obj;
-    })
-    .filter((row): row is Record<string, unknown> => Boolean(row));
+  if (code && code === q) score += 10000;
+  if (no && no === q) score += 9000;
+  if (brand && brand === q) score += 1800;
+  if (name === q) score += 2000;
+  if (name.startsWith(q)) score += 1200;
+  if (brand.startsWith(q)) score += 900;
+
+  const nameIndex = name.indexOf(q);
+  if (nameIndex >= 0) score += 700 - Math.min(nameIndex, 300);
+  const brandIndex = brand.indexOf(q);
+  if (brandIndex >= 0) score += 500 - Math.min(brandIndex, 200);
+
+  score += Math.min(150, Math.log10(product.review_count + 1) * 35);
+  score += Math.min(80, Math.log10(product.seller_count + 1) * 20);
+  return score;
 }
 
 function corsHeaders(origin: string | null) {
@@ -137,12 +150,26 @@ export default async (req: Request) => {
     }
 
     const payload = await response.json() as Record<string, unknown>;
-    const rawItems = unwrapRows(payload);
+    const rawItemsSource = Array.isArray(payload.Products)
+      ? payload.Products
+      : Array.isArray(payload.items)
+        ? payload.items
+        : [];
+    const rawItems = rawItemsSource
+      .map((item) => {
+        if (item && typeof item === "object" && "Product" in (item as Record<string, unknown>)) {
+          return (item as Record<string, unknown>).Product;
+        }
+        return item;
+      })
+      .filter((item) => item && typeof item === "object") as Record<string, unknown>[];
+
     const products = rawItems
       .map((item) => normalizeProduct(item))
-      .filter(Boolean);
+      .filter(Boolean)
+      .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q));
 
-    headers.set("Cache-Control", "public, s-maxage=120, stale-while-revalidate=600");
+    headers.set("Cache-Control", "public, s-maxage=300, stale-while-revalidate=1800");
     return new Response(JSON.stringify({
       query: q,
       page,
