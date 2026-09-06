@@ -10,6 +10,7 @@ on:
       - main
     paths:
       - "scripts/build_site.py"
+      - "scripts/build_site_entry.py"
       - ".github/workflows/deploy-pages.yml"
 
 permissions:
@@ -38,7 +39,7 @@ jobs:
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/build_site.py
+        run: python scripts/build_site_entry.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
