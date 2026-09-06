@@ -12,6 +12,7 @@ on:
       - "scripts/build_site.py"
       - "scripts/build_site_entry.py"
       - "scripts/build_site_final.py"
+      - "scripts/build_site_growth.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -36,14 +37,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build site from Rakuten API
+      - name: Build expanded site from Rakuten API
         env:
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/build_site_final.py
+        run: python scripts/build_site_growth.py
 
-      - name: Add GA4 tracking
+      - name: Add GA4 tracking to all pages
         env:
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
         run: python scripts/add_analytics.py
