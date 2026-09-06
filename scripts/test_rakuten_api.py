@@ -1,3 +1,4 @@
+# Rakuten API connectivity check for daily-cost-jp
 import json
 import os
 import sys
