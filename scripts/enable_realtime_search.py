@@ -117,6 +117,7 @@ script = f"""
   document.getElementById('searchBtn').addEventListener('click', (e) => {{
     e.preventDefault();
     e.stopImmediatePropagation();
+    q.blur();
     liveSearch(q.value, false);
   }}, true);
 
@@ -124,6 +125,7 @@ script = f"""
     if (e.key === 'Enter') {{
       e.preventDefault();
       e.stopImmediatePropagation();
+      q.blur();
       liveSearch(q.value, false);
     }}
   }}, true);
@@ -133,6 +135,7 @@ script = f"""
       e.preventDefault();
       e.stopImmediatePropagation();
       q.value = b.dataset.q || '';
+      q.blur();
       liveSearch(q.value, false);
     }}, true);
   }});
