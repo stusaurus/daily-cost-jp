@@ -68,8 +68,8 @@ script = f"""
     return response.json();
   }}
 
-  async function fetchShippingStatus(jan, price) {{
-    const url = `${{SHIPPING_API}}?jan=${{encodeURIComponent(jan)}}&price=${{encodeURIComponent(price || 0)}}`;
+  async function fetchShippingStatus(jan, price, name, brand) {{
+    const url = `${{SHIPPING_API}}?jan=${{encodeURIComponent(jan)}}&price=${{encodeURIComponent(price || 0)}}&name=${{encodeURIComponent(name || '')}}&brand=${{encodeURIComponent(brand || '')}}`;
     const response = await fetch(url, {{ method: 'GET', mode: 'cors' }});
     if (!response.ok) return {{shipping_status:'unknown'}};
     return response.json();
@@ -87,6 +87,8 @@ script = f"""
         link.textContent = '楽天で価格を確認';
         link.dataset.jan = p.product_code || '';
         link.dataset.price = String(p.min_price || 0);
+        link.dataset.productName = p.name || '';
+        link.dataset.brand = p.brand || '';
         link.dataset.shippingChecked = '0';
         if (!el.querySelector('.shipping-holder')) {{
           const holder = document.createElement('div');
@@ -159,7 +161,9 @@ script = f"""
     }}
 
     const jan = String(a.dataset.jan || '').trim();
-    if (!/^\\d{{8,14}}$/.test(jan)) {{
+    const productName = String(a.dataset.productName || '').trim();
+    const brand = String(a.dataset.brand || '').trim();
+    if (!productName && !/^\\d{{8,14}}$/.test(jan)) {{
       if (typeof window.gtag === 'function') window.gtag('event','product_result_click',{{product_id:a.dataset.id || '',search_term:currentTerm,shipping_status:'unknown'}});
       return;
     }}
@@ -174,9 +178,9 @@ script = f"""
     a.classList.add('is-checking');
 
     try {{
-      const data = await fetchShippingStatus(jan, a.dataset.price || '0');
+      const data = await fetchShippingStatus(jan, a.dataset.price || '0', productName, brand);
       const shipping = data && data.shipping_status || 'unknown';
-      if (typeof window.gtag === 'function') window.gtag('event','shipping_status_check',{{product_id:a.dataset.id || '',shipping_status:shipping}});
+      if (typeof window.gtag === 'function') window.gtag('event','shipping_status_check',{{product_id:a.dataset.id || '',shipping_status:shipping,matched_by:data.matched_by || '',exact_offer_count:Number(data.exact_offer_count || 0)}});
 
       if (shipping === 'separate') {{
         const holder = a.parentElement.querySelector('.shipping-holder');
