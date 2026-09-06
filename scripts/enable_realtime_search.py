@@ -53,7 +53,7 @@ script = f"""
 
   const note = document.createElement('div');
   note.className = 'realtime-note';
-  note.textContent = '表示価格は楽天の商品価格ナビが返す商品価格です。送料別と確認できた商品だけ、楽天へ進む前に注意を表示します。送料額は楽天サイトでご確認ください。';
+  note.textContent = '表示価格は商品本体の最安価格です。送料は含みません。楽天価格ナビでは「価格＋送料」の最安値を確認できます。送料別と確認できた商品だけ、楽天へ進む前に注意を表示します。';
   status.insertAdjacentElement('afterend', note);
 
   function setBusy(on) {{
@@ -81,10 +81,10 @@ script = f"""
       const p = liveRows[index];
       if (!p) return;
       const price = el.querySelector('.price');
-      if (price) price.innerHTML = `${{yen(p.min_price)}} <small>参考商品価格</small>`;
+      if (price) price.innerHTML = `${{yen(p.min_price)}}〜 <small>商品価格の最安（送料別の場合あり）</small>`;
       const link = el.querySelector('.product-result-link');
       if (link) {{
-        link.textContent = '楽天で価格を確認';
+        link.textContent = '価格＋送料の最安を楽天で確認';
         link.dataset.jan = p.product_code || '';
         link.dataset.price = String(p.min_price || 0);
         link.dataset.productName = p.name || '';
