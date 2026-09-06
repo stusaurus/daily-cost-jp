@@ -8,6 +8,27 @@ import urllib.request
 import build_site as core
 
 
+# Rakuten Ichiba Item Search API output semantics (2026-07-01):
+# postageFlag=0 means postage included, postageFlag=1 means postage not included.
+_original_normalize_item = core.normalize_item
+
+
+def normalize_item_with_correct_postage(raw, category):
+    normalized = _original_normalize_item(raw, category)
+    source = raw.get("Item", raw) if isinstance(raw, dict) else {}
+    postage_flag = source.get("postageFlag")
+    if postage_flag in (0, "0"):
+        normalized["postage"] = "送料込み"
+    elif postage_flag in (1, "1"):
+        normalized["postage"] = "送料別"
+    else:
+        normalized["postage"] = "送料は商品ページで確認"
+    return normalized
+
+
+core.normalize_item = normalize_item_with_correct_postage
+
+
 def to_base_amount(amount, unit):
     unit = unit.lower()
     amount = float(amount)
@@ -239,7 +260,7 @@ def fetch_page(category, page):
             "accessKey": core.ACCESS_KEY,
             "Origin": "https://stusaurus.github.io",
             "Referer": core.SITE_URL,
-            "User-Agent": "daily-cost-jp/0.6",
+            "User-Agent": "daily-cost-jp/0.7",
         },
     )
     with urllib.request.urlopen(request, timeout=30) as response:
