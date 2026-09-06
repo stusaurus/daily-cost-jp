@@ -43,9 +43,9 @@ jobs:
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: python scripts/build_site_final.py
 
-      - name: Add optional GA4 tracking
+      - name: Add GA4 tracking
         env:
-          GA_MEASUREMENT_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+          GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
         run: python scripts/add_analytics.py
 
       - name: Configure Pages
