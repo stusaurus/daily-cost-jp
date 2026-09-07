@@ -24,6 +24,7 @@ on:
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
       - "scripts/promote_home_ranking.py"
+      - "scripts/jump_to_rank11.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -91,6 +92,9 @@ jobs:
 
       - name: Feature realtime ranking at top of homepage
         run: python scripts/promote_home_ranking.py
+
+      - name: Continue detailed ranking from rank 11
+        run: python scripts/jump_to_rank11.py
 
       - name: Add GA4 tracking to all pages
         env:
