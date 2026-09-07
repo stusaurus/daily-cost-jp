@@ -8,16 +8,25 @@ TRENDS = Path("site/trends/index.html")
 HOME = Path("site/index.html")
 MAX_CHIPS = 4
 
+TREND_CHIP_STYLE = '''<style id="trend-chip-style">
+.examples .trend-chip{flex:0 0 190px;min-height:58px;white-space:normal;text-align:left;display:flex;align-items:flex-start;gap:6px;line-height:1.35;padding:8px 10px}
+.trend-chip-rank{flex:0 0 auto;font-weight:900;color:#b3261e}
+.trend-chip-name{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:700}
+</style>'''
+
 
 def strip_tags(value: str) -> str:
     return html_lib.unescape(re.sub(r"<[^>]+>", "", value or "")).strip()
 
 
-def short_label(name: str, rank: int) -> str:
+def short_label(name: str) -> str:
     text = re.sub(r"\s+", " ", name).strip()
-    if len(text) > 24:
-        text = text[:24].rstrip() + "…"
-    return f"{rank}位 {text}"
+    # Two visible lines are allowed so the user can still identify the product.
+    # Keep a generous cap only to prevent unusually long Rakuten titles from
+    # producing oversized accessibility/text payloads.
+    if len(text) > 58:
+        text = text[:58].rstrip() + "…"
+    return text
 
 
 def collect_searchable_trends(markup: str):
@@ -49,10 +58,16 @@ def replace_product_chips(markup: str, rows):
     buttons = []
     for row in rows:
         q = html_lib.escape(row["query"], quote=True)
-        label = html_lib.escape(short_label(row["name"], row["rank"]))
-        buttons.append(f'<button class="chip" data-q="{q}" data-trend-rank="{row["rank"]}">{label}</button>')
+        label = html_lib.escape(short_label(row["name"]))
+        buttons.append(
+            f'<button class="chip trend-chip" data-q="{q}" data-trend-rank="{row["rank"]}">' 
+            f'<span class="trend-chip-rank">{row["rank"]}位</span>'
+            f'<span class="trend-chip-name">{label}</span></button>'
+        )
     block = '<div class="examples" aria-label="今の人気商品">' + ''.join(buttons) + '</div>'
     markup = re.sub(r'<div class="examples">.*?</div>', block, markup, count=1, flags=re.DOTALL)
+    markup = re.sub(r'<style id="trend-chip-style">.*?</style>', '', markup, flags=re.DOTALL)
+    markup = markup.replace('</head>', TREND_CHIP_STYLE + '\n</head>', 1)
     markup = markup.replace(
         'placeholder="例：おしりセレブ / アリエール / JANコード"',
         'placeholder="今人気の商品名・ブランド・JANコード"',
