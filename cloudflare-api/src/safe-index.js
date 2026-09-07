@@ -29,6 +29,17 @@ function compact(value) {
     .replace(/巻/g, "ロール");
 }
 
+function firstImageUrl(value) {
+  if (!Array.isArray(value) || !value.length) return "";
+  const first = value[0];
+  const url = typeof first === "string"
+    ? first
+    : first && typeof first === "object"
+      ? first.imageUrl || first.url || ""
+      : "";
+  return String(url || "").replace("http://", "https://");
+}
+
 const GENERIC_WORDS = new Set([
   "楽天", "公式", "正規品", "送料無料", "送料込", "送料込み", "セール", "sale",
   "トイレットペーパー", "ティッシュ", "ティッシュペーパー", "洗剤", "シャンプー",
@@ -89,6 +100,7 @@ function normalizeItem(raw) {
     price,
     shop: String(item.shopName || ""),
     url: String(item.affiliateUrl || item.itemUrl || ""),
+    image: firstImageUrl(item.mediumImageUrls),
     postage_flag: safeInt(item.postageFlag, -1),
   };
 }
@@ -165,6 +177,7 @@ function attachShipping(products, items) {
         shipping_included_price: null,
         shipping_included_url: "",
         shipping_included_shop: "",
+        shipping_included_image: "",
       };
     }
     return {
@@ -172,6 +185,7 @@ function attachShipping(products, items) {
       shipping_included_price: best.item.price,
       shipping_included_url: best.item.url,
       shipping_included_shop: best.item.shop,
+      shipping_included_image: best.item.image,
       shipping_match_score: best.score,
       shipping_match_name: best.item.name,
     };
@@ -230,7 +244,7 @@ async function fetchIncludedItems(q, env, page = 1) {
     field: "0",
     sort: "+itemPrice",
     postageFlag: "1",
-    elements: "itemName,itemPrice,itemUrl,affiliateUrl,shopName,postageFlag",
+    elements: "itemName,itemPrice,itemUrl,affiliateUrl,shopName,postageFlag,mediumImageUrls",
   });
   if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
 
@@ -239,7 +253,7 @@ async function fetchIncludedItems(q, env, page = 1) {
       accessKey: env.RAKUTEN_ACCESS_KEY,
       Origin: ALLOWED_ORIGIN,
       Referer: SITE_URL,
-      "User-Agent": "daily-cost-jp-cloudflare-shipping/1.1",
+      "User-Agent": "daily-cost-jp-cloudflare-shipping/1.2",
     },
   });
   if (!response.ok) throw new Error(`item_api_${response.status}`);
@@ -306,6 +320,7 @@ async function exactShippingLookup(code, name, brand, env) {
         shipping_included_price: codeBest.item.price,
         shipping_included_url: codeBest.item.url,
         shipping_included_shop: codeBest.item.shop,
+        shipping_included_image: codeBest.item.image,
         shipping_match_score: codeBest.score,
         shipping_match_name: codeBest.item.name,
         lookup_method: "product_code_verified",
@@ -323,6 +338,7 @@ async function exactShippingLookup(code, name, brand, env) {
     shipping_included_price: best.item.price,
     shipping_included_url: best.item.url,
     shipping_included_shop: best.item.shop,
+    shipping_included_image: best.item.image,
     shipping_match_score: best.score,
     shipping_match_name: best.item.name,
     lookup_method: "product_name_specs_verified",
@@ -361,7 +377,7 @@ export default {
     if (origin && origin !== ALLOWED_ORIGIN) return json({ error: "origin_not_allowed" }, 403, origin);
 
     if (url.pathname === "/" || url.pathname === "/health") {
-      return json({ ok: true, service: "daily-cost-api", platform: "cloudflare-workers", matching: "safe" }, 200, origin);
+      return json({ ok: true, service: "daily-cost-api", platform: "cloudflare-workers", matching: "safe-images" }, 200, origin);
     }
 
     if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
