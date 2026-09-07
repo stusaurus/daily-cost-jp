@@ -152,16 +152,21 @@ def main():
         new_q = urllib.parse.quote(new)
         trend_html = trend_html.replace(f'../products/?q={old_q}', f'../products/?q={new_q}')
         product_html = product_html.replace(f'?q={old_q}', f'?q={new_q}')
+        product_html = product_html.replace(f'>{old}</span>', f'>{new}</span>')
         product_html = product_html.replace(f'>{old}</a>', f'>{new}</a>')
 
-    # Remove only dead trend chips from the search page. The trend page still shows
-    # the ranked item and direct Rakuten link, but no longer sends users to a zero-result search.
+    # If none of the progressively shorter queries resolve, keep the ranked item
+    # visible on the trend page but remove only the search action that would lead to 0 results.
     for dead in dead_queries:
         dead_q = urllib.parse.quote(dead)
         chip_pattern = re.compile(
             rf'<a class="chip" href="\?q={re.escape(dead_q)}">.*?</a>'
         )
+        trend_grid_pattern = re.compile(
+            rf'<a href="\?q={re.escape(dead_q)}"><strong>.*?</strong><span>.*?</span></a>'
+        )
         product_html = chip_pattern.sub("", product_html)
+        product_html = trend_grid_pattern.sub("", product_html)
         trend_html = trend_html.replace(
             f'<a class="search" href="../products/?q={dead_q}">送料込み最安値を探す</a>',
             ""
