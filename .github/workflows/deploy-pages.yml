@@ -20,6 +20,7 @@ on:
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_seo.py"
       - "scripts/build_dynamic_trends_v2.py"
+      - "scripts/fix_trend_query_links.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -67,6 +68,13 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: python scripts/build_dynamic_trends_v2.py
+
+      - name: Validate dynamic trend search links
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: python scripts/fix_trend_query_links.py
 
       - name: Add GA4 tracking to all pages
         env:
