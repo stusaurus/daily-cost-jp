@@ -22,6 +22,7 @@ on:
       - "scripts/build_dynamic_trends_v2.py"
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
+      - "scripts/promote_home_ranking.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -79,6 +80,9 @@ jobs:
 
       - name: Restore descriptive trend labels
         run: python scripts/improve_trend_labels.py
+
+      - name: Feature realtime ranking at top of homepage
+        run: python scripts/promote_home_ranking.py
 
       - name: Add GA4 tracking to all pages
         env:
