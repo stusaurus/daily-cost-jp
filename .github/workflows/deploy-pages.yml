@@ -20,6 +20,7 @@ on:
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_realtime_search_ux.py"
       - "scripts/improve_seo.py"
+      - "scripts/improve_category_seo.py"
       - "scripts/sharpen_home_value_prop.py"
       - "scripts/add_exact_store_compare.py"
       - "scripts/add_daily_buy_picks.py"
@@ -75,6 +76,9 @@ jobs:
 
       - name: Improve search-facing SEO metadata
         run: python scripts/improve_seo.py
+
+      - name: Strengthen category SEO pages
+        run: python scripts/improve_category_seo.py
 
       - name: Clarify homepage value proposition
         run: python scripts/sharpen_home_value_prop.py
