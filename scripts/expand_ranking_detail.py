@@ -3,6 +3,7 @@ import json
 import os
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -14,6 +15,7 @@ APP_ID = os.environ.get("RAKUTEN_APPLICATION_ID", "")
 ACCESS_KEY = os.environ.get("RAKUTEN_ACCESS_KEY", "")
 AFFILIATE_ID = os.environ.get("RAKUTEN_AFFILIATE_ID", "")
 LIMIT = 50
+REQUEST_GAP = 1.2
 
 PROMO_WORDS = (
     "送料無料", "送料込", "楽天1位", "ランキング1位", "ポイント", "クーポン", "セール", "sale",
@@ -63,7 +65,7 @@ def first_image(raw) -> str:
     return str(first or "")
 
 
-def fetch_page(page: int):
+def fetch_page(page: int, retries: int = 3):
     params = {
         "applicationId": APP_ID,
         "format": "json",
@@ -83,17 +85,32 @@ def fetch_page(page: int):
             "accessKey": ACCESS_KEY,
             "Origin": "https://stusaurus.github.io",
             "Referer": SITE,
-            "User-Agent": "daily-cost-jp-rakuten-top50/1.0",
+            "User-Agent": "daily-cost-jp-rakuten-top50/1.1",
         },
     )
-    with urllib.request.urlopen(req, timeout=25) as response:
-        payload = json.loads(response.read().decode("utf-8"))
-    return payload.get("Items") or payload.get("items") or []
+
+    for attempt in range(retries):
+        try:
+            with urllib.request.urlopen(req, timeout=25) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            return payload.get("Items") or payload.get("items") or []
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < retries - 1:
+                wait = REQUEST_GAP * (attempt + 1)
+                print(f"Ranking API page {page} rate limited; retrying in {wait:.1f}s")
+                time.sleep(wait)
+                continue
+            raise
 
 
 def collect_rows():
     if not APP_ID or not ACCESS_KEY:
         return []
+
+    # build_dynamic_trends_v2.py calls the same Ranking API immediately before
+    # this script. Respect Rakuten's QPS=1 limit before the first request here.
+    time.sleep(REQUEST_GAP)
+
     by_rank = {}
     for page in range(1, 5):
         try:
@@ -120,7 +137,7 @@ def collect_rows():
             }
         if len(by_rank) >= LIMIT:
             break
-        time.sleep(1.1)
+        time.sleep(REQUEST_GAP)
     return [by_rank[k] for k in sorted(by_rank) if k <= LIMIT]
 
 
@@ -134,7 +151,7 @@ def render(rows):
     cards = []
     for row in rows:
         if row["rank"] == 11:
-            cards.append('<div class="divider">11位〜50位</div>')
+            cards.append('<div class="divider" id="rank-11" style="scroll-margin-top:16px">11位〜50位</div>')
         q = urllib.parse.quote(row["query"])
         image = f'<img src="{html.escape(row["image"], quote=True)}" alt="" loading="lazy">' if row["image"] else ""
         price = f'¥{row["price"]:,}' if row["price"] > 0 else "価格は楽天で確認"
@@ -159,8 +176,9 @@ def render(rows):
 
 def main():
     rows = collect_rows()
-    if len(rows) < 10:
-        print(f"Only {len(rows)} ranking rows available; keeping existing TOP10 page")
+    ranks = {row["rank"] for row in rows}
+    if 11 not in ranks:
+        print(f"Rank 11 unavailable ({len(rows)} rows); keeping existing TOP10 page")
         return
     target = OUT / "trends" / "index.html"
     target.parent.mkdir(parents=True, exist_ok=True)
