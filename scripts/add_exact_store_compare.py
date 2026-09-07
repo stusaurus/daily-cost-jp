@@ -30,7 +30,7 @@ if 'id="exact-store-compare"' in markup:
 
 css = r'''
 .exact-compare{margin:14px 0 20px;padding:16px;border:1px solid #d9e3dc;border-radius:18px;background:linear-gradient(180deg,#f7fff9 0%,#fff 100%);box-shadow:0 5px 18px rgba(34,80,49,.05)}
-.exact-kicker{font-size:11px;font-weight:900;color:#22663a;letter-spacing:.03em}.exact-compare h2{font-size:22px;line-height:1.28;margin:3px 0 5px}.exact-lead{margin:0 0 12px;color:#5f6368;font-size:12px;line-height:1.65}.exact-fields{display:grid;grid-template-columns:1fr 120px;gap:8px}.exact-fields input{min-width:0;height:46px;border:1px solid #cfd9d2;border-radius:11px;background:#fff;padding:0 11px;font-size:16px}.exact-fields button{grid-column:1/-1;min-height:46px;border:0;border-radius:11px;background:#22663a;color:#fff;font-size:14px;font-weight:900}.exact-guide{font-size:10px;color:#777;line-height:1.55;margin:8px 0 0}.exact-status{font-size:11px;color:#5f6368;margin-top:10px}.exact-candidates{display:grid;gap:9px;margin-top:10px}.exact-candidate{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:10px;border:1px solid #e0e6e2;border-radius:13px;background:#fff}.exact-img{width:70px;height:70px;border:1px solid #e5e7eb;border-radius:10px;display:grid;place-items:center;overflow:hidden}.exact-img img{width:100%;height:100%;object-fit:contain}.exact-name{font-size:12px;font-weight:800;line-height:1.45;margin-bottom:4px}.exact-brand{font-size:9px;color:#777}.exact-price{font-size:17px;font-weight:900;color:#22663a}.exact-price small{font-size:9px;color:#777}.exact-choose{width:100%;margin-top:7px;min-height:36px;border:0;border-radius:9px;background:#252525;color:#fff;font-size:11px;font-weight:800}.exact-choose:disabled{background:#c4c8c5}.exact-result{display:none;margin-top:12px;padding:14px;border-radius:14px;background:#fff;border:1px solid #d8e4db}.exact-result.show{display:block}.exact-verdict{font-size:20px;font-weight:900;margin-bottom:6px}.exact-result p{font-size:11px;line-height:1.6;margin:4px 0}.exact-rakuten{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:10px;border-radius:10px;background:#b3261e;color:#fff;text-decoration:none;font-size:12px;font-weight:900}.exact-note{font-size:9px!important;color:#777}.exact-loading{padding:13px;border:1px dashed #ccd6cf;border-radius:12px;background:#fff;font-size:11px;color:#666}
+.exact-kicker{font-size:11px;font-weight:900;color:#22663a;letter-spacing:.03em}.exact-compare h2{font-size:22px;line-height:1.28;margin:3px 0 5px}.exact-lead{margin:0 0 12px;color:#5f6368;font-size:12px;line-height:1.65}.exact-fields{display:grid;grid-template-columns:1fr 120px;gap:8px}.exact-fields input{min-width:0;height:46px;border:1px solid #cfd9d2;border-radius:11px;background:#fff;padding:0 11px;font-size:16px}.exact-fields button{grid-column:1/-1;min-height:46px;border:0;border-radius:11px;background:#22663a;color:#fff;font-size:14px;font-weight:900}.exact-guide{font-size:10px;color:#777;line-height:1.55;margin:8px 0 0}.exact-status{font-size:11px;color:#5f6368;margin-top:10px}.exact-candidates{display:grid;gap:9px;margin-top:10px}.exact-candidate{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:10px;border:1px solid #e0e6e2;border-radius:13px;background:#fff}.exact-img{width:70px;height:70px;border:1px solid #e5e7eb;border-radius:10px;display:grid;place-items:center;overflow:hidden}.exact-img img{width:100%;height:100%;object-fit:contain}.exact-name{font-size:12px;font-weight:800;line-height:1.45;margin-bottom:4px}.exact-brand{font-size:9px;color:#777}.exact-price{font-size:17px;font-weight:900;color:#22663a}.exact-price small{font-size:9px;color:#777}.exact-choose{width:100%;margin-top:7px;min-height:36px;border:0;border-radius:9px;background:#252525;color:#fff;font-size:11px;font-weight:800}.exact-choose:disabled{background:#c4c8c5}.exact-result{display:none;margin-top:12px;padding:14px;border-radius:14px;background:#fff;border:1px solid #d8e4db}.exact-result.show{display:block}.exact-verdict{font-size:20px;font-weight:900;margin-bottom:6px}.exact-result p{font-size:11px;line-height:1.6;margin:4px 0}.exact-rakuten{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:10px;border-radius:10px;background:#b3261e;color:#fff;text-decoration:none;font-size:12px;font-weight:900}.exact-note{font-size:9px!important;color:#777}.exact-loading{padding:13px;border:1px dashed #ccd6cf;border-radius:12px;background:#fff;font-size:11px;color:#666}.exact-warning{margin-top:8px;padding:9px 10px;border-radius:10px;background:#fff8e8;border:1px solid #f0dfad;color:#725a18;font-size:10px;line-height:1.55}
 @media(max-width:420px){.exact-fields{grid-template-columns:1fr 105px}}
 '''
 markup = markup.replace("</style>", css + "\n</style>", 1)
@@ -45,7 +45,7 @@ section = f'''
     <input id="exact-store-price" type="number" inputmode="decimal" min="1" step="1" placeholder="店頭価格">
     <button id="exact-search" type="button">同じ商品を探す</button>
   </div>
-  <p class="exact-guide">容量違いを誤比較しないため、自動で決め打ちせず候補から同じ商品を選ぶ方式です。</p>
+  <p class="exact-guide">容量・個数・箱数などを入力すると一致精度が上がります。別商品を出すくらいなら「候補なし」とする厳しめ判定です。</p>
   <div class="exact-status" id="exact-status"></div>
   <div class="exact-candidates" id="exact-candidates"></div>
   <div class="exact-result" id="exact-result" aria-live="polite"></div>
@@ -65,6 +65,66 @@ section = f'''
   const yen = (n) => '¥' + Number(n || 0).toLocaleString('ja-JP');
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}}[c]));
   const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+  function norm(s) {{
+    return String(s || '').toLowerCase().normalize('NFKC').replace(/[\s　・･,，.。()（）【】\[\]「」『』_-]+/g, '');
+  }}
+
+  function normalizedUnit(unit) {{
+    const u = String(unit || '').toLowerCase();
+    if (u === 'mℓ') return 'ml';
+    if (u === 'ℓ') return 'l';
+    if (u === '巻') return 'ロール';
+    if (u === 'pk') return 'パック';
+    return u;
+  }}
+
+  function qtyPairs(text) {{
+    const re = /(\d+(?:\.\d+)?)\s*(ml|mℓ|l|ℓ|g|kg|個|本|箱|袋|枚|ロール|巻|パック|pk|セット|組|錠|粒|包)/gi;
+    const out = [];
+    let m;
+    while ((m = re.exec(String(text || ''))) !== null) {{
+      out.push([Number(m[1]), normalizedUnit(m[2])]);
+    }}
+    return out;
+  }}
+
+  function textTokens(term) {{
+    return String(term || '')
+      .normalize('NFKC')
+      .split(/[\s　]+/)
+      .map(s => s.trim())
+      .filter(Boolean)
+      .filter(s => !/^\d+(?:\.\d+)?(?:ml|l|g|kg|個|本|箱|袋|枚|ロール|巻|パック|pk|セット|組|錠|粒|包)?$/i.test(s))
+      .filter(s => s.length >= 2);
+  }}
+
+  function strictSameProduct(p, term) {{
+    const hay = norm(`${{p.brand || ''}} ${{p.name || ''}}`);
+    const tokens = textTokens(term);
+    if (tokens.length && !tokens.every(t => hay.includes(norm(t)))) return false;
+
+    const wanted = qtyPairs(term);
+    const found = qtyPairs(p.name || '');
+    if (wanted.length) {{
+      for (const [n,u] of wanted) {{
+        if (!found.some(([cn,cu]) => cn === n && cu === u)) return false;
+      }}
+
+      const packageUnits = new Set(['個','本','箱','袋','枚','ロール','パック','セット','組','錠','粒','包']);
+      const wantedPackage = wanted.filter(([,u]) => packageUnits.has(u));
+      const foundPackage = found.filter(([,u]) => packageUnits.has(u));
+      if (wantedPackage.length && foundPackage.length > wantedPackage.length) {{
+        const extras = [...foundPackage];
+        for (const pair of wantedPackage) {{
+          const idx = extras.findIndex(x => x[0] === pair[0] && x[1] === pair[1]);
+          if (idx >= 0) extras.splice(idx,1);
+        }}
+        if (extras.some(([n]) => n > 1)) return false;
+      }}
+    }}
+    return true;
+  }}
 
   async function fallbackPrice(p) {{
     const params = new URLSearchParams();
@@ -94,7 +154,8 @@ section = f'''
   function render() {{
     candidatesEl.innerHTML = rows.map(card).join('');
     const priced = rows.filter(p => Number(p.shipping_included_price || 0) > 0).length;
-    statusEl.textContent = rows.length ? `候補 ${{rows.length}}件・送料込み価格確認済み ${{priced}}件` : '同じ商品候補が見つかりませんでした。商品名を少し短くして試してください。';
+    statusEl.textContent = rows.length ? `一致度の高い候補 ${{rows.length}}件・送料込み価格確認済み ${{priced}}件` : '一致度の高い同一商品候補が見つかりませんでした。メーカー名・容量・個数などを足して試してください。';
+    if (!rows.length) candidatesEl.innerHTML = '<div class="exact-warning">似た名前の別商品は表示しません。たとえば「マッチ 10箱」で飲料のMATCHが出るような誤候補を除外します。</div>';
   }}
 
   async function search() {{
@@ -112,10 +173,11 @@ section = f'''
     statusEl.textContent = '同じ商品の候補と送料込み価格を確認中…';
     candidatesEl.innerHTML = '<div class="exact-loading">楽天の商品候補を確認しています…</div>';
     try {{
-      const response = await fetch(`${{API}}?q=${{encodeURIComponent(term)}}&page=1&hits=12`, {{mode:'cors'}});
+      const response = await fetch(`${{API}}?q=${{encodeURIComponent(term)}}&page=1&hits=20`, {{mode:'cors'}});
       if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
       const data = await response.json();
-      rows = (Array.isArray(data.products) ? data.products : []).slice(0, 6);
+      const all = Array.isArray(data.products) ? data.products : [];
+      rows = all.filter(p => strictSameProduct(p, term)).slice(0, 6);
       for (let i = 0; i < rows.length; i += 1) {{
         if (!Number(rows[i].shipping_included_price || 0)) {{
           try {{ rows[i] = await fallbackPrice(rows[i]); }} catch (_) {{}}
@@ -123,7 +185,7 @@ section = f'''
         }}
       }}
       render();
-      if (typeof window.gtag === 'function') window.gtag('event','same_product_compare_search',{{search_term:term,result_count:rows.length,shipping_priced_count:rows.filter(p=>Number(p.shipping_included_price||0)>0).length}});
+      if (typeof window.gtag === 'function') window.gtag('event','same_product_compare_search',{{search_term:term,result_count:rows.length,shipping_priced_count:rows.filter(p=>Number(p.shipping_included_price||0)>0).length,raw_result_count:all.length}});
     }} catch (err) {{
       console.error(err);
       rows = [];
@@ -170,4 +232,4 @@ else:
     markup = markup.replace('<section class="decision-tool"', section + '\n<section class="decision-tool"', 1)
 
 PAGE.write_text(markup, encoding="utf-8")
-print("Added exact same-product store-vs-Rakuten comparison tool")
+print("Added strict exact same-product store-vs-Rakuten comparison tool")
