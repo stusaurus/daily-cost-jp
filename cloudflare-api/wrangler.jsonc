@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "daily-cost-api",
-  "main": "src/index.js",
+  "main": "src/safe-index.js",
   "compatibility_date": "2026-09-07",
   "workers_dev": true,
   "keep_vars": true,
