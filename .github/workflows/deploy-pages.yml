@@ -20,6 +20,7 @@ on:
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_seo.py"
       - "scripts/build_dynamic_trends_v2.py"
+      - "scripts/expand_ranking_detail.py"
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
       - "scripts/promote_home_ranking.py"
@@ -70,6 +71,13 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: python scripts/build_dynamic_trends_v2.py
+
+      - name: Expand detailed ranking to top 50
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: python scripts/expand_ranking_detail.py
 
       - name: Validate dynamic trend search links
         env:
