@@ -1,0 +1,26 @@
+name: Smoke test live product search
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 07:30 JST = 22:30 UTC (previous day), after the daily site refresh.
+    - cron: "30 22 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test representative live searches
+        run: python scripts/smoke_test_live_products.py
