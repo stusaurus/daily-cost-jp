@@ -30,6 +30,7 @@ on:
       - "scripts/jump_to_rank11.py"
       - "scripts/simplify_product_ranking_cta.py"
       - "scripts/add_trust_faq.py"
+      - "scripts/add_trend_conversion_tracking.py"
       - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
@@ -116,6 +117,9 @@ jobs:
 
       - name: Add price-method FAQ and trust notes
         run: python scripts/add_trust_faq.py
+
+      - name: Track trend chips through Rakuten clicks
+        run: python scripts/add_trend_conversion_tracking.py
 
       - name: Add back-to-top button to all pages
         run: python scripts/add_back_to_top.py
