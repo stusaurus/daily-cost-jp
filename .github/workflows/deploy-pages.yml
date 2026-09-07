@@ -27,6 +27,7 @@ on:
       - "scripts/move_home_ranking_below_tools.py"
       - "scripts/jump_to_rank11.py"
       - "scripts/simplify_product_ranking_cta.py"
+      - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -103,6 +104,9 @@ jobs:
 
       - name: Simplify ranking on product search page
         run: python scripts/simplify_product_ranking_cta.py
+
+      - name: Add back-to-top button to all pages
+        run: python scripts/add_back_to_top.py
 
       - name: Add GA4 tracking to all pages
         env:
