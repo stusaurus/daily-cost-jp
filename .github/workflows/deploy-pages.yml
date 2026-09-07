@@ -24,6 +24,7 @@ on:
       - "scripts/expand_ranking_detail.py"
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
+      - "scripts/sync_trend_search_chips.py"
       - "scripts/promote_home_ranking.py"
       - "scripts/move_home_ranking_below_tools.py"
       - "scripts/jump_to_rank11.py"
@@ -94,6 +95,9 @@ jobs:
 
       - name: Restore descriptive trend labels
         run: python scripts/improve_trend_labels.py
+
+      - name: Sync product search examples to current trends
+        run: python scripts/sync_trend_search_chips.py
 
       - name: Feature realtime ranking on homepage
         run: python scripts/promote_home_ranking.py
