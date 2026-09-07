@@ -20,6 +20,7 @@ on:
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_realtime_search_ux.py"
       - "scripts/improve_seo.py"
+      - "scripts/sharpen_home_value_prop.py"
       - "scripts/build_dynamic_trends_v2.py"
       - "scripts/expand_ranking_detail.py"
       - "scripts/fix_trend_query_links.py"
@@ -72,6 +73,9 @@ jobs:
 
       - name: Improve search-facing SEO metadata
         run: python scripts/improve_seo.py
+
+      - name: Clarify homepage value proposition
+        run: python scripts/sharpen_home_value_prop.py
 
       - name: Build dynamic Rakuten trend hub
         env:
