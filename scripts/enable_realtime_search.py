@@ -1,7 +1,7 @@
 from pathlib import Path
 
 PAGE = Path("site/products/index.html")
-API = "https://daily-cost-api.netlify.app/api/product-search"
+API = "https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search"
 
 if not PAGE.exists():
     raise SystemExit("site/products/index.html not found")
