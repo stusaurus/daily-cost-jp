@@ -238,7 +238,11 @@ async function fetchIncludedItems(q, env) {
   });
   if (!response.ok) throw new Error(`item_api_${response.status}`);
   const payload = await response.json();
-  const source = Array.isArray(payload.items) ? payload.items : [];
+  const source = Array.isArray(payload.Items)
+    ? payload.Items
+    : Array.isArray(payload.items)
+      ? payload.items
+      : [];
   return source
     .map(normalizeItem)
     .filter(Boolean)
