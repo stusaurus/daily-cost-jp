@@ -19,18 +19,24 @@ PROMO_WORDS = (
     "送料無料", "送料込", "楽天1位", "ランキング1位", "ポイント", "クーポン",
     "セール", "SALE", "公式", "限定", "あす楽", "最安値", "お買い物マラソン",
 )
-INCLUDE_TERMS = (
-    "トイレットペーパー", "ティッシュ", "洗濯洗剤", "液体洗剤", "ジェルボール", "柔軟剤",
-    "食器用洗剤", "キュキュット", "ジョイ", "ヤシノミ洗剤", "シャンプー", "コンディショナー",
-    "トリートメント", "ボディソープ", "ハンドソープ", "浴室洗剤", "お風呂用洗剤", "トイレ洗剤",
-    "漂白剤", "ハイター", "マウスウォッシュ", "ペーパータオル", "キッチンペーパー", "ゴミ袋",
-    "不織布マスク", "歯ブラシ", "綿棒", "フローリングシート", "ミネラルウォーター", "天然水",
-    "ドリップコーヒー", "コーヒー豆", "コーヒー 粉",
+
+# A trend link must continue to identify a product/series. Category-only searches such as
+# 「柔軟剤」 are too broad and make the trend card look like a different product.
+GENERIC_ONLY = (
+    "トイレットペーパー", "ティッシュ", "ティッシュペーパー", "洗濯洗剤", "液体洗剤",
+    "食器用洗剤", "ミネラルウォーター", "天然水", "コーヒー", "柔軟剤", "シャンプー",
+    "コンディショナー", "リンス", "ボディソープ", "ハンドソープ", "お風呂用洗剤",
+    "浴室洗剤", "トイレ用洗剤", "トイレ洗剤", "漂白剤", "衣料用漂白剤",
+    "マウスウォッシュ", "洗口液", "ペーパータオル", "キッチンペーパー", "ゴミ袋",
+    "不織布マスク", "歯ブラシ", "綿棒", "フローリングシート", "フロアシート",
 )
 
 
 def compact(value):
     return re.sub(r"[\s\u3000\-_/・.,!！?？()（）［］\[\]【】]", "", str(value or "").lower())
+
+
+GENERIC_KEYS = {compact(value) for value in GENERIC_ONLY}
 
 
 def clean_tokens(title):
@@ -42,26 +48,30 @@ def clean_tokens(title):
             continue
         if re.fullmatch(r"[0-9,.%％倍]+", token):
             continue
+        if re.search(r"\d{1,2}/\d{1,2}|\d{1,2}:\d{2}", token):
+            continue
         result.append(token)
     return result
+
+
+def is_product_specific(value):
+    key = compact(value)
+    return len(key) >= 2 and key not in GENERIC_KEYS
 
 
 def candidates(title, current):
     tokens = clean_tokens(title)
     rows = [current]
-    if len(tokens) >= 2:
-        rows.append(" ".join(tokens[:2])[:48].strip())
-    if tokens and len(compact(tokens[0])) >= 2:
-        rows.append(tokens[0][:48].strip())
-    for term in INCLUDE_TERMS:
-        if term in title and len(compact(term)) >= 2:
-            rows.append(term)
+    # Keep enough identity to understand which product is being searched.
+    for take in (4, 3, 2):
+        if len(tokens) >= take:
+            rows.append(" ".join(tokens[:take])[:56].strip())
 
     seen = set()
     result = []
     for value in rows:
         key = compact(value)
-        if len(key) < 2 or key in seen:
+        if key in seen or not is_product_specific(value):
             continue
         seen.add(key)
         result.append(value)
@@ -91,7 +101,7 @@ def has_products(query):
             "accessKey": ACCESS_KEY,
             "Origin": "https://stusaurus.github.io",
             "Referer": SITE,
-            "User-Agent": "daily-cost-jp-trend-link-check/1.0",
+            "User-Agent": "daily-cost-jp-trend-link-check/1.1",
         },
     )
     try:
@@ -142,21 +152,21 @@ def main():
         if chosen:
             replacements[current] = chosen
             if chosen != current:
-                print(f"Trend search query shortened: {current!r} -> {chosen!r}")
+                print(f"Trend search query shortened safely: {current!r} -> {chosen!r}")
         else:
             dead_queries.add(current)
-            print(f"No Product API result for trend query: {current!r}")
+            print(f"No product-specific Product API result for trend query: {current!r}")
 
     for old, new in replacements.items():
         old_q = urllib.parse.quote(old)
         new_q = urllib.parse.quote(new)
         trend_html = trend_html.replace(f'../products/?q={old_q}', f'../products/?q={new_q}')
         product_html = product_html.replace(f'?q={old_q}', f'?q={new_q}')
-        product_html = product_html.replace(f'>{old}</span>', f'>{new}</span>')
-        product_html = product_html.replace(f'>{old}</a>', f'>{new}</a>')
+        # Deliberately do not replace visible labels with the shortened search query.
+        # The next build step restores the original ranked product title as the label.
 
-    # If none of the progressively shorter queries resolve, keep the ranked item
-    # visible on the trend page but remove only the search action that would lead to 0 results.
+    # If none of the product-specific queries resolve, keep the ranked item visible on
+    # the trend page but remove the search action rather than falling back to a category.
     for dead in dead_queries:
         dead_q = urllib.parse.quote(dead)
         chip_pattern = re.compile(
@@ -174,7 +184,7 @@ def main():
 
     TRENDS.write_text(trend_html, encoding="utf-8")
     PRODUCTS.write_text(product_html, encoding="utf-8")
-    print(f"Validated {len(replacements)} trend search links; removed {len(dead_queries)} dead search links")
+    print(f"Validated {len(replacements)} product-specific trend search links; removed {len(dead_queries)} broad/dead links")
 
 
 if __name__ == "__main__":
