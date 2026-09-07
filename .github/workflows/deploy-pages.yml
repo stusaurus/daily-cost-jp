@@ -21,6 +21,7 @@ on:
       - "scripts/improve_realtime_search_ux.py"
       - "scripts/improve_seo.py"
       - "scripts/sharpen_home_value_prop.py"
+      - "scripts/add_exact_store_compare.py"
       - "scripts/build_dynamic_trends_v2.py"
       - "scripts/expand_ranking_detail.py"
       - "scripts/fix_trend_query_links.py"
@@ -109,6 +110,9 @@ jobs:
 
       - name: Move homepage ranking below search and checker
         run: python scripts/move_home_ranking_below_tools.py
+
+      - name: Add exact store-vs-Rakuten comparison
+        run: python scripts/add_exact_store_compare.py
 
       - name: Continue detailed ranking from rank 11
         run: python scripts/jump_to_rank11.py
