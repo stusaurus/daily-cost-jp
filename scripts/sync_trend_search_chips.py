@@ -8,25 +8,59 @@ TRENDS = Path("site/trends/index.html")
 HOME = Path("site/index.html")
 MAX_CHIPS = 4
 
-TREND_CHIP_STYLE = '''<style id="trend-chip-style">
-.examples .trend-chip{flex:0 0 190px;min-height:58px;white-space:normal;text-align:left;display:flex;align-items:flex-start;gap:6px;line-height:1.35;padding:8px 10px}
-.trend-chip-rank{flex:0 0 auto;font-weight:900;color:#b3261e}
-.trend-chip-name{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-weight:700}
-</style>'''
+GENERIC_WORDS = {
+    "トイレットペーパー", "ティッシュ", "ティッシュペーパー", "洗濯洗剤", "液体洗剤",
+    "食器用洗剤", "ミネラルウォーター", "天然水", "コーヒー", "柔軟剤", "シャンプー",
+    "コンディショナー", "リンス", "ボディソープ", "ハンドソープ", "お風呂用洗剤",
+    "浴室洗剤", "トイレ用洗剤", "トイレ洗剤", "漂白剤", "衣料用漂白剤", "洗口液",
+    "マウスウォッシュ", "ペーパータオル", "キッチンペーパー", "ゴミ袋", "不織布マスク",
+    "歯ブラシ", "綿棒", "フローリングシート", "フロアシート",
+}
+
+SPEC_RE = re.compile(
+    r"^(?:\d+(?:[.,]\d+)?(?:ml|mL|L|g|kg|枚|個|本|袋|箱|ロール|巻|個入|枚入|本入)|"
+    r"\d+[袋箱本個枚ロール巻]?セット|\d+個パック|詰替(?:え)?|つめかえ|本体)$",
+    re.IGNORECASE,
+)
 
 
 def strip_tags(value: str) -> str:
     return html_lib.unescape(re.sub(r"<[^>]+>", "", value or "")).strip()
 
 
-def short_label(name: str) -> str:
-    text = re.sub(r"\s+", " ", name).strip()
-    # Two visible lines are allowed so the user can still identify the product.
-    # Keep a generous cap only to prevent unusually long Rakuten titles from
-    # producing oversized accessibility/text payloads.
-    if len(text) > 58:
-        text = text[:58].rstrip() + "…"
-    return text
+def compact(value: str) -> str:
+    return re.sub(r"[\s\u3000\-_/・.,!！?？()（）［］\[\]【】]", "", str(value or "").lower())
+
+
+GENERIC_KEYS = {compact(value) for value in GENERIC_WORDS}
+
+
+def major_label(query: str, name: str) -> str:
+    """Prefer the shortest recognizable product/brand name, not the ranking title."""
+    base = re.sub(r"\s+", " ", query or "").strip() or re.sub(r"\s+", " ", name or "").strip()
+    tokens = [t.strip() for t in re.split(r"[\s｜|／/・:：]+", base) if t.strip()]
+
+    useful = []
+    for token in tokens:
+        key = compact(token)
+        if not key or key in GENERIC_KEYS or SPEC_RE.fullmatch(token):
+            continue
+        if re.fullmatch(r"[0-9,.%％倍]+", token):
+            continue
+        useful.append(token)
+
+    if not useful:
+        useful = tokens[:1] or [base]
+
+    # One strong token is usually the major product/brand name (e.g. アリエール, キレイキレイ).
+    # Use a second token only when the first alone is extremely short or clearly incomplete.
+    label = useful[0]
+    if len(label) <= 3 and len(useful) >= 2:
+        label = f"{label} {useful[1]}"
+
+    if len(label) > 16:
+        label = label[:16].rstrip() + "…"
+    return label
 
 
 def collect_searchable_trends(markup: str):
@@ -58,20 +92,21 @@ def replace_product_chips(markup: str, rows):
     buttons = []
     for row in rows:
         q = html_lib.escape(row["query"], quote=True)
-        label = html_lib.escape(short_label(row["name"]))
-        buttons.append(
-            f'<button class="chip trend-chip" data-q="{q}" data-trend-rank="{row["rank"]}">' 
-            f'<span class="trend-chip-rank">{row["rank"]}位</span>'
-            f'<span class="trend-chip-name">{label}</span></button>'
-        )
+        label = html_lib.escape(major_label(row["query"], row["name"]))
+        buttons.append(f'<button class="chip" data-q="{q}" data-trend-rank="{row["rank"]}" title="{html_lib.escape(row["name"], quote=True)}">{label}</button>')
     block = '<div class="examples" aria-label="今の人気商品">' + ''.join(buttons) + '</div>'
-    markup = re.sub(r'<div class="examples">.*?</div>', block, markup, count=1, flags=re.DOTALL)
-    markup = re.sub(r'<style id="trend-chip-style">.*?</style>', '', markup, flags=re.DOTALL)
-    markup = markup.replace('</head>', TREND_CHIP_STYLE + '\n</head>', 1)
+    markup = re.sub(r'<div class="examples"(?:[^>]*)>.*?</div>', block, markup, count=1, flags=re.DOTALL)
     markup = markup.replace(
         'placeholder="例：おしりセレブ / アリエール / JANコード"',
         'placeholder="今人気の商品名・ブランド・JANコード"',
         1,
+    )
+    # Undo the prior two-line chip styling; short major names fit naturally in one compact row.
+    markup = re.sub(
+        r'<style id="trend-chip-two-line">.*?</style>',
+        '',
+        markup,
+        flags=re.DOTALL,
     )
     return markup
 
@@ -103,7 +138,7 @@ def main():
         home_html = HOME.read_text(encoding="utf-8")
         HOME.write_text(clean_home_fixed_examples(home_html), encoding="utf-8")
 
-    print("Synced product search chips to validated Rakuten trends: " + ", ".join(f"{r['rank']}:{r['query']}" for r in rows))
+    print("Synced short major-name search chips from Rakuten trends: " + ", ".join(major_label(r["query"], r["name"]) for r in rows))
 
 
 if __name__ == "__main__":
