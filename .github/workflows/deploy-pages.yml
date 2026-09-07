@@ -67,12 +67,8 @@ jobs:
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: python scripts/build_realtime_products.py
 
-      - name: Connect product finder to realtime API
+      - name: Connect product finder to Cloudflare realtime API
         run: python scripts/enable_realtime_search.py
-
-      - name: Switch realtime API endpoint to Cloudflare Worker
-        run: |
-          sed -i 's#https://daily-cost-api.netlify.app/api/product-search#https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search#g' site/products/index.html
 
       - name: Improve search-facing SEO metadata
         run: python scripts/improve_seo.py
