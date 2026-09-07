@@ -52,6 +52,10 @@ jobs:
       - name: Connect product finder to realtime API
         run: python scripts/enable_realtime_search.py
 
+      - name: Switch realtime API endpoint to Cloudflare Worker
+        run: |
+          sed -i 's#https://daily-cost-api.netlify.app/api/product-search#https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search#g' site/products/index.html
+
       - name: Add GA4 tracking to all pages
         env:
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
