@@ -24,6 +24,7 @@ on:
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
       - "scripts/promote_home_ranking.py"
+      - "scripts/move_home_ranking_below_tools.py"
       - "scripts/jump_to_rank11.py"
       - "scripts/simplify_product_ranking_cta.py"
       - "scripts/add_analytics.py"
@@ -91,8 +92,11 @@ jobs:
       - name: Restore descriptive trend labels
         run: python scripts/improve_trend_labels.py
 
-      - name: Feature realtime ranking at top of homepage
+      - name: Feature realtime ranking on homepage
         run: python scripts/promote_home_ranking.py
+
+      - name: Move homepage ranking below search and checker
+        run: python scripts/move_home_ranking_below_tools.py
 
       - name: Continue detailed ranking from rank 11
         run: python scripts/jump_to_rank11.py
