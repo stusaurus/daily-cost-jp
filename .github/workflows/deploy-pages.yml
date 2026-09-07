@@ -19,6 +19,7 @@ on:
       - "scripts/build_realtime_products.py"
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_seo.py"
+      - "scripts/build_search_landing_pages.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -59,6 +60,9 @@ jobs:
 
       - name: Improve search-facing SEO metadata
         run: python scripts/improve_seo.py
+
+      - name: Build focused product search landing pages
+        run: python scripts/build_search_landing_pages.py
 
       - name: Add GA4 tracking to all pages
         env:
