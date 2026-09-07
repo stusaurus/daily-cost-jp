@@ -32,6 +32,10 @@ def inject_file(path: Path, safe_id: str) -> bool:
 <script data-daily-cost-ga4>
 (() => {
   const cleanText = (node) => node ? node.textContent.trim().replace(/\\s+/g, ' ') : '';
+  const send = (name, params = {}) => {
+    if (typeof window.gtag !== 'function') return;
+    window.gtag('event', name, { ...params, page_path: location.pathname });
+  };
 
   document.querySelectorAll('.buy-button').forEach((button) => {
     button.addEventListener('click', () => {
@@ -40,37 +44,78 @@ def inject_file(path: Path, safe_id: str) -> bool:
       const product = cleanText(card?.querySelector('h3'));
       const rank = cleanText(card?.querySelector('.rank-badge'));
       const unitPrice = cleanText(card?.querySelector('.unit-price'));
-      gtag('event', 'affiliate_click', {
+      send('affiliate_click', {
         affiliate: 'rakuten',
         category_id: section?.id || '',
         product_name: product.slice(0, 100),
         rank: rank,
         unit_price_label: unitPrice.slice(0, 50),
-        link_url: button.href,
-        page_path: location.pathname
+        link_url: button.href
       });
     });
   });
 
   document.querySelectorAll('.top-pick').forEach((card) => {
     card.addEventListener('click', () => {
-      gtag('event', 'top_pick_click', {
+      send('top_pick_click', {
         category_label: cleanText(card.querySelector('.top-pick-category')).slice(0, 80),
         unit_price_label: cleanText(card.querySelector('strong')).slice(0, 40),
-        destination: card.getAttribute('href') || '',
-        page_path: location.pathname
+        destination: card.getAttribute('href') || ''
       });
     });
   });
 
   document.querySelectorAll('.category-page-link').forEach((link) => {
     link.addEventListener('click', () => {
-      gtag('event', 'category_link_click', {
+      send('category_link_click', {
         link_text: cleanText(link).slice(0, 80),
-        destination: link.getAttribute('href') || '',
-        page_path: location.pathname
+        destination: link.getAttribute('href') || ''
       });
     });
+  });
+
+  // Ranking and utility navigation are injected late in the build, so use
+  // delegated tracking to cover every generated page and future dynamic cards.
+  document.addEventListener('click', (event) => {
+    const homeRank = event.target.closest('.home-rank-first, .home-rank-item');
+    if (homeRank) {
+      const rank = cleanText(homeRank.querySelector('.home-rank-first-badge, .home-rank-no'));
+      const name = cleanText(homeRank.querySelector('.home-rank-first-name, .home-rank-name'));
+      const href = homeRank.getAttribute('href') || '';
+      send('ranking_item_click', {
+        placement: 'homepage_top10',
+        rank: rank,
+        product_name: name.slice(0, 100),
+        destination_type: /^https?:/i.test(href) ? 'rakuten' : 'site_search',
+        destination: href.slice(0, 300)
+      });
+    }
+
+    const detailRank = event.target.closest('.card .search, .card .rakuten');
+    if (detailRank && location.pathname.includes('/trends/')) {
+      const card = detailRank.closest('.card');
+      send('ranking_item_click', {
+        placement: 'ranking_detail',
+        rank: cleanText(card?.querySelector('.rank b')),
+        product_name: cleanText(card?.querySelector('.name')).slice(0, 100),
+        destination_type: detailRank.classList.contains('rakuten') ? 'rakuten' : 'site_search',
+        destination: (detailRank.getAttribute('href') || '').slice(0, 300)
+      });
+    }
+
+    const continueLink = event.target.closest('.home-rank-all, #product-ranking-cta a');
+    if (continueLink) {
+      send('ranking_continue_click', {
+        placement: continueLink.classList.contains('home-rank-all') ? 'homepage_top10' : 'product_search',
+        link_text: cleanText(continueLink).slice(0, 80),
+        destination: (continueLink.getAttribute('href') || '').slice(0, 200)
+      });
+    }
+
+    const backToTop = event.target.closest('#back-to-top');
+    if (backToTop) {
+      send('back_to_top_click', { scroll_y: Math.round(window.scrollY || 0) });
+    }
   });
 })();
 </script>
