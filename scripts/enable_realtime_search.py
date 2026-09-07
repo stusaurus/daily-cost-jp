@@ -28,6 +28,7 @@ extra_css = """
   .retry-btn{margin-top:10px;border:0;border-radius:10px;background:#252525;color:#fff;padding:10px 14px;font-weight:800}
   .price small{display:block;margin-top:2px;line-height:1.35}
   .shipping-price-unavailable{font-size:15px;color:#7a6f69;font-weight:800;line-height:1.35}
+  .shipping-price-pending{font-size:15px;color:#7a6f69;font-weight:800;line-height:1.35}
   .shipping-price-note{margin-top:4px;font-size:10px;color:#7a6f69;line-height:1.45}
 </style>
 """
@@ -37,10 +38,13 @@ script = f"""
 <script>
 (() => {{
   const API = {API!r};
+  const SHIPPING_API = API.replace('/api/product-search', '/api/shipping-lookup');
+  const FALLBACK_LIMIT = 20;
   let currentTerm = '';
   let currentPage = 1;
   let pageCount = 1;
   let liveRows = [];
+  let searchGeneration = 0;
 
   const loadMore = document.createElement('button');
   loadMore.type = 'button';
@@ -51,7 +55,7 @@ script = f"""
 
   const note = document.createElement('div');
   note.className = 'realtime-note';
-  note.textContent = '表示価格は、楽天市場で「送料込み／送料無料」と確認できた同一商品の候補だけを表示します。送料込み商品を特定できない場合は価格を表示せず、楽天での確認に切り替えます。';
+  note.textContent = '表示価格は、楽天市場で「送料込み／送料無料」と確認できた同一商品の候補だけを表示します。まとめ検索で確認できない商品は、JANコードなどを使って順番に追加確認します。';
   status.insertAdjacentElement('afterend', note);
 
   function setBusy(on) {{
@@ -59,9 +63,21 @@ script = f"""
     loadMore.disabled = on;
   }}
 
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
   async function fetchPage(term, page) {{
     const url = `${{API}}?q=${{encodeURIComponent(term)}}&page=${{page}}&hits=30`;
     const response = await fetch(url, {{ method: 'GET', mode: 'cors' }});
+    if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
+    return response.json();
+  }}
+
+  async function fetchShippingFallback(p) {{
+    const params = new URLSearchParams();
+    if (p.product_code) params.set('code', p.product_code);
+    if (p.name) params.set('name', p.name);
+    if (p.brand) params.set('brand', p.brand);
+    const response = await fetch(`${{SHIPPING_API}}?${{params.toString()}}`, {{ method: 'GET', mode: 'cors' }});
     if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
     return response.json();
   }}
@@ -72,24 +88,77 @@ script = f"""
     const review = p.review_count ? `★ ${{Number(p.review_average || 0).toFixed(2)}}（${{Number(p.review_count).toLocaleString('ja-JP')}}件）` : 'レビュー情報なし';
     const includedPrice = Number(p.shipping_included_price || 0);
     const targetUrl = includedPrice > 0 && p.shipping_included_url ? p.shipping_included_url : p.url;
-    const priceHtml = includedPrice > 0
-      ? `${{yen(includedPrice)}} <small>送料込み最安値</small>`
-      : '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
-    const detail = includedPrice > 0
-      ? '<div class="shipping-price-note">楽天市場で送料込み／送料無料と確認できた購入候補</div>'
-      : '<div class="shipping-price-note">価格は楽天サイトでご確認ください</div>';
-    const button = includedPrice > 0 ? 'この価格で楽天へ' : '楽天で価格を確認';
+    let priceHtml;
+    let detail;
+    let button;
 
-    return `<article class="card"><div class="img">${{p.image ? `<img src="${{esc(p.image)}}" alt="" loading="lazy">` : ''}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
+    if (includedPrice > 0) {{
+      priceHtml = `${{yen(includedPrice)}} <small>送料込み最安値</small>`;
+      detail = '<div class="shipping-price-note">楽天市場で送料込み／送料無料と確認できた購入候補</div>';
+      button = 'この価格で楽天へ';
+    }} else if (p.shipping_lookup_pending) {{
+      priceHtml = '<span class="shipping-price-pending">送料込み価格を追加確認中…</span>';
+      detail = '<div class="shipping-price-note">JANコードなどで同一商品を確認しています</div>';
+      button = '楽天で価格を確認';
+    }} else {{
+      priceHtml = '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
+      detail = '<div class="shipping-price-note">価格は楽天サイトでご確認ください</div>';
+      button = '楽天で価格を確認';
+    }}
+
+    return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{p.image ? `<img src="${{esc(p.image)}}" alt="" loading="lazy">` : ''}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
+  }}
+
+  function updateStatus() {{
+    const priced = liveRows.filter((p) => Number(p.shipping_included_price || 0) > 0).length;
+    const pending = liveRows.filter((p) => p.shipping_lookup_pending).length;
+    status.textContent = `「${{currentTerm}}」の候補：${{liveRows.length}}件（送料込み価格確認済み ${{priced}}件${{pending ? `・追加確認中 ${{pending}}件` : ''}}）${{pageCount > 1 ? `・全${{pageCount}}ページ` : ''}}`;
   }}
 
   function renderLive() {{
-    const priced = liveRows.filter((p) => Number(p.shipping_included_price || 0) > 0).length;
-    status.textContent = `「${{currentTerm}}」の候補：${{liveRows.length}}件（送料込み価格確認済み ${{priced}}件）${{pageCount > 1 ? `・全${{pageCount}}ページ` : ''}}`;
+    updateStatus();
     results.innerHTML = liveRows.length
       ? liveRows.map(liveCard).join('')
       : '<div class="empty">一致する製品が見つかりませんでした。商品名を短くして試してください。</div>';
     loadMore.style.display = currentPage < pageCount ? 'block' : 'none';
+  }}
+
+  function patchCard(productId) {{
+    const p = liveRows.find((row) => row.product_id === productId);
+    const cardEl = results.querySelector(`[data-product-id="${{CSS.escape(productId)}}"]`);
+    if (!p || !cardEl) return;
+    cardEl.outerHTML = liveCard(p);
+    updateStatus();
+  }}
+
+  async function runFallbackLookups(generation) {{
+    const queue = liveRows.filter((p) => p.shipping_lookup_pending).slice(0, FALLBACK_LIMIT);
+    for (let i = 0; i < queue.length; i += 1) {{
+      if (generation !== searchGeneration) return;
+      const p = queue[i];
+      try {{
+        const data = await fetchShippingFallback(p);
+        if (generation !== searchGeneration) return;
+        const target = liveRows.find((row) => row.product_id === p.product_id);
+        if (!target) continue;
+        if (data && data.found && Number(data.shipping_included_price || 0) > 0) {{
+          target.shipping_included_price = Number(data.shipping_included_price);
+          target.shipping_included_url = data.shipping_included_url || target.url;
+          target.shipping_included_shop = data.shipping_included_shop || '';
+          target.shipping_match_score = Number(data.shipping_match_score || 0);
+        }}
+        target.shipping_lookup_pending = false;
+        patchCard(target.product_id);
+      }} catch (err) {{
+        const target = liveRows.find((row) => row.product_id === p.product_id);
+        if (target) {{
+          target.shipping_lookup_pending = false;
+          patchCard(target.product_id);
+        }}
+        console.warn('Shipping fallback failed', err);
+      }}
+      if (i < queue.length - 1) await wait(1150);
+    }}
   }}
 
   async function liveSearch(term, append = false) {{
@@ -102,6 +171,7 @@ script = f"""
       return;
     }}
 
+    const generation = append ? searchGeneration : ++searchGeneration;
     if (!append) {{
       currentTerm = term;
       currentPage = 1;
@@ -116,10 +186,17 @@ script = f"""
     setBusy(true);
     try {{
       const data = await fetchPage(currentTerm, currentPage);
-      const rows = Array.isArray(data.products) ? data.products : [];
+      let rows = Array.isArray(data.products) ? data.products : [];
+      let fallbackCount = 0;
+      rows = rows.map((p) => {{
+        const needsFallback = !Number(p.shipping_included_price || 0) && fallbackCount < FALLBACK_LIMIT;
+        if (needsFallback) fallbackCount += 1;
+        return {{ ...p, shipping_lookup_pending: needsFallback }};
+      }});
       liveRows = append ? liveRows.concat(rows) : rows;
       pageCount = Math.max(1, Number(data.page_count || 1));
       renderLive();
+      runFallbackLookups(generation);
       if (typeof window.gtag === 'function') window.gtag('event', 'realtime_product_search', {{
         search_term: currentTerm,
         result_count: liveRows.length,
@@ -185,4 +262,4 @@ script = f"""
 
 html = html.replace("</body>", script + "\n</body>")
 PAGE.write_text(html, encoding="utf-8")
-print("Realtime product search with batched shipping prices enabled")
+print("Realtime product search with progressive shipping fallback enabled")
