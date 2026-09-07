@@ -213,11 +213,12 @@ async function fetchProductCandidates(q, page, hits, env) {
   return { products, pageCount: safeInt(payload.pageCount), totalCount: safeInt(payload.count) };
 }
 
-async function fetchIncludedItems(q, env) {
+async function fetchIncludedItems(q, env, page = 1) {
   const params = new URLSearchParams({
     applicationId: env.RAKUTEN_APPLICATION_ID,
     keyword: q,
     hits: "30",
+    page: String(page),
     format: "json",
     formatVersion: "2",
     availability: "1",
@@ -247,6 +248,23 @@ async function fetchIncludedItems(q, env) {
     .map(normalizeItem)
     .filter(Boolean)
     .filter((item) => item.postage_flag === 0);
+}
+
+async function fetchIncludedItemPages(q, env, maxPages = 3) {
+  const items = [];
+  const seen = new Set();
+  for (let page = 1; page <= maxPages; page += 1) {
+    if (page > 1) await sleep(1100);
+    const batch = await fetchIncludedItems(q, env, page);
+    for (const item of batch) {
+      const key = `${item.url}|${item.price}|${item.name}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(item);
+    }
+    if (batch.length < 30) break;
+  }
+  return items;
 }
 
 function json(data, status = 200, origin = "") {
@@ -297,12 +315,13 @@ export default {
 
       let includedItems = [];
       try {
-        includedItems = await fetchIncludedItems(q, env);
+        includedItems = await fetchIncludedItemPages(q, env, 3);
       } catch (error) {
         console.error("included item lookup failed", error);
       }
 
-      const products = attachShipping(productResult.products, includedItems);
+      const products = attachShipping(productResult.products, includedItems)
+        .sort((a, b) => Number(Boolean(b.shipping_included_price)) - Number(Boolean(a.shipping_included_price)));
       return json({
         query: q,
         page,
