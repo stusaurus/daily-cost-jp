@@ -267,6 +267,37 @@ async function fetchIncludedItemPages(q, env, maxPages = 3) {
   return items;
 }
 
+async function exactShippingLookup(code, name, brand, env) {
+  const cleanCode = String(code || "").replace(/\D/g, "");
+  const keyword = cleanCode.length >= 8 ? cleanCode : [brand, name].filter(Boolean).join(" ").trim();
+  if (keyword.length < 2) return null;
+
+  const items = await fetchIncludedItems(keyword, env, 1);
+  if (!items.length) return null;
+
+  if (cleanCode.length >= 8) {
+    const best = [...items].sort((a, b) => a.price - b.price)[0];
+    return {
+      shipping_included_price: best.price,
+      shipping_included_url: best.url,
+      shipping_included_shop: best.shop,
+      shipping_match_score: 100,
+      lookup_method: "product_code",
+    };
+  }
+
+  const product = { name: String(name || ""), brand: String(brand || ""), product_code: String(code || "") };
+  const matched = attachShipping([product], items)[0];
+  if (!matched || !matched.shipping_included_price) return null;
+  return {
+    shipping_included_price: matched.shipping_included_price,
+    shipping_included_url: matched.shipping_included_url,
+    shipping_included_shop: matched.shipping_included_shop,
+    shipping_match_score: matched.shipping_match_score || 0,
+    lookup_method: "product_name",
+  };
+}
+
 function json(data, status = 200, origin = "") {
   const headers = new Headers({
     "Content-Type": "application/json; charset=utf-8",
@@ -301,13 +332,31 @@ export default {
     if (url.pathname === "/" || url.pathname === "/health") {
       return json({ ok: true, service: "daily-cost-api", platform: "cloudflare-workers" }, 200, origin);
     }
+
+    if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
+      return json({ error: "server_not_configured" }, 503, origin);
+    }
+
+    if (url.pathname === "/api/shipping-lookup") {
+      const code = String(url.searchParams.get("code") || "").trim();
+      const name = String(url.searchParams.get("name") || "").trim();
+      const brand = String(url.searchParams.get("brand") || "").trim();
+      if (!code && name.length < 2) return json({ error: "product_required" }, 400, origin);
+      try {
+        const result = await exactShippingLookup(code, name, brand, env);
+        return json({ found: Boolean(result), ...(result || {}) }, 200, origin);
+      } catch (error) {
+        console.error("shipping-lookup failed", error);
+        return json({ found: false, error: "rakuten_api_error" }, 502, origin);
+      }
+    }
+
     if (url.pathname !== "/api/product-search") return json({ error: "not_found" }, 404, origin);
 
     const q = String(url.searchParams.get("q") || "").trim();
     const page = Math.max(1, Math.min(100, safeInt(url.searchParams.get("page"), 1)));
     const hits = Math.max(1, Math.min(30, safeInt(url.searchParams.get("hits"), 20)));
     if (q.length < 2) return json({ error: "query_too_short", message: "2文字以上で検索してください。" }, 400, origin);
-    if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) return json({ error: "server_not_configured" }, 503, origin);
 
     try {
       const productResult = await fetchProductCandidates(q, page, hits, env);
