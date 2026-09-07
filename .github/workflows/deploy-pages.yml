@@ -18,6 +18,7 @@ on:
       - "scripts/build_site_products_v2.py"
       - "scripts/build_realtime_products.py"
       - "scripts/enable_realtime_search.py"
+      - "scripts/improve_seo.py"
       - "scripts/add_analytics.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -55,6 +56,9 @@ jobs:
       - name: Switch realtime API endpoint to Cloudflare Worker
         run: |
           sed -i 's#https://daily-cost-api.netlify.app/api/product-search#https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search#g' site/products/index.html
+
+      - name: Improve search-facing SEO metadata
+        run: python scripts/improve_seo.py
 
       - name: Add GA4 tracking to all pages
         env:
