@@ -139,7 +139,7 @@ function matchScore(itemName, product) {
 
   const specOk = specs.length === 0 || specMatches >= Math.max(1, Math.ceil(specs.length * 0.67));
   const wordsOk = words.length === 0 || wordMatches >= Math.min(2, words.length);
-  return { score, specOk, wordsOk };
+  return { score, specOk, wordsOk, specMatches, wordMatches };
 }
 
 function attachShipping(products, items) {
@@ -267,34 +267,82 @@ async function fetchIncludedItemPages(q, env, maxPages = 3) {
   return items;
 }
 
+function fallbackKeyword(name, brand) {
+  const parts = [];
+  if (brand) parts.push(String(brand));
+  parts.push(...wordTokens(name, brand).slice(0, 4));
+  parts.push(...specTokens(name).slice(0, 3));
+
+  const seen = new Set();
+  return parts
+    .map((part) => String(part || "").trim())
+    .filter(Boolean)
+    .filter((part) => {
+      const key = compact(part);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .join(" ");
+}
+
+function strictFallbackMatch(items, product) {
+  const specs = specTokens(product.name);
+  const words = wordTokens(product.name, product.brand).slice(0, 6);
+  const ranked = items
+    .map((item) => {
+      const key = compact(item.name).replace(/巻/g, "ロール");
+      const match = matchScore(item.name, product);
+      const allSpecsMatch = specs.length === 0 || specs.every((spec) => key.includes(spec));
+      const enoughWords = words.length === 0 || match.wordMatches >= Math.min(2, words.length);
+      return { item, ...match, allSpecsMatch, enoughWords };
+    })
+    .filter((x) => x.allSpecsMatch && x.enoughWords && x.score >= 16)
+    .sort((a, b) => (b.score - a.score) || (a.item.price - b.item.price));
+
+  if (!ranked.length) return null;
+  const bestScore = ranked[0].score;
+  return ranked
+    .filter((x) => x.score >= bestScore - 3)
+    .sort((a, b) => a.item.price - b.item.price)[0];
+}
+
 async function exactShippingLookup(code, name, brand, env) {
   const cleanCode = String(code || "").replace(/\D/g, "");
-  const keyword = cleanCode.length >= 8 ? cleanCode : [brand, name].filter(Boolean).join(" ").trim();
-  if (keyword.length < 2) return null;
-
-  const items = await fetchIncludedItems(keyword, env, 1);
-  if (!items.length) return null;
+  const product = {
+    name: String(name || ""),
+    brand: String(brand || ""),
+    product_code: String(code || ""),
+  };
 
   if (cleanCode.length >= 8) {
-    const best = [...items].sort((a, b) => a.price - b.price)[0];
-    return {
-      shipping_included_price: best.price,
-      shipping_included_url: best.url,
-      shipping_included_shop: best.shop,
-      shipping_match_score: 100,
-      lookup_method: "product_code",
-    };
+    const codeItems = await fetchIncludedItems(cleanCode, env, 1);
+    if (codeItems.length) {
+      const best = [...codeItems].sort((a, b) => a.price - b.price)[0];
+      return {
+        shipping_included_price: best.price,
+        shipping_included_url: best.url,
+        shipping_included_shop: best.shop,
+        shipping_match_score: 100,
+        lookup_method: "product_code",
+      };
+    }
+    await sleep(1100);
   }
 
-  const product = { name: String(name || ""), brand: String(brand || ""), product_code: String(code || "") };
-  const matched = attachShipping([product], items)[0];
-  if (!matched || !matched.shipping_included_price) return null;
+  const keyword = fallbackKeyword(product.name, product.brand);
+  if (keyword.length < 2) return null;
+  const nameItems = await fetchIncludedItems(keyword, env, 1);
+  if (!nameItems.length) return null;
+
+  const best = strictFallbackMatch(nameItems, product);
+  if (!best) return null;
   return {
-    shipping_included_price: matched.shipping_included_price,
-    shipping_included_url: matched.shipping_included_url,
-    shipping_included_shop: matched.shipping_included_shop,
-    shipping_match_score: matched.shipping_match_score || 0,
-    lookup_method: "product_name",
+    shipping_included_price: best.item.price,
+    shipping_included_url: best.item.url,
+    shipping_included_shop: best.item.shop,
+    shipping_match_score: best.score,
+    lookup_method: "product_name_specs",
   };
 }
 
