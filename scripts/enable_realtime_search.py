@@ -30,6 +30,8 @@ extra_css = """
   .shipping-price-unavailable{font-size:15px;color:#7a6f69;font-weight:800;line-height:1.35}
   .shipping-price-pending{font-size:15px;color:#7a6f69;font-weight:800;line-height:1.35}
   .shipping-price-note{margin-top:4px;font-size:10px;color:#7a6f69;line-height:1.45}
+  .card .img{position:relative}
+  .listing-image-badge{position:absolute;left:4px;bottom:4px;padding:2px 5px;border-radius:999px;background:rgba(37,37,37,.82);color:#fff;font-size:8px;font-weight:800;line-height:1.4;white-space:nowrap}
 </style>
 """
 
@@ -55,7 +57,7 @@ script = f"""
 
   const note = document.createElement('div');
   note.className = 'realtime-note';
-  note.textContent = '表示価格は、楽天市場で「送料込み／送料無料」と確認できた同一商品の候補だけを表示します。まとめ検索で確認できない商品は、JANコードなどを使って順番に追加確認します。';
+  note.textContent = '表示価格は、楽天市場で「送料込み／送料無料」と確認できた同一商品の候補だけを表示します。価格確認済みの商品は、実際にリンクする楽天市場の購入候補画像を表示します。まとめ検索で確認できない商品は、JANコードなどを使って順番に追加確認します。';
   status.insertAdjacentElement('afterend', note);
 
   function setBusy(on) {{
@@ -88,13 +90,17 @@ script = f"""
     const review = p.review_count ? `★ ${{Number(p.review_average || 0).toFixed(2)}}（${{Number(p.review_count).toLocaleString('ja-JP')}}件）` : 'レビュー情報なし';
     const includedPrice = Number(p.shipping_included_price || 0);
     const targetUrl = includedPrice > 0 && p.shipping_included_url ? p.shipping_included_url : p.url;
+    const listingImage = includedPrice > 0 && p.shipping_included_image ? p.shipping_included_image : '';
+    const displayImage = listingImage || p.image || '';
+    const imageBadge = listingImage ? '<span class="listing-image-badge">楽天購入候補</span>' : '';
     let priceHtml;
     let detail;
     let button;
 
     if (includedPrice > 0) {{
       priceHtml = `${{yen(includedPrice)}} <small>送料込み最安値</small>`;
-      detail = '<div class="shipping-price-note">楽天市場で送料込み／送料無料と確認できた購入候補</div>';
+      const shop = p.shipping_included_shop ? `・${{esc(p.shipping_included_shop)}}` : '';
+      detail = `<div class="shipping-price-note">楽天市場で送料込み／送料無料と確認できた購入候補${{shop}}</div>`;
       button = 'この価格で楽天へ';
     }} else if (p.shipping_lookup_pending) {{
       priceHtml = '<span class="shipping-price-pending">送料込み価格を追加確認中…</span>';
@@ -106,7 +112,7 @@ script = f"""
       button = '楽天で価格を確認';
     }}
 
-    return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{p.image ? `<img src="${{esc(p.image)}}" alt="" loading="lazy">` : ''}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
+    return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{displayImage ? `<img src="${{esc(displayImage)}}" alt="" loading="lazy">` : ''}}${{imageBadge}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
   }}
 
   function updateStatus() {{
@@ -145,6 +151,7 @@ script = f"""
           target.shipping_included_price = Number(data.shipping_included_price);
           target.shipping_included_url = data.shipping_included_url || target.url;
           target.shipping_included_shop = data.shipping_included_shop || '';
+          target.shipping_included_image = data.shipping_included_image || '';
           target.shipping_match_score = Number(data.shipping_match_score || 0);
         }}
         target.shipping_lookup_pending = false;
@@ -262,4 +269,4 @@ script = f"""
 
 html = html.replace("</body>", script + "\n</body>")
 PAGE.write_text(html, encoding="utf-8")
-print("Realtime product search with progressive shipping fallback enabled")
+print("Realtime product search with matched Rakuten listing images enabled")
