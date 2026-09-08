@@ -74,6 +74,23 @@ def inject_file(path: Path, safe_id: str) -> bool:
     });
   });
 
+  document.querySelectorAll('.category-search-cta').forEach((link) => {
+    link.addEventListener('click', () => {
+      const match = location.pathname.match(/\/categories\/([^/]+)\/?$/);
+      let searchTerm = '';
+      try {
+        const target = new URL(link.href, location.href);
+        searchTerm = target.searchParams.get('q') || '';
+      } catch (_) {}
+      send('category_search_click', {
+        category_id: match ? match[1] : '',
+        search_term: searchTerm.slice(0, 100),
+        link_text: cleanText(link).slice(0, 100),
+        destination: (link.getAttribute('href') || '').slice(0, 300)
+      });
+    });
+  });
+
   // Ranking and utility navigation are injected late in the build, so use
   // delegated tracking to cover every generated page and future dynamic cards.
   document.addEventListener('click', (event) => {
