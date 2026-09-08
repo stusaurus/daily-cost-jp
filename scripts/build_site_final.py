@@ -18,21 +18,29 @@ def display_metric_label(item, metric):
 
 
 def render_product_card_final(item, rank, metric, anchor_id):
-    name = core.html.escape(app.clean_display_name(item["name"]))
-    shop = core.html.escape(item["shop"])
-    url = core.html.escape(item["url"], quote=True)
-    image = core.html.escape(item["image"], quote=True)
+    name = core.html.escape(app.clean_display_name(item.get("name") or "商品名不明"))
+    shop = core.html.escape(item.get("shop") or "ショップ情報なし")
+    url = core.html.escape(item.get("url") or "#", quote=True)
+    image = core.html.escape(item.get("image") or "", quote=True)
     metric_label = display_metric_label(item, metric)
+
+    review_count = int(item.get("review_count") or 0)
+    review_average = float(item.get("review_average") or 0)
     review = (
-        f"★ {item['review_average']:.2f}（{item['review_count']:,}件）"
-        if item["review_count"] > 0
+        f"★ {review_average:.2f}（{review_count:,}件）"
+        if review_count > 0
         else "レビュー情報なし"
     )
-    point = (
-        f"ポイント {item['point_rate']}倍"
-        if item["point_rate"] > 1
-        else "通常ポイント"
-    )
+
+    point_rate = int(item.get("point_rate") or 1)
+    point = f"ポイント {point_rate}倍" if point_rate > 1 else "通常ポイント"
+
+    raw_price = item.get("price")
+    try:
+        price_label = f"¥{int(raw_price):,}" if raw_price is not None else "価格情報なし"
+    except (TypeError, ValueError):
+        price_label = "価格情報なし"
+
     image_html = (
         f'<img src="{image}" alt="" loading="lazy">'
         if image
@@ -47,7 +55,7 @@ def render_product_card_final(item, rank, metric, anchor_id):
         <h3>{name}</h3>
         <div class="unit-price">{core.yen(item["unit_price"])} <span>/ {metric_label}</span></div>
         <div class="meta-grid">
-          <span>商品価格 <strong>¥{item["price"]:,}</strong></span>
+          <span>商品価格 <strong>{price_label}</strong></span>
           <span class="shipping-chip">送料込み</span>
           <span>{core.html.escape(review)}</span>
           <span>{core.html.escape(point)}</span>
@@ -107,7 +115,7 @@ def render_top_picks_final(category_snapshots):
             continue
         item = ranked[0]
         label = display_metric_label(item, metric)
-        short_name = app.clean_display_name(item["name"])
+        short_name = app.clean_display_name(item.get("name") or "商品名不明")
         cards.append(f"""
         <a class="top-pick" href="#{core.html.escape(category['id'])}-rank-1">
           <span class="top-pick-category">{category['emoji']} {core.html.escape(category['name'])}</span>
