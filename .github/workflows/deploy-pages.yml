@@ -28,6 +28,7 @@ on:
       - "scripts/add_daily_buy_picks.py"
       - "scripts/build_dynamic_trends_v2.py"
       - "scripts/expand_ranking_detail.py"
+      - "scripts/fill_ranking_gaps.py"
       - "scripts/fix_trend_query_links.py"
       - "scripts/improve_trend_labels.py"
       - "scripts/sync_trend_search_chips.py"
@@ -97,6 +98,9 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: python scripts/expand_ranking_detail.py
+
+      - name: Show unavailable ranking positions explicitly
+        run: python scripts/fill_ranking_gaps.py
 
       - name: Validate dynamic trend search links
         env:
