@@ -21,6 +21,7 @@ on:
       - "scripts/improve_realtime_search_ux.py"
       - "scripts/improve_seo.py"
       - "scripts/improve_category_seo.py"
+      - "scripts/improve_category_design.py"
       - "scripts/sharpen_home_value_prop.py"
       - "scripts/add_exact_store_compare.py"
       - "scripts/add_daily_buy_picks.py"
@@ -75,6 +76,9 @@ jobs:
 
       - name: Strengthen category SEO pages
         run: python scripts/improve_category_seo.py
+
+      - name: Polish category comparison design
+        run: python scripts/improve_category_design.py
 
       - name: Clarify homepage value proposition
         run: python scripts/sharpen_home_value_prop.py
