@@ -40,6 +40,7 @@ on:
       - "scripts/add_trend_conversion_tracking.py"
       - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
+      - "scripts/add_search_landing_pages.py"
       - ".github/workflows/deploy-pages.yml"
 
 permissions:
@@ -144,6 +145,9 @@ jobs:
 
       - name: Track trend chips through Rakuten clicks
         run: python scripts/add_trend_conversion_tracking.py
+
+      - name: Add search landing pages
+        run: python scripts/add_search_landing_pages.py
 
       - name: Add back-to-top button to all pages
         run: python scripts/add_back_to_top.py
