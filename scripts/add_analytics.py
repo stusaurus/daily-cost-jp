@@ -39,10 +39,10 @@ def inject_file(path: Path, safe_id: str) -> bool:
 
   document.querySelectorAll('.buy-button').forEach((button) => {
     button.addEventListener('click', () => {
-      const card = button.closest('.product-card');
+      const card = button.closest('.product-card, .deal-card');
       const section = button.closest('.category-section');
-      const product = cleanText(card?.querySelector('h3'));
-      const rank = cleanText(card?.querySelector('.rank-badge'));
+      const product = cleanText(card?.querySelector('h3, h2'));
+      const rank = cleanText(card?.querySelector('.rank-badge, .deal-rank'));
       const unitPrice = cleanText(card?.querySelector('.unit-price'));
       send('affiliate_click', {
         affiliate: 'rakuten',
@@ -126,6 +126,23 @@ def inject_file(path: Path, safe_id: str) -> bool:
         placement: continueLink.classList.contains('home-rank-all') ? 'homepage_top10' : 'product_search',
         link_text: cleanText(continueLink).slice(0, 80),
         destination: (continueLink.getAttribute('href') || '').slice(0, 200)
+      });
+    }
+
+    const todayEntry = event.target.closest('#today-deals-entry a');
+    if (todayEntry) {
+      send('today_deals_entry_click', {
+        link_text: cleanText(todayEntry).slice(0, 80),
+        destination: (todayEntry.getAttribute('href') || '').slice(0, 200)
+      });
+    }
+
+    const todayCategory = event.target.closest('.today-category-link');
+    if (todayCategory) {
+      const section = todayCategory.closest('.category-section');
+      send('today_category_click', {
+        category_id: section?.id || '',
+        destination: (todayCategory.getAttribute('href') || '').slice(0, 200)
       });
     }
 
