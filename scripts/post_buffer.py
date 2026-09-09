@@ -23,6 +23,11 @@ SOCIAL_PAYLOAD_URL = os.environ.get(
 )
 TARGET_CHANNEL = os.environ.get("BUFFER_CHANNEL_NAME", "nichiyo_cost").strip().lower()
 JST = ZoneInfo("Asia/Tokyo")
+PLAIN_TODAY_URL = "https://stusaurus.github.io/daily-cost-jp/today/"
+TRACKED_TODAY_URL = (
+    PLAIN_TODAY_URL
+    + "?utm_source=x&utm_medium=social&utm_campaign=daily_deals&utm_content=daily_post"
+)
 
 
 def fail(message: str) -> None:
@@ -160,6 +165,8 @@ def discover_x_channel() -> tuple[str, str, dict]:
 
 def final_post_text(payload: dict) -> str:
     text = str(payload.get("text") or "").strip()
+    # Attribute every automated X visit in GA4 without changing the public page URL.
+    text = text.replace(PLAIN_TODAY_URL, TRACKED_TODAY_URL)
     disclosure = "※楽天アフィリエイトを利用しています"
     if disclosure not in text:
         text = f"{text}\n{disclosure}"
