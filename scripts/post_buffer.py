@@ -24,10 +24,6 @@ SOCIAL_PAYLOAD_URL = os.environ.get(
 TARGET_CHANNEL = os.environ.get("BUFFER_CHANNEL_NAME", "nichiyo_cost").strip().lower()
 JST = ZoneInfo("Asia/Tokyo")
 PLAIN_TODAY_URL = "https://stusaurus.github.io/daily-cost-jp/today/"
-TRACKED_TODAY_URL = (
-    PLAIN_TODAY_URL
-    + "?utm_source=x&utm_medium=social&utm_campaign=daily_deals&utm_content=daily_post"
-)
 
 
 def fail(message: str) -> None:
@@ -163,10 +159,25 @@ def discover_x_channel() -> tuple[str, str, dict]:
     raise AssertionError
 
 
+def tracked_today_url(payload: dict) -> str:
+    """Return a GA4-tagged /today/ URL with one unique content label per day."""
+    payload_date = str(payload.get("date") or "").strip()
+    try:
+        date_tag = datetime.fromisoformat(payload_date).strftime("%Y%m%d")
+    except ValueError:
+        date_tag = datetime.now(JST).strftime("%Y%m%d")
+    return (
+        PLAIN_TODAY_URL
+        + "?utm_source=x&utm_medium=social&utm_campaign=daily_deals"
+        + f"&utm_content=daily_post_{date_tag}"
+    )
+
+
 def final_post_text(payload: dict) -> str:
     text = str(payload.get("text") or "").strip()
-    # Attribute every automated X visit in GA4 without changing the public page URL.
-    text = text.replace(PLAIN_TODAY_URL, TRACKED_TODAY_URL)
+    # Attribute every automated X visit in GA4. The content tag changes daily so
+    # exploration reports can compare which day's post led to affiliate clicks.
+    text = text.replace(PLAIN_TODAY_URL, tracked_today_url(payload))
     disclosure = "※楽天アフィリエイトを利用しています"
     if disclosure not in text:
         text = f"{text}\n{disclosure}"
