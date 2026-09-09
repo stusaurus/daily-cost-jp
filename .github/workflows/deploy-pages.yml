@@ -2,6 +2,12 @@ name: Build and deploy daily-cost-jp
 
 on:
   workflow_dispatch:
+    inputs:
+      post_to_x:
+        description: "Publish today's social payload to X after deploy"
+        required: false
+        default: false
+        type: boolean
   schedule:
     # 06:00 JST = 21:00 UTC (previous day)
     - cron: "0 21 * * *"
@@ -27,6 +33,7 @@ on:
       - "scripts/add_exact_store_compare.py"
       - "scripts/add_daily_buy_picks.py"
       - "scripts/build_daily_deals.py"
+      - "scripts/post_buffer.py"
       - "scripts/build_dynamic_trends_v2.py"
       - "scripts/expand_ranking_detail.py"
       - "scripts/fill_ranking_gaps.py"
@@ -179,3 +186,25 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  post_x:
+    name: Publish daily X post
+    if: ${{ github.event_name == 'schedule' || inputs.post_to_x == true }}
+    runs-on: ubuntu-latest
+    needs: deploy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publish today's daily-deals post to X via Buffer
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_NAME: nichiyo_cost
+        run: python scripts/post_buffer.py
