@@ -24,6 +24,48 @@ def inject_file(path: Path, safe_id: str) -> bool:
     window.dataLayer = window.dataLayer || [];
     function gtag(){{dataLayer.push(arguments);}}
     gtag('js', new Date());
+
+    // Keep the external campaign that brought the visitor here while they move
+    // through internal pages. Never append UTM parameters to internal links,
+    // because that would create artificial campaign/session resets in GA4.
+    (() => {{
+      const storageKey = 'daily_cost_traffic_context_v1';
+      const params = new URLSearchParams(location.search);
+      const incoming = {{
+        traffic_source: (params.get('utm_source') || '').slice(0, 80),
+        traffic_medium: (params.get('utm_medium') || '').slice(0, 80),
+        traffic_campaign: (params.get('utm_campaign') || '').slice(0, 120),
+        traffic_content: (params.get('utm_content') || '').slice(0, 120)
+      }};
+
+      let context = {{}};
+      try {{
+        context = JSON.parse(sessionStorage.getItem(storageKey) || '{{}}') || {{}};
+      }} catch (_) {{
+        context = {{}};
+      }}
+
+      if (incoming.traffic_source || incoming.traffic_medium || incoming.traffic_campaign || incoming.traffic_content) {{
+        context = {{
+          ...incoming,
+          traffic_landing_path: location.pathname.slice(0, 200),
+          traffic_landing_at: new Date().toISOString()
+        }};
+        try {{
+          sessionStorage.setItem(storageKey, JSON.stringify(context));
+        }} catch (_) {{}}
+      }}
+
+      if (context.traffic_source) {{
+        context.is_x_traffic = context.traffic_source.toLowerCase() === 'x' ? 1 : 0;
+      }}
+      window.dailyCostTrafficContext = context;
+
+      if (Object.keys(context).length) {{
+        gtag('set', context);
+      }}
+    }})();
+
     gtag('config', '{safe_id}');
   </script>
 """
@@ -34,7 +76,8 @@ def inject_file(path: Path, safe_id: str) -> bool:
   const cleanText = (node) => node ? node.textContent.trim().replace(/\\s+/g, ' ') : '';
   const send = (name, params = {}) => {
     if (typeof window.gtag !== 'function') return;
-    window.gtag('event', name, { ...params, page_path: location.pathname });
+    const traffic = window.dailyCostTrafficContext || {};
+    window.gtag('event', name, { ...traffic, ...params, page_path: location.pathname });
   };
 
   document.querySelectorAll('.buy-button').forEach((button) => {
