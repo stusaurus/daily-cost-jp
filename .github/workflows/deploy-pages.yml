@@ -189,7 +189,7 @@ jobs:
 
   post_x:
     name: Publish daily X post
-    if: ${{ github.event_name == 'schedule' || inputs.post_to_x == true || contains(github.event.head_commit.message, '[x-test]') }}
+    if: ${{ github.event_name == 'schedule' || inputs.post_to_x == true }}
     runs-on: ubuntu-latest
     needs: deploy
     permissions:
