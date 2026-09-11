@@ -33,6 +33,7 @@ on:
       - "scripts/add_exact_store_compare.py"
       - "scripts/add_daily_buy_picks.py"
       - "scripts/build_daily_deals.py"
+      - "scripts/diversify_daily_deals.py"
       - "scripts/build_daily_og.py"
       - "scripts/post_buffer.py"
       - "scripts/build_dynamic_trends_v2.py"
@@ -142,6 +143,9 @@ jobs:
 
       - name: Build automatic daily deals landing page
         run: python scripts/build_daily_deals.py
+
+      - name: Rotate trusted daily deals for variety
+        run: python scripts/diversify_daily_deals.py
 
       - name: Generate daily OG image for social cards
         continue-on-error: true
