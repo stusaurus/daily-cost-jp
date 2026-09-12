@@ -146,25 +146,45 @@ def render_page(rows: list[dict], now: datetime) -> str:
     cards = []
     schema_items = []
     for position, row in enumerate(rows, start=1):
-        image = (
-            f'<img src="{html.escape(row["image"], quote=True)}" alt="" loading="lazy">'
-            if row["image"] else '<div class="image-placeholder">画像なし</div>'
+        fallback = (
+            f'<div class="image-placeholder"><span class="fallback-emoji">{html.escape(row["emoji"])}</span>'
+            f'<span>{html.escape(row["name"])}</span></div>'
         )
+        if row["image"]:
+            image = (
+                f'<img src="{html.escape(row["image"], quote=True)}" '
+                f'alt="{html.escape(row["product_name"], quote=True)}" loading="lazy" decoding="async" '
+                f'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'
+                f'<div class="image-placeholder" hidden><span class="fallback-emoji">{html.escape(row["emoji"])}</span>'
+                f'<span>{html.escape(row["name"])}</span></div>'
+            )
+        else:
+            image = fallback
+
         cards.append(f'''
 <section class="category-section deal-card" id="{html.escape(row['id'])}">
-  <div class="deal-rank">{position}</div>
-  <div class="deal-image">{image}</div>
+  <div class="deal-visual">
+    <div class="deal-rank">{position}</div>
+    <a class="deal-image" href="{html.escape(row['url'], quote=True)}" target="_blank" rel="nofollow sponsored noopener">{image}</a>
+  </div>
   <div class="deal-body">
-    <div class="deal-category">{html.escape(row['emoji'])} {html.escape(row['name'])}</div>
-    <div class="deal-discount">比較候補の中央値より <strong>{row['discount']:.0f}%安い</strong></div>
+    <div class="deal-topline">
+      <span class="category-chip">{html.escape(row['emoji'])} {html.escape(row['name'])}</span>
+      <span class="discount-chip"><strong>{row['discount']:.0f}%</strong> 安い</span>
+    </div>
+    <div class="discount-note">今日取得した比較候補の中央値より</div>
     <h2>{html.escape(row['product_name'])}</h2>
-    <div class="unit-price">{money(row['unit_price'])} <span>/ {html.escape(row['metric_label'])}</span></div>
-    <div class="deal-purchase">{html.escape(purchase_summary(row))}</div>
-    <div class="deal-meta">{html.escape(row['shop'])}</div>
-    <div class="deal-meta">中央値 {money(row['median'])} ・ 送料込み候補 {row['sample']}件で比較</div>
+    <div class="price-panel">
+      <div class="unit-price">{money(row['unit_price'])} <span>/ {html.escape(row['metric_label'])}</span></div>
+      <div class="deal-purchase">{html.escape(purchase_summary(row))}</div>
+    </div>
+    <div class="deal-details">
+      <div><span>ショップ</span><strong>{html.escape(row['shop'])}</strong></div>
+      <div><span>比較基準</span><strong>中央値 {money(row['median'])} ・ 送料込み {row['sample']}件</strong></div>
+    </div>
     <div class="deal-actions">
-      <a class="buy-button" href="{html.escape(row['url'], quote=True)}" target="_blank" rel="nofollow sponsored noopener">楽天市場で確認する</a>
-      <a class="today-category-link" href="../categories/{html.escape(row['id'])}/">カテゴリの安い順を見る</a>
+      <a class="buy-button" href="{html.escape(row['url'], quote=True)}" target="_blank" rel="nofollow sponsored noopener">楽天市場で価格を見る</a>
+      <a class="today-category-link" href="../categories/{html.escape(row['id'])}/">このカテゴリをもっと比較する</a>
     </div>
   </div>
 </section>''')
@@ -196,12 +216,12 @@ def render_page(rows: list[dict], now: datetime) -> str:
 <meta property="og:url" content="{SITE}today/">
 <script type="application/ld+json">{schema}</script>
 <style>
-:root{{--bg:#fbfaf9;--card:#fff;--text:#252525;--muted:#6b7280;--line:#e8dfda;--accent:#b3261e}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.7}}a{{color:inherit}}.wrap{{width:min(900px,calc(100% - 28px));margin:auto}}header{{padding:27px 0 18px;background:linear-gradient(180deg,#fff8f5,#fbfaf9);border-bottom:1px solid #f0e5df}}.crumb{{font-size:11px;color:var(--muted)}}.eyebrow{{display:inline-block;margin-top:13px;font-size:11px;font-weight:900;color:var(--accent)}}h1{{font-size:clamp(29px,8vw,42px);line-height:1.2;margin:5px 0 9px;letter-spacing:-.03em}}.lead{{max-width:760px;margin:0;color:#5f6368;font-size:13px}}.updated{{margin-top:9px;font-size:10px;color:var(--muted)}}main{{padding:18px 0 38px}}.method{{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:10px;color:#6d645f;margin-bottom:14px}}.deal-card{{position:relative;display:grid;grid-template-columns:90px minmax(0,1fr);gap:13px;margin:10px 0;padding:13px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(62,42,32,.04)}}.deal-rank{{position:absolute;left:-6px;top:-6px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#252525;color:#fff;font-size:12px;font-weight:900}}.deal-image{{width:90px;height:90px;display:grid;place-items:center;overflow:hidden;border:1px solid #eee7e2;border-radius:11px;background:#fff}}.deal-image img{{width:100%;height:100%;object-fit:contain}}.image-placeholder{{font-size:10px;color:#999}}.deal-category{{font-size:11px;font-weight:900;color:#6d625c}}.deal-discount{{font-size:11px;margin-top:1px}}.deal-discount strong{{font-size:18px;color:var(--accent)}}.deal-body h2{{font-size:13px;line-height:1.45;margin:4px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}.unit-price{{font-size:18px;font-weight:900}}.unit-price span{{font-size:10px;font-weight:600;color:#666}}.deal-purchase{{font-size:11px;font-weight:800;color:#343434}}.deal-meta{{font-size:9px;color:#777}}.deal-actions{{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}}.deal-actions a{{min-height:42px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;border-radius:9px;text-decoration:none;font-size:10px;font-weight:900}}.buy-button{{background:var(--accent);color:#fff}}.today-category-link{{border:1px solid var(--line)}}.footnote{{font-size:9px;color:#777;margin-top:15px}}@media(max-width:520px){{.deal-card{{grid-template-columns:76px minmax(0,1fr)}}.deal-image{{width:76px;height:76px}}.deal-actions{{grid-template-columns:1fr}}}}
+:root{{--bg:#f8f6f4;--card:#fff;--text:#252525;--muted:#6b7280;--line:#eadfd9;--accent:#b3261e;--soft:#fff5f2}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.65}}a{{color:inherit}}.wrap{{width:min(960px,calc(100% - 24px));margin:auto}}header{{padding:28px 0 22px;background:linear-gradient(180deg,#fff8f5,#f8f6f4);border-bottom:1px solid #eee1da}}.crumb{{font-size:12px;color:var(--muted)}}.eyebrow{{display:inline-flex;align-items:center;gap:6px;margin-top:15px;padding:5px 9px;border-radius:999px;background:#fff0ec;font-size:11px;font-weight:900;color:var(--accent)}}h1{{font-size:clamp(30px,8vw,44px);line-height:1.18;margin:8px 0 10px;letter-spacing:-.03em}}.lead{{max-width:760px;margin:0;color:#5f6368;font-size:14px}}.updated{{margin-top:9px;font-size:11px;color:var(--muted)}}main{{padding:18px 0 42px}}.method{{padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:11px;color:#6d645f;margin-bottom:18px}}.deal-card{{position:relative;margin:18px 0;border:1px solid var(--line);border-radius:22px;background:#fff;box-shadow:0 10px 28px rgba(62,42,32,.07);overflow:hidden}}.deal-visual{{position:relative;padding:14px;background:linear-gradient(180deg,#fff8f5,#fff)}}.deal-rank{{position:absolute;z-index:2;left:24px;top:24px;width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#252525;color:#fff;font-size:14px;font-weight:900;box-shadow:0 4px 12px rgba(0,0,0,.15)}}.deal-image{{height:210px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid #eee5e0;border-radius:16px;background:#fff;text-decoration:none}}.deal-image img{{display:block;width:100%;height:100%;object-fit:contain;padding:10px}}.image-placeholder{{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#fff8f5,#f7f3f0);color:#7a6c64;font-size:13px;font-weight:800}}.fallback-emoji{{font-size:56px;line-height:1}}.deal-body{{padding:17px 16px 19px}}.deal-topline{{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}}.category-chip{{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:#f5f2f0;font-size:12px;font-weight:900;color:#5f554f}}.discount-chip{{display:inline-flex;align-items:baseline;gap:3px;padding:5px 9px;border-radius:999px;background:#fff0ec;color:var(--accent);font-size:12px;font-weight:900}}.discount-chip strong{{font-size:20px;line-height:1}}.discount-note{{margin-top:7px;font-size:11px;color:#8a7f79}}.deal-body h2{{font-size:18px;line-height:1.45;margin:7px 0 11px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}}.price-panel{{padding:13px 14px;border-radius:15px;background:#fff8f5;border:1px solid #f1e1da}}.unit-price{{font-size:30px;line-height:1.2;font-weight:950;letter-spacing:-.03em}}.unit-price span{{font-size:12px;font-weight:700;color:#6c625d}}.deal-purchase{{margin-top:4px;font-size:14px;font-weight:850;color:#343434}}.deal-details{{display:grid;gap:7px;margin-top:12px;padding:12px 13px;border-radius:13px;background:#faf9f8}}.deal-details div{{display:grid;grid-template-columns:72px minmax(0,1fr);gap:8px;align-items:start}}.deal-details span{{font-size:10px;color:#91857f}}.deal-details strong{{font-size:11px;line-height:1.45;font-weight:750;color:#514944;overflow-wrap:anywhere}}.deal-actions{{display:grid;gap:8px;margin-top:14px}}.deal-actions a{{min-height:50px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 12px;border-radius:12px;text-decoration:none;font-size:13px;font-weight:900}}.buy-button{{background:var(--accent);color:#fff;box-shadow:0 5px 14px rgba(179,38,30,.18)}}.today-category-link{{border:1px solid var(--line);background:#fff;color:#5d514b}}.footnote{{font-size:10px;color:#777;margin-top:18px}}@media(min-width:760px){{.deal-card{{display:grid;grid-template-columns:minmax(280px,38%) minmax(0,1fr)}}.deal-visual{{padding:18px}}.deal-image{{height:100%;min-height:290px}}.deal-body{{padding:22px 22px 24px}}.deal-body h2{{font-size:20px}}.deal-actions{{grid-template-columns:1.25fr .9fr}}.deal-actions a{{font-size:14px}}}}
 </style>
 </head>
 <body>
-<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">毎朝データから自動更新</span><h1>今日の買い候補5選</h1><p class="lead">楽天市場の日用品21カテゴリを送料込み・同一単位で比較し、今日の取得データの中から差が大きい候補だけを自動選出しています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
+<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">📅 毎朝データから自動更新</span><h1>今日の買い候補5選</h1><p class="lead">楽天市場の日用品21カテゴリを送料込み・同一単位で比較。今日の取得データから、差が大きく信頼性の高い候補だけを見やすくまとめています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
 <main class="wrap"><div class="method">信頼性優先：単価計算の信頼度が高い商品だけを使い、極端に安すぎる単独データは外れ値として自動除外します。クーポン・ポイントは比較に含めません。</div>{''.join(cards)}<p class="footnote">※「安い」は当サイトが当日取得できた楽天市場の比較候補内での目安です。市場全体の最安値を保証するものではありません。当サイトは楽天アフィリエイトを利用しています。</p></main>
 </body></html>'''
 
