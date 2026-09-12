@@ -1,8 +1,8 @@
 """Build daily-cost-jp with a realtime Rakuten product finder.
 
 The main comparison pages are generated normally. The product finder page itself
-contains no large static catalog; searches are served live by the Netlify
-serverless API, so we avoid crawling dozens of Product Search API pages during
+contains no large static catalog; searches are served live by the Cloudflare
+Worker API, so we avoid crawling dozens of Product Search API pages during
 every scheduled build.
 """
 from datetime import datetime

@@ -1,0 +1,59 @@
+name: Validate GitHub Pages and Cloudflare Worker
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Test sale quantity parsing
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate Pages build scripts
+        run: python -m compileall -q scripts
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate production Cloudflare Worker
+        run: node --check cloudflare-api/src/safe-index.js
+
+      - name: Verify production platform references
+        run: |
+          test "$(python - <<'PY'
+          from pathlib import Path
+
+          roots = (Path('.github'), Path('scripts'), Path('cloudflare-api'))
+          matches = []
+          for root in roots:
+              for path in root.rglob('*'):
+                  if path.is_file() and path.suffix in {'.py', '.js', '.yml', '.yaml', '.json', '.jsonc', '.toml'}:
+                      if path == Path('.github/workflows/validate-pr.yml'):
+                          continue
+                      if ('net' + 'lify') in path.read_text(encoding='utf-8').lower():
+                          matches.append(str(path))
+          print('\n'.join(matches))
+          PY
+          )" = ""
+          test "$(python - <<'PY'
+          from pathlib import Path
+
+          text = Path('scripts/enable_realtime_search.py').read_text(encoding='utf-8')
+          print('ok' if '.workers.dev/api/product-search' in text else '')
+          PY
+          )" = "ok"
