@@ -1,20 +1,15 @@
-"""Diversify the trusted daily-deals selection across days.
+"""Diversify the trusted daily-deals selection across rebuilds.
 
-The core builder deliberately applies strict quality filters, but it previously
-always took the same five highest-discount categories. When relative prices are
-stable, that makes /today/ and automated X posts look unchanged for days.
-
-This post-processing step keeps the exact same eligibility rules from
-build_daily_deals.py, always retains the strongest current candidate, and
-rotates the other four positions through a small pool of the next-best trusted
-categories. The rotation is deterministic by JST date, so it needs no database
-or persisted history and remains fully automatic on GitHub Actions.
+The core builder deliberately applies strict quality filters. This step keeps
+those eligibility rules, always retains the strongest current candidate, and
+rotates the other four positions through the next-best trusted categories.
+The rotation changes between the morning and evening refresh windows so an
+X-time rebuild can surface fresh candidates without weakening price quality.
 """
 from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import build_daily_deals as base
@@ -43,14 +38,15 @@ def select_diverse(rows: list[dict], now: datetime) -> list[dict]:
     if len(pool) <= 4:
         return rows[:5]
 
-    # A stride of three changes most of the rotating slots each day while still
-    # cycling predictably through the strongest eligible categories.
-    offset = (now.date().toordinal() * 3) % len(pool)
+    # Use two deterministic windows per JST day. A rebuild before the evening
+    # X post therefore gets a different rotation from the morning build while
+    # remaining stable within each window and requiring no persisted database.
+    refresh_slot = 0 if now.hour < 12 else 1
+    seed = now.date().toordinal() * 2 + refresh_slot
+    offset = (seed * 3) % len(pool)
     rotated = pool[offset:] + pool[:offset]
     selected = [anchor] + rotated[:4]
 
-    # Display selected candidates strongest-first; selection itself still varies
-    # by date. Every item already passed the same 8-55% conservative threshold.
     selected.sort(key=lambda row: (-row["discount"], row["unit_price"]))
     return selected
 
@@ -73,8 +69,9 @@ def main() -> None:
     (base.TODAY_DIR / "index.html").write_text(base.render_page(rows, now), encoding="utf-8")
 
     social = base.build_social(rows, now)
-    social["selection_mode"] = "daily_diversified"
+    social["selection_mode"] = "twice_daily_diversified"
     social["eligible_count"] = len(trusted)
+    social["refresh_slot"] = "morning" if now.hour < 12 else "evening"
     (base.TODAY_DIR / "data.json").write_text(
         json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -89,6 +86,7 @@ def main() -> None:
         "Diversified daily deals:",
         ", ".join(f"{row['name']}({row['discount']:.0f}%)" for row in rows),
         f"from {len(trusted)} eligible categories",
+        f"slot={social['refresh_slot']}",
     )
 
 
