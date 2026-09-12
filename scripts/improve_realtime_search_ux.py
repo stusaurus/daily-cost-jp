@@ -63,8 +63,18 @@ def main():
         else:
             raise SystemExit("Could not locate fallback lookup function for UX patch")
 
+    # The realtime result link goes straight to Rakuten, so record it as both a
+    # product-result click and an affiliate click with an explicit source. This
+    # lets GA4 compare revenue intent from product search against other tools.
+    if "conversion_source: 'product_search'" not in text:
+        old = """      shipping_included_price: Number(a.dataset.shippingPrice || 0)\n    });"""
+        new = """      shipping_included_price: Number(a.dataset.shippingPrice || 0)\n    });\n    if (a && typeof window.gtag === 'function') window.gtag('event', 'affiliate_click', {\n      affiliate: 'rakuten',\n      conversion_source: 'product_search',\n      product_id: a.dataset.id || '',\n      search_term: currentTerm,\n      shipping_included_price: Number(a.dataset.shippingPrice || 0),\n      link_url: a.href\n    });"""
+        if old not in text:
+            raise SystemExit("Could not locate product_result_click payload for affiliate attribution patch")
+        text = text.replace(old, new, 1)
+
     PRODUCTS.write_text(text, encoding="utf-8")
-    print("Realtime search now prioritizes verified shipping-inclusive results and tracks completed lookups")
+    print("Realtime search prioritizes verified prices and attributes Rakuten clicks to product_search")
 
 
 if __name__ == "__main__":
