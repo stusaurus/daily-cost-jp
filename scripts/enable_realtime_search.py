@@ -98,9 +98,10 @@ script = f"""
     let button;
 
     if (includedPrice > 0) {{
-      priceHtml = `${{yen(includedPrice)}} <small>送料込み最安値</small>`;
       const shop = p.shipping_included_shop ? `・${{esc(p.shipping_included_shop)}}` : '';
-      detail = `<div class="shipping-price-note">楽天市場で送料込み／送料無料と確認できた購入候補${{shop}}</div>`;
+      const quantity = p.sale_quantity_label ? `${{esc(p.sale_quantity_label)}}・` : '商品価格 ';
+      priceHtml = `${{quantity}}${{yen(includedPrice)}} <small>（送料込み）</small>`;
+      detail = `<div class="shipping-price-note">${{shop ? shop.slice(1) : '楽天市場で確認できた購入候補'}}</div>`;
       button = 'この価格で楽天へ';
     }} else if (p.shipping_lookup_pending) {{
       priceHtml = '<span class="shipping-price-pending">送料込み価格を追加確認中…</span>';
@@ -153,6 +154,7 @@ script = f"""
           target.shipping_included_shop = data.shipping_included_shop || '';
           target.shipping_included_image = data.shipping_included_image || '';
           target.shipping_match_score = Number(data.shipping_match_score || 0);
+          target.sale_quantity_label = data.sale_quantity_label || '';
         }}
         target.shipping_lookup_pending = false;
         patchCard(target.product_id);

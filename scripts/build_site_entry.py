@@ -9,6 +9,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import build_site as core
+from sale_quantity import purchase_summary
 
 
 # Rakuten Ichiba Item Search API output semantics (2026-07-01):
@@ -355,9 +356,8 @@ def render_product_card_clean(item, rank, metric):
       <div class="product-body">
         <h3>{name}</h3>
         <div class="unit-price">{core.yen(item["unit_price"])} <span>/ {metric_label}</span></div>
+        <div class="purchase-summary">{core.html.escape(purchase_summary(item))}</div>
         <div class="meta-grid">
-          <span>商品価格 <strong>¥{item["price"]:,}</strong></span>
-          <span class="shipping-chip">送料込み</span>
           <span>{core.html.escape(review)}</span>
           <span>{core.html.escape(point)}</span>
         </div>
@@ -401,6 +401,7 @@ core.render_product_card = render_product_card_clean
 core.fetch_category = fetch_category
 
 EXTRA_CSS = r"""
+    .purchase-summary { margin-top: 2px; color: #343434; font-size: 13px; font-weight: 800; }
     header { padding: 22px 0 18px; }
     h1 { margin: 10px 0 6px; }
     .lead { font-size: 14px; }

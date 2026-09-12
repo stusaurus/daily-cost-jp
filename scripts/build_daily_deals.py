@@ -13,6 +13,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from sale_quantity import purchase_summary
 
 SITE = "https://stusaurus.github.io/daily-cost-jp/"
 DATA = Path("site/data.json")
@@ -126,6 +127,7 @@ def choose_category(category_id: str, category: dict):
         "image": str(candidate.get("image") or ""),
         "url": str(candidate.get("url") or ""),
         "shop": str(candidate.get("shop") or "ショップ情報なし"),
+        "sale_quantity_label": candidate.get("sale_quantity_label"),
     }
 
 
@@ -157,7 +159,8 @@ def render_page(rows: list[dict], now: datetime) -> str:
     <div class="deal-discount">比較候補の中央値より <strong>{row['discount']:.0f}%安い</strong></div>
     <h2>{html.escape(row['product_name'])}</h2>
     <div class="unit-price">{money(row['unit_price'])} <span>/ {html.escape(row['metric_label'])}</span></div>
-    <div class="deal-meta">商品価格 ¥{row['price']:,} ・ {html.escape(row['shop'])}</div>
+    <div class="deal-purchase">{html.escape(purchase_summary(row))}</div>
+    <div class="deal-meta">{html.escape(row['shop'])}</div>
     <div class="deal-meta">中央値 {money(row['median'])} ・ 送料込み候補 {row['sample']}件で比較</div>
     <div class="deal-actions">
       <a class="buy-button" href="{html.escape(row['url'], quote=True)}" target="_blank" rel="nofollow sponsored noopener">楽天市場で確認する</a>
@@ -194,7 +197,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
 <script type="application/ld+json">{schema}</script>
 <style>
 :root{{--bg:#fbfaf9;--card:#fff;--text:#252525;--muted:#6b7280;--line:#e8dfda;--accent:#b3261e}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.7}}a{{color:inherit}}.wrap{{width:min(900px,calc(100% - 28px));margin:auto}}header{{padding:27px 0 18px;background:linear-gradient(180deg,#fff8f5,#fbfaf9);border-bottom:1px solid #f0e5df}}.crumb{{font-size:11px;color:var(--muted)}}.eyebrow{{display:inline-block;margin-top:13px;font-size:11px;font-weight:900;color:var(--accent)}}h1{{font-size:clamp(29px,8vw,42px);line-height:1.2;margin:5px 0 9px;letter-spacing:-.03em}}.lead{{max-width:760px;margin:0;color:#5f6368;font-size:13px}}.updated{{margin-top:9px;font-size:10px;color:var(--muted)}}main{{padding:18px 0 38px}}.method{{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:10px;color:#6d645f;margin-bottom:14px}}.deal-card{{position:relative;display:grid;grid-template-columns:90px minmax(0,1fr);gap:13px;margin:10px 0;padding:13px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(62,42,32,.04)}}.deal-rank{{position:absolute;left:-6px;top:-6px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#252525;color:#fff;font-size:12px;font-weight:900}}.deal-image{{width:90px;height:90px;display:grid;place-items:center;overflow:hidden;border:1px solid #eee7e2;border-radius:11px;background:#fff}}.deal-image img{{width:100%;height:100%;object-fit:contain}}.image-placeholder{{font-size:10px;color:#999}}.deal-category{{font-size:11px;font-weight:900;color:#6d625c}}.deal-discount{{font-size:11px;margin-top:1px}}.deal-discount strong{{font-size:18px;color:var(--accent)}}.deal-body h2{{font-size:13px;line-height:1.45;margin:4px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}.unit-price{{font-size:18px;font-weight:900}}.unit-price span{{font-size:10px;font-weight:600;color:#666}}.deal-meta{{font-size:9px;color:#777}}.deal-actions{{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}}.deal-actions a{{min-height:42px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;border-radius:9px;text-decoration:none;font-size:10px;font-weight:900}}.buy-button{{background:var(--accent);color:#fff}}.today-category-link{{border:1px solid var(--line)}}.footnote{{font-size:9px;color:#777;margin-top:15px}}@media(max-width:520px){{.deal-card{{grid-template-columns:76px minmax(0,1fr)}}.deal-image{{width:76px;height:76px}}.deal-actions{{grid-template-columns:1fr}}}}
+*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;line-height:1.7}}a{{color:inherit}}.wrap{{width:min(900px,calc(100% - 28px));margin:auto}}header{{padding:27px 0 18px;background:linear-gradient(180deg,#fff8f5,#fbfaf9);border-bottom:1px solid #f0e5df}}.crumb{{font-size:11px;color:var(--muted)}}.eyebrow{{display:inline-block;margin-top:13px;font-size:11px;font-weight:900;color:var(--accent)}}h1{{font-size:clamp(29px,8vw,42px);line-height:1.2;margin:5px 0 9px;letter-spacing:-.03em}}.lead{{max-width:760px;margin:0;color:#5f6368;font-size:13px}}.updated{{margin-top:9px;font-size:10px;color:var(--muted)}}main{{padding:18px 0 38px}}.method{{padding:13px 14px;border:1px solid var(--line);border-radius:14px;background:#fff;font-size:10px;color:#6d645f;margin-bottom:14px}}.deal-card{{position:relative;display:grid;grid-template-columns:90px minmax(0,1fr);gap:13px;margin:10px 0;padding:13px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:0 5px 18px rgba(62,42,32,.04)}}.deal-rank{{position:absolute;left:-6px;top:-6px;width:28px;height:28px;display:grid;place-items:center;border-radius:50%;background:#252525;color:#fff;font-size:12px;font-weight:900}}.deal-image{{width:90px;height:90px;display:grid;place-items:center;overflow:hidden;border:1px solid #eee7e2;border-radius:11px;background:#fff}}.deal-image img{{width:100%;height:100%;object-fit:contain}}.image-placeholder{{font-size:10px;color:#999}}.deal-category{{font-size:11px;font-weight:900;color:#6d625c}}.deal-discount{{font-size:11px;margin-top:1px}}.deal-discount strong{{font-size:18px;color:var(--accent)}}.deal-body h2{{font-size:13px;line-height:1.45;margin:4px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}.unit-price{{font-size:18px;font-weight:900}}.unit-price span{{font-size:10px;font-weight:600;color:#666}}.deal-purchase{{font-size:11px;font-weight:800;color:#343434}}.deal-meta{{font-size:9px;color:#777}}.deal-actions{{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}}.deal-actions a{{min-height:42px;display:flex;align-items:center;justify-content:center;text-align:center;padding:8px;border-radius:9px;text-decoration:none;font-size:10px;font-weight:900}}.buy-button{{background:var(--accent);color:#fff}}.today-category-link{{border:1px solid var(--line)}}.footnote{{font-size:9px;color:#777;margin-top:15px}}@media(max-width:520px){{.deal-card{{grid-template-columns:76px minmax(0,1fr)}}.deal-image{{width:76px;height:76px}}.deal-actions{{grid-template-columns:1fr}}}}
 </style>
 </head>
 <body>

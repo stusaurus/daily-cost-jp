@@ -12,6 +12,8 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from sale_quantity import sale_quantity_for_item
+
 API_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701"
 SITE_URL = "https://stusaurus.github.io/daily-cost-jp/"
 OUTPUT_DIR = Path("site")
@@ -243,6 +245,8 @@ def normalize_item(raw, category):
         confidence = parsed["confidence"]
         evidence = parsed["evidence"]
 
+    sale_quantity = sale_quantity_for_item(title, price, unit_price, metric)
+
     affiliate_url = item.get("affiliateUrl") or item.get("itemUrl") or ""
     postage_flag = item.get("postageFlag")
     if postage_flag in (1, "1"):
@@ -252,7 +256,7 @@ def normalize_item(raw, category):
     else:
         postage = "送料は商品ページで確認"
 
-    return {
+    normalized = {
         "name": title,
         "price": price,
         "image": first_image(item),
@@ -267,6 +271,9 @@ def normalize_item(raw, category):
         "confidence": confidence,
         "evidence": evidence,
     }
+    if sale_quantity:
+        normalized.update(sale_quantity)
+    return normalized
 
 
 def fetch_category(category):
