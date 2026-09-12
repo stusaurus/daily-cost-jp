@@ -1,20 +1,8 @@
-"""Diversify the trusted daily-deals selection across days.
-
-The core builder deliberately applies strict quality filters, but it previously
-always took the same five highest-discount categories. When relative prices are
-stable, that makes /today/ and automated X posts look unchanged for days.
-
-This post-processing step keeps the exact same eligibility rules from
-build_daily_deals.py, always retains the strongest current candidate, and
-rotates the other four positions through a small pool of the next-best trusted
-categories. The rotation is deterministic by JST date, so it needs no database
-or persisted history and remains fully automatic on GitHub Actions.
-"""
+"""Diversify trusted daily deals across rebuilds and social posts."""
 from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import build_daily_deals as base
@@ -33,6 +21,11 @@ def all_trusted_rows(payload: dict) -> list[dict]:
     return rows
 
 
+def slot_seed(now: datetime) -> int:
+    refresh_slot = 0 if now.hour < 12 else 1
+    return now.date().toordinal() * 2 + refresh_slot
+
+
 def select_diverse(rows: list[dict], now: datetime) -> list[dict]:
     """Keep the strongest deal and rotate four other high-quality candidates."""
     if len(rows) <= 5:
@@ -43,16 +36,22 @@ def select_diverse(rows: list[dict], now: datetime) -> list[dict]:
     if len(pool) <= 4:
         return rows[:5]
 
-    # A stride of three changes most of the rotating slots each day while still
-    # cycling predictably through the strongest eligible categories.
-    offset = (now.date().toordinal() * 3) % len(pool)
+    offset = (slot_seed(now) * 3) % len(pool)
     rotated = pool[offset:] + pool[:offset]
     selected = [anchor] + rotated[:4]
-
-    # Display selected candidates strongest-first; selection itself still varies
-    # by date. Every item already passed the same 8-55% conservative threshold.
     selected.sort(key=lambda row: (-row["discount"], row["unit_price"]))
     return selected
+
+
+def social_order(rows: list[dict], now: datetime) -> list[dict]:
+    """Keep the strongest pick, but vary the other X picks across refreshes."""
+    if len(rows) <= 2:
+        return rows
+    anchor = rows[0]
+    others = rows[1:]
+    offset = slot_seed(now) % len(others)
+    rotated = others[offset:] + others[:offset]
+    return [anchor] + rotated
 
 
 def main() -> None:
@@ -72,9 +71,13 @@ def main() -> None:
     base.SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
     (base.TODAY_DIR / "index.html").write_text(base.render_page(rows, now), encoding="utf-8")
 
-    social = base.build_social(rows, now)
-    social["selection_mode"] = "daily_diversified"
+    social = base.build_social(social_order(rows, now), now)
+    # Keep the site-selected five in the payload so the evening spotlight can
+    # still choose from the complete trusted set shown on /today/.
+    social["items"] = rows
+    social["selection_mode"] = "twice_daily_diversified"
     social["eligible_count"] = len(trusted)
+    social["refresh_slot"] = "morning" if now.hour < 12 else "evening"
     (base.TODAY_DIR / "data.json").write_text(
         json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8"
     )
@@ -89,6 +92,7 @@ def main() -> None:
         "Diversified daily deals:",
         ", ".join(f"{row['name']}({row['discount']:.0f}%)" for row in rows),
         f"from {len(trusted)} eligible categories",
+        f"slot={social['refresh_slot']}",
     )
 
 

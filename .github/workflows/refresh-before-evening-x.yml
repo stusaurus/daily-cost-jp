@@ -1,0 +1,21 @@
+name: Refresh deals before evening X
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 19:00 JST = 10:00 UTC, 30 minutes before evening X post
+    - cron: "0 10 * * *"
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger fresh site rebuild without an extra X post
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run deploy-pages.yml -f post_to_x=false
