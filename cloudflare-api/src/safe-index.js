@@ -29,6 +29,28 @@ function compact(value) {
     .replace(/巻/g, "ロール");
 }
 
+// Realtime results have no unit-price field to cross-check.  Therefore expose
+// a label only for one explicit, self-contained quantity expression from the
+// matched seller listing; bare model/year numbers can never match.
+function saleQuantityLabel(value) {
+  const text = normalize(value).replace(/[×✕*]/g, "x").replace(/,/g, "");
+  if (/(種類|タイプ|サイズ|容量|個数)を選べる/.test(text)) return "";
+  const measure = [...text.matchAll(/(^|[^a-z0-9.])(\d+(?:\.\d+)?)\s*(kg|g|ml|l)(?:\s*x\s*(\d+)\s*(ロール|巻|個|本|箱|パック|袋|枚|セット))?/gi)];
+  if (measure.length === 1) {
+    const m = measure[0];
+    const unit = m[3].toLowerCase() === "l" ? "L" : m[3].toLowerCase();
+    return `${Number(m[2])}${unit}${m[4] ? `×${Number(m[4])}${m[5] === "巻" ? "ロール" : m[5]}` : ""}`;
+  }
+  const compound = [...text.matchAll(/(^|[^a-z0-9.])(\d+)\s*(ロール|巻|個|本|箱|パック|袋|枚|組|セット)\s*x\s*(\d+)\s*(ロール|巻|個|本|箱|パック|袋|枚|セット)/gi)];
+  if (compound.length === 1) {
+    const m = compound[0];
+    return `${Number(m[2])}${m[3] === "巻" ? "ロール" : m[3]}×${Number(m[4])}${m[5] === "巻" ? "ロール" : m[5]}`;
+  }
+  const single = [...text.matchAll(/(^|[^a-z0-9.])(\d+)\s*(ロール|巻|個|本|箱|パック|袋|枚)(?:入り)?/gi)];
+  if (single.length !== 1) return "";
+  return `${Number(single[0][2])}${single[0][3] === "巻" ? "ロール" : single[0][3]}入り`;
+}
+
 function firstImageUrl(value) {
   if (!Array.isArray(value) || !value.length) return "";
   const first = value[0];
@@ -102,6 +124,7 @@ function normalizeItem(raw) {
     url: String(item.affiliateUrl || item.itemUrl || ""),
     image: firstImageUrl(item.mediumImageUrls),
     postage_flag: safeInt(item.postageFlag, -1),
+    sale_quantity_label: saleQuantityLabel(item.itemName),
   };
 }
 
@@ -188,6 +211,7 @@ function attachShipping(products, items) {
       shipping_included_image: best.item.image,
       shipping_match_score: best.score,
       shipping_match_name: best.item.name,
+      sale_quantity_label: best.item.sale_quantity_label,
     };
   });
 }
@@ -323,6 +347,7 @@ async function exactShippingLookup(code, name, brand, env) {
         shipping_included_image: codeBest.item.image,
         shipping_match_score: codeBest.score,
         shipping_match_name: codeBest.item.name,
+        sale_quantity_label: codeBest.item.sale_quantity_label,
         lookup_method: "product_code_verified",
       };
     }
@@ -341,6 +366,7 @@ async function exactShippingLookup(code, name, brand, env) {
     shipping_included_image: best.item.image,
     shipping_match_score: best.score,
     shipping_match_name: best.item.name,
+    sale_quantity_label: best.item.sale_quantity_label,
     lookup_method: "product_name_specs_verified",
   };
 }

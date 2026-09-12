@@ -208,7 +208,8 @@ section = f'''
     else verdict = '＝ 店頭と楽天は同じ価格';
     const url = p.shipping_included_url || p.url || '#';
     resultEl.className = 'exact-result show';
-    resultEl.innerHTML = `<div class="exact-verdict">${{verdict}}</div><p><strong>${{esc(p.name || '')}}</strong></p><p>店頭：<strong>${{yen(store)}}</strong> ／ 楽天送料込み：<strong>${{yen(rakuten)}}</strong></p><p class="exact-note">※画像・商品名・容量を見て同一商品であることを確認してください。楽天のポイント・クーポンは差額に含めていません。</p><a class="exact-rakuten" href="${{esc(url)}}" target="_blank" rel="nofollow sponsored noopener" data-exact-rakuten="1">楽天のこの商品を見る</a>`;
+    const sale = p.sale_quantity_label ? `${{esc(p.sale_quantity_label)}}・` : '商品価格 ';
+    resultEl.innerHTML = `<div class="exact-verdict">${{verdict}}</div><p><strong>${{esc(p.name || '')}}</strong></p><p>店頭：<strong>${{yen(store)}}</strong> ／ 楽天：<strong>${{sale}}${{yen(rakuten)}}（送料込み）</strong></p><p class="exact-note">※画像・商品名・容量を見て同一商品であることを確認してください。楽天のポイント・クーポンは差額に含めていません。</p><a class="exact-rakuten" href="${{esc(url)}}" target="_blank" rel="nofollow sponsored noopener" data-exact-rakuten="1">楽天のこの商品を見る</a>`;
     resultEl.scrollIntoView({{behavior:'smooth',block:'nearest'}});
     if (typeof window.gtag === 'function') window.gtag('event','same_product_compare_select',{{search_term:searchTerm,product_id:p.product_id||'',store_price:store,rakuten_shipping_price:rakuten,difference:store-rakuten}});
   }}

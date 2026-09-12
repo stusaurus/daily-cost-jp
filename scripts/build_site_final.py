@@ -4,6 +4,7 @@ Keeps the API/filtering logic in build_site_entry.py and adds clearer unit label
 plus exact top-pick anchors for mobile navigation.
 """
 import build_site_entry as app
+from sale_quantity import purchase_summary
 
 core = app.core
 
@@ -40,6 +41,7 @@ def render_product_card_final(item, rank, metric, anchor_id):
         price_label = f"¥{int(raw_price):,}" if raw_price is not None else "価格情報なし"
     except (TypeError, ValueError):
         price_label = "価格情報なし"
+    purchase_label = core.html.escape(purchase_summary(item)) if raw_price else price_label
 
     image_html = (
         f'<img src="{image}" alt="" loading="lazy">'
@@ -54,9 +56,8 @@ def render_product_card_final(item, rank, metric, anchor_id):
       <div class="product-body">
         <h3>{name}</h3>
         <div class="unit-price">{core.yen(item["unit_price"])} <span>/ {metric_label}</span></div>
+        <div class="purchase-summary">{purchase_label}</div>
         <div class="meta-grid">
-          <span>商品価格 <strong>{price_label}</strong></span>
-          <span class="shipping-chip">送料込み</span>
           <span>{core.html.escape(review)}</span>
           <span>{core.html.escape(point)}</span>
         </div>
@@ -143,6 +144,7 @@ core.render_category = render_category_final
 app.render_top_picks = render_top_picks_final
 
 FINAL_CSS = r"""
+    .purchase-summary { margin-top: 2px; color: #343434; font-size: 13px; font-weight: 800; }
     .product-card-anchor { scroll-margin-top: 78px; }
     .product-card-anchor:target {
       border-color: #d97b73;
