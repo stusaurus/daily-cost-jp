@@ -1,11 +1,4 @@
-"""Diversify the trusted daily-deals selection across rebuilds.
-
-The core builder deliberately applies strict quality filters. This step keeps
-those eligibility rules, always retains the strongest current candidate, and
-rotates the other four positions through the next-best trusted categories.
-The rotation changes between the morning and evening refresh windows so an
-X-time rebuild can surface fresh candidates without weakening price quality.
-"""
+"""Diversify trusted daily deals across rebuilds and social posts."""
 from __future__ import annotations
 
 import json
@@ -28,6 +21,11 @@ def all_trusted_rows(payload: dict) -> list[dict]:
     return rows
 
 
+def slot_seed(now: datetime) -> int:
+    refresh_slot = 0 if now.hour < 12 else 1
+    return now.date().toordinal() * 2 + refresh_slot
+
+
 def select_diverse(rows: list[dict], now: datetime) -> list[dict]:
     """Keep the strongest deal and rotate four other high-quality candidates."""
     if len(rows) <= 5:
@@ -38,17 +36,22 @@ def select_diverse(rows: list[dict], now: datetime) -> list[dict]:
     if len(pool) <= 4:
         return rows[:5]
 
-    # Use two deterministic windows per JST day. A rebuild before the evening
-    # X post therefore gets a different rotation from the morning build while
-    # remaining stable within each window and requiring no persisted database.
-    refresh_slot = 0 if now.hour < 12 else 1
-    seed = now.date().toordinal() * 2 + refresh_slot
-    offset = (seed * 3) % len(pool)
+    offset = (slot_seed(now) * 3) % len(pool)
     rotated = pool[offset:] + pool[:offset]
     selected = [anchor] + rotated[:4]
-
     selected.sort(key=lambda row: (-row["discount"], row["unit_price"]))
     return selected
+
+
+def social_order(rows: list[dict], now: datetime) -> list[dict]:
+    """Keep the strongest pick, but vary the other X picks across refreshes."""
+    if len(rows) <= 2:
+        return rows
+    anchor = rows[0]
+    others = rows[1:]
+    offset = slot_seed(now) % len(others)
+    rotated = others[offset:] + others[:offset]
+    return [anchor] + rotated
 
 
 def main() -> None:
@@ -68,7 +71,10 @@ def main() -> None:
     base.SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
     (base.TODAY_DIR / "index.html").write_text(base.render_page(rows, now), encoding="utf-8")
 
-    social = base.build_social(rows, now)
+    social = base.build_social(social_order(rows, now), now)
+    # Keep the site-selected five in the payload so the evening spotlight can
+    # still choose from the complete trusted set shown on /today/.
+    social["items"] = rows
     social["selection_mode"] = "twice_daily_diversified"
     social["eligible_count"] = len(trusted)
     social["refresh_slot"] = "morning" if now.hour < 12 else "evening"
