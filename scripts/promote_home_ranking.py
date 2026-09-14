@@ -40,11 +40,14 @@ def extract_rows(markup: str):
 
 
 def item_link(row):
-    # Keep users inside the site when a comparison search is available; otherwise
-    # use the affiliate product link returned by Rakuten.
+    # Ranking clicks express intent to view the ranked product itself, so prefer
+    # Rakuten's affiliate product URL. The comparison search remains available
+    # from the detailed ranking page as an explicit secondary action.
+    if row["rakuten"]:
+        return row["rakuten"]
     if row["search"]:
         return row["search"].replace("../products/", "products/")
-    return row["rakuten"] or "trends/"
+    return "trends/"
 
 
 def missing_item(rank: int) -> str:
@@ -135,7 +138,7 @@ def build_block(rows):
 <section id="home-ranking-hero">
   <div class="home-rank-kicker">🔥 楽天総合リアルタイムランキング</div>
   <h2>今、楽天で売れている TOP10</h2>
-  <p class="home-rank-lead">楽天の公式順位をそのまま表示。取得できない順位は詰めずに明示します。</p>
+  <p class="home-rank-lead">楽天の公式順位をそのまま表示。商品を押すと楽天の商品ページを開きます。</p>
   {first_html}
   <div class="home-rank-list">{''.join(rest)}</div>
   <a class="home-rank-all" href="trends/">ランキングを詳しく見る →</a>
