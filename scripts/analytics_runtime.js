@@ -104,7 +104,8 @@
         if (source) categorySources.set(decodeURIComponent(url.hash.slice(1)), { source, at: Date.now() });
       } else {
         // Exact next destination, consumed once; unrelated navigation clears it.
-        sessionStorage.setItem(NAV_KEY, JSON.stringify({ source: source || 'product_search', target: url.pathname + url.search, at: Date.now() }));
+        if (source) sessionStorage.setItem(NAV_KEY, JSON.stringify({ source, target: url.pathname + url.search, at: Date.now() }));
+        else sessionStorage.removeItem(NAV_KEY);
       }
     } catch (_) {}
   }, true);
