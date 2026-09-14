@@ -72,6 +72,10 @@ test('trend search then typed/Enter search resets source only on new results',()
   assert.equal(p.affiliate()[2][2].conversion_source,'product_search');
   assert.equal(p.affiliate()[2][2].search_term,'tissue');
 });
+test('ordinary home navigation does not invent product-search attribution',()=>{
+  const p=page('products/', '<a href="../">home</a>'); p.click('a');
+  assert.equal(p.w.sessionStorage.getItem('daily_cost_feature_navigation_v1'),null);
+});
 test('operator flag enabled, persisted, disabled and never added for normal traffic',()=>{
   for(const [path,opts,marked] of [['?test=1&utm_source=x',{},true],['today/',{test:true},true],['?test=0',{test:true},false],['',{},false],['?test=1',{blocked:true},true],['',{blocked:true},false]]) {
     const p=page(path,link(),opts); p.w.gtag('event','product_result_click',{}); p.click('a');
