@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 PAGE = Path("site/products/index.html")
 API = "https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search"
@@ -7,6 +8,15 @@ if not PAGE.exists():
     raise SystemExit("site/products/index.html not found")
 
 html = PAGE.read_text(encoding="utf-8")
+
+# The static shell installs a result-click listener too. The realtime listener
+# below replaces it and retains the same event with verified shipping details.
+html, removed = re.subn(
+    r"results\.addEventListener\('click',e=>\{const a=e\.target\.closest\('\.product-result-link'\);if\(a&&typeof window\.gtag==='function'\)window\.gtag\('event','product_result_click',\{product_id:a\.dataset\.id,search_term:q\.value\.trim\(\)\}\);\}\);",
+    '', html,
+)
+if removed != 1:
+    raise SystemExit('Expected exactly one static product-result listener to replace')
 
 html = html.replace("<span class=\"eyebrow\">毎朝自動更新</span>", "<span class=\"eyebrow\">楽天からリアルタイム検索</span>")
 html = html.replace("本日の検索対象：0製品", "商品名を入力して検索してください")

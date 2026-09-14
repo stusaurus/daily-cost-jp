@@ -52,6 +52,7 @@ on:
       - "scripts/add_trend_conversion_tracking.py"
       - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
+      - "scripts/analytics_runtime.js"
       - "scripts/add_search_landing_pages.py"
       - ".github/workflows/deploy-pages.yml"
 

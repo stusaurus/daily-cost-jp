@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import html
 import os
+import re
 from pathlib import Path
 
 SITE_DIR = Path("site")
@@ -11,8 +12,8 @@ MEASUREMENT_ID = os.environ.get("GA_MEASUREMENT_ID", "").strip()
 
 def inject_file(path: Path, safe_id: str) -> bool:
     markup = path.read_text(encoding="utf-8")
-    if "data-daily-cost-ga4" in markup:
-        return False
+    # Replace our own snippets on rebuild; never duplicate listeners/config.
+    markup = re.sub(r'<script\b[^>]*data-daily-cost-ga4[^>]*>.*?</script>\s*', '', markup, flags=re.DOTALL)
     if "</head>" not in markup or "</body>" not in markup:
         print(f"Skipping malformed HTML: {path}")
         return False
@@ -70,6 +71,9 @@ def inject_file(path: Path, safe_id: str) -> bool:
   </script>
 """
 
+    runtime = Path(__file__).with_name("analytics_runtime.js").read_text(encoding="utf-8")
+    head_snippet = head_snippet.replace("    gtag('config',", runtime + "\n    gtag('config',", 1)
+
     body_snippet = """
 <script data-daily-cost-ga4>
 (() => {
@@ -79,24 +83,6 @@ def inject_file(path: Path, safe_id: str) -> bool:
     const traffic = window.dailyCostTrafficContext || {};
     window.gtag('event', name, { ...traffic, ...params, page_path: location.pathname });
   };
-
-  document.querySelectorAll('.buy-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      const card = button.closest('.product-card, .deal-card');
-      const section = button.closest('.category-section');
-      const product = cleanText(card?.querySelector('h3, h2'));
-      const rank = cleanText(card?.querySelector('.rank-badge, .deal-rank'));
-      const unitPrice = cleanText(card?.querySelector('.unit-price'));
-      send('affiliate_click', {
-        affiliate: 'rakuten',
-        category_id: section?.id || '',
-        product_name: product.slice(0, 100),
-        rank: rank,
-        unit_price_label: unitPrice.slice(0, 50),
-        link_url: button.href
-      });
-    });
-  });
 
   document.querySelectorAll('.top-pick').forEach((card) => {
     card.addEventListener('click', () => {
