@@ -8,6 +8,90 @@ TRENDS = Path("site/trends/index.html")
 PRODUCTS = Path("site/products/index.html")
 
 
+def promote_direct_rakuten_links(trend_html: str) -> str:
+    """Make the ranked product itself and primary CTA open Rakuten directly."""
+
+    # Put the direct Rakuten CTA first whenever both actions exist.
+    trend_html = re.sub(
+        r'(<div class="actions">)\s*(<a class="search".*?</a>)\s*(<a class="rakuten".*?</a>)(</div>)',
+        lambda m: m.group(1) + m.group(3) + m.group(2) + m.group(4),
+        trend_html,
+        flags=re.DOTALL,
+    )
+
+    trend_html = trend_html.replace(
+        '>楽天の商品を見る</a>',
+        '>楽天で商品を見る</a>',
+    ).replace(
+        '>送料込み最安値を探す</a>',
+        '>送料込み最安値を比較</a>',
+    )
+
+    # Image and product name should behave like normal shopping-result links too.
+    card_pattern = re.compile(r'<article class="card">.*?</article>', re.DOTALL)
+
+    def link_card_parts(match):
+        card = match.group(0)
+        direct = re.search(r'<a class="rakuten" href="([^"]+)"', card)
+        if not direct:
+            return card
+        href = direct.group(1)
+        attrs = (
+            f'href="{href}" target="_blank" '
+            'rel="nofollow sponsored noopener"'
+        )
+        card = re.sub(
+            r'<div class="pic">(.*?)</div>',
+            lambda p: (
+                '<div class="pic"><a class="rank-product-link" '
+                + attrs
+                + '>'
+                + p.group(1)
+                + '</a></div>'
+            ),
+            card,
+            count=1,
+            flags=re.DOTALL,
+        )
+        card = re.sub(
+            r'<div class="name">(.*?)</div>',
+            lambda n: (
+                '<div class="name"><a class="rank-product-link rank-product-name" '
+                + attrs
+                + '>'
+                + n.group(1)
+                + '</a></div>'
+            ),
+            card,
+            count=1,
+            flags=re.DOTALL,
+        )
+        return card
+
+    trend_html = card_pattern.sub(link_card_parts, trend_html)
+
+    # Override the old visual priority: Rakuten is primary, comparison is secondary.
+    direct_style = '''<style id="ranking-direct-link-priority">
+.actions .rakuten{
+  background:var(--accent)!important;
+  color:#fff!important;
+  border:1px solid var(--accent)!important;
+}
+.actions .search{
+  background:#fff!important;
+  color:var(--text)!important;
+  border:1px solid var(--line)!important;
+}
+.rank-product-link{display:block;color:inherit;text-decoration:none}
+.pic .rank-product-link{width:100%;height:100%;display:grid;place-items:center}
+.rank-product-name{font:inherit;line-height:inherit}
+</style>'''
+    if 'id="ranking-direct-link-priority"' not in trend_html:
+        trend_html = trend_html.replace("</head>", direct_style + "\n</head>", 1)
+
+    return trend_html
+
+
 def main():
     if not TRENDS.exists() or not PRODUCTS.exists():
         print("Trend/product pages unavailable; skipping trend label improvement")
@@ -73,8 +157,12 @@ def main():
     if 'id="trend-label-improvement"' not in product_html:
         product_html = product_html.replace("</head>", style + "\n</head>", 1)
 
+    # Apply the same shopping intent everywhere in the ranking detail page.
+    trend_html = promote_direct_rakuten_links(trend_html)
+
+    TRENDS.write_text(trend_html, encoding="utf-8")
     PRODUCTS.write_text(product_html, encoding="utf-8")
-    print(f"Restored descriptive labels for {used} trend cards")
+    print(f"Restored descriptive labels for {used} trend cards and prioritized direct Rakuten links")
 
 
 if __name__ == "__main__":
