@@ -41,7 +41,8 @@ for (const [path, html, expected] of [
   assert.equal(p.affiliate()[0][2].link_url,affiliateURL);
 });
 test('top pick hash and successful judge are category-specific last touches',()=>{
-  const p=page('', '<a class="top-pick" href="#tissue">top</a><section class="category-section" id="tissue">'+link('buy-button')+'</section><section class="category-section" id="water">'+link('buy-button')+'</section>');
+  // Production top picks target the first product, not the category section.
+  const p=page('', '<a class="top-pick" href="#tissue-rank-1">top</a><section class="category-section" id="tissue"><article id="tissue-rank-1">'+link('buy-button')+'</article></section><section class="category-section" id="water">'+link('buy-button')+'</section>');
   p.click('.top-pick'); p.click('#tissue .buy-button');
   assert.equal(p.affiliate()[0][2].conversion_source,'top_pick');
   p.w.gtag('event','buy_judge',{category_id:'tissue'});

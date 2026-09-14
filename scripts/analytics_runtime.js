@@ -101,7 +101,8 @@
       if (url.origin !== location.origin || !url.pathname.startsWith(ROOT)) return;
       const source = navigationSource(link);
       if (url.pathname === location.pathname && url.search === location.search && url.hash) {
-        if (source) categorySources.set(decodeURIComponent(url.hash.slice(1)), { source, at: Date.now() });
+        const section = document.getElementById(decodeURIComponent(url.hash.slice(1)))?.closest('.category-section');
+        if (source && section?.id) categorySources.set(section.id, { source, at: Date.now() });
       } else {
         // Exact next destination, consumed once; unrelated navigation clears it.
         if (source) sessionStorage.setItem(NAV_KEY, JSON.stringify({ source, target: url.pathname + url.search, at: Date.now() }));
