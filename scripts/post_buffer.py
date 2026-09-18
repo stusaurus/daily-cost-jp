@@ -166,10 +166,19 @@ def tracked_today_url(payload: dict) -> str:
         date_tag = datetime.fromisoformat(payload_date).strftime("%Y%m%d")
     except ValueError:
         date_tag = datetime.now(JST).strftime("%Y%m%d")
+    try:
+        variant = int(payload.get("copy_variant"))
+    except (TypeError, ValueError):
+        variant = 0
+    try:
+        strategy = int(payload.get("strategy_version"))
+    except (TypeError, ValueError):
+        strategy = 1
+    content = f"morning_v{variant}_s{strategy}_{date_tag}"
     return (
         PLAIN_TODAY_URL
         + "?utm_source=x&utm_medium=social&utm_campaign=daily_deals"
-        + f"&utm_content=daily_post_{date_tag}"
+        + f"&utm_content={content}"
     )
 
 
