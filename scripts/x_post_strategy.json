@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-18",
+  "morning_weights": [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "evening_weights": [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "guardrails": {
+    "min_weight": 0.25,
+    "max_weight": 3,
+    "minimum_total_sessions_before_change": 30,
+    "minimum_sessions_per_variant_for_confident_change": 5,
+    "evaluation_window_days": 28
+  },
+  "objective": "Maximize X-referred sessions that lead to affiliate_click while preserving exploration."
+}

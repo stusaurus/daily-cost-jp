@@ -5,20 +5,23 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import post_buffer as buffer
+from x_post_strategy import choose_variant, strategy_version
 
 JST = ZoneInfo("Asia/Tokyo")
 
 
-def evening_url(payload: dict) -> str:
+def evening_url(payload: dict, variant: int, category_id: str) -> str:
     payload_date = str(payload.get("date") or "").strip()
     try:
         date_tag = datetime.fromisoformat(payload_date).strftime("%Y%m%d")
     except ValueError:
         date_tag = datetime.now(JST).strftime("%Y%m%d")
+    safe_category = "".join(ch for ch in category_id.lower() if ch.isalnum() or ch in {"-", "_"})[:30] or "daily"
+    content = f"evening_v{variant}_s{strategy_version()}_{safe_category}_{date_tag}"
     return (
         buffer.PLAIN_TODAY_URL
         + "?utm_source=x&utm_medium=social&utm_campaign=daily_deals"
-        + f"&utm_content=evening_post_{date_tag}"
+        + f"&utm_content={content}"
     )
 
 
@@ -61,7 +64,7 @@ def build_evening_text(payload: dict) -> str:
     metric = str(item.get("metric_label") or item.get("metric") or "")
     unit = money(item.get("unit_price"))
 
-    variant = day_seed % 5
+    variant = choose_variant("evening", payload_date or str(day_seed), 5)
     headers = [
         f"【今夜の買い候補｜{name}】",
         f"【今日の1品チェック｜{name}】",
@@ -91,7 +94,7 @@ def build_evening_text(payload: dict) -> str:
         lines.append(f"送料込み単価 {unit} / {metric}")
     lines.extend([
         ctas[variant],
-        evening_url(payload),
+        evening_url(payload, variant, str(item.get("id") or "")),
         "※当日取得できた比較候補内の目安",
         "※楽天アフィリエイトを利用しています",
     ])
