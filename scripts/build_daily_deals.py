@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from sale_quantity import purchase_summary
+from x_post_strategy import choose_variant, strategy_version
 
 SITE = "https://stusaurus.github.io/daily-cost-jp/"
 DATA = Path("site/data.json")
@@ -233,8 +234,8 @@ def build_social(rows: list[dict], now: datetime):
     # Rotate the framing as well as the products. Even when the same categories
     # remain strong for several days, followers should not see copy that feels
     # mechanically identical every morning/evening refresh.
-    slot = 0 if now.hour < 12 else 1
-    variant = (now.date().toordinal() * 2 + slot) % 5
+    slot = "morning" if now.hour < 12 else "evening"
+    variant = choose_variant(slot, now.date().isoformat(), 5)
     openings = [
         f"【{date_short} 今日の日用品買い候補】",
         f"【買い物前に3つだけチェック｜{date_short}】",
@@ -264,6 +265,7 @@ def build_social(rows: list[dict], now: datetime):
         "text": text,
         "items": rows,
         "copy_variant": variant,
+        "strategy_version": strategy_version(),
     }
 
 
