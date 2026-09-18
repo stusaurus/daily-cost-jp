@@ -228,13 +228,33 @@ def render_page(rows: list[dict], now: datetime) -> str:
 
 def build_social(rows: list[dict], now: datetime):
     date_short = f"{now.month}/{now.day}"
-    bullets = []
-    for row in rows[:3]:
-        bullets.append(f"・{row['name']} 約{row['discount']:.0f}%安い")
+    bullets = [f"・{row['name']} 約{row['discount']:.0f}%安い" for row in rows[:3]]
+
+    # Rotate the framing as well as the products. Even when the same categories
+    # remain strong for several days, followers should not see copy that feels
+    # mechanically identical every morning/evening refresh.
+    slot = 0 if now.hour < 12 else 1
+    variant = (now.date().toordinal() * 2 + slot) % 5
+    openings = [
+        f"【{date_short} 今日の日用品買い候補】",
+        f"【買い物前に3つだけチェック｜{date_short}】",
+        f"【今日、価格差が大きかった日用品｜{date_short}】",
+        f"【送料込み単価で見つけた候補｜{date_short}】",
+        f"【日用品の買い時メモ｜{date_short}】",
+    ]
+    closings = [
+        "送料込み・単価換算で比較しました👇",
+        "店頭価格と比べる前の目安に👇",
+        "同じ量あたりの価格で比べるとこんな結果👇",
+        "今日の5選と比較根拠はこちら👇",
+        "買う前に単価だけ確認したいときはこちら👇",
+    ]
+
     text = (
-        f"【{date_short} 今日の日用品買い候補】\n"
+        openings[variant]
+        + "\n"
         + "\n".join(bullets)
-        + f"\n\n送料込み・単価換算で毎朝自動比較。\n{SITE}today/"
+        + f"\n\n{closings[variant]}\n{SITE}today/"
         + "\n※当日取得できた比較候補内の目安"
     )
     return {
@@ -243,6 +263,7 @@ def build_social(rows: list[dict], now: datetime):
         "url": f"{SITE}today/",
         "text": text,
         "items": rows,
+        "copy_variant": variant,
     }
 
 
