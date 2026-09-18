@@ -39,9 +39,17 @@ def build_evening_text(payload: dict) -> str:
     if not items:
         buffer.fail("Today's social payload has no deal items for evening post")
 
-    # Morning copy uses the first three items. Prefer a different item so the
-    # second post adds information instead of repeating the morning post.
-    item = items[3] if len(items) >= 4 else items[-1]
+    # Morning copy normally highlights the first three items. Rotate through
+    # the remaining candidates so the evening spotlight does not keep picking
+    # the same fourth-ranked category on consecutive days.
+    candidates = items[3:] if len(items) >= 4 else items
+    payload_date = str(payload.get("date") or "").strip()
+    try:
+        day_seed = datetime.fromisoformat(payload_date).date().toordinal()
+    except ValueError:
+        day_seed = datetime.now(JST).date().toordinal()
+    item = candidates[day_seed % len(candidates)]
+
     name = str(item.get("name") or "日用品")
     product = str(item.get("product_name") or "").strip()
     if len(product) > 44:
@@ -53,16 +61,36 @@ def build_evening_text(payload: dict) -> str:
     metric = str(item.get("metric_label") or item.get("metric") or "")
     unit = money(item.get("unit_price"))
 
-    lines = [
+    variant = day_seed % 5
+    headers = [
         f"【今夜の買い候補｜{name}】",
-        f"比較候補の中央値より約{discount:.0f}%安い候補を確認。",
+        f"【今日の1品チェック｜{name}】",
+        f"【買う前に単価チェック｜{name}】",
+        f"【今夜の価格メモ｜{name}】",
+        f"【今日の比較で気になった1品｜{name}】",
     ]
+    lead_lines = [
+        f"比較候補の中央値より約{discount:.0f}%安い候補を確認。",
+        f"今日の比較では、中央値より約{discount:.0f}%低い候補。",
+        f"送料込み単価で見ると、比較中央値より約{discount:.0f}%安め。",
+        f"同じ単位で比べると、中央値より約{discount:.0f}%差がありました。",
+        f"今日取得した候補内で、中央値より約{discount:.0f}%安い水準。",
+    ]
+    ctas = [
+        "店頭価格と比べる前の目安に👇",
+        "買う前の価格チェックはこちら👇",
+        "今日の5選と比較根拠を見る👇",
+        "店頭と楽天、どちらが得か見る前に👇",
+        "ほかの買い候補もまとめて確認👇",
+    ]
+
+    lines = [headers[variant], lead_lines[variant]]
     if product:
         lines.append(product)
     if metric:
         lines.append(f"送料込み単価 {unit} / {metric}")
     lines.extend([
-        "店頭価格と比べる前の目安に👇",
+        ctas[variant],
         evening_url(payload),
         "※当日取得できた比較候補内の目安",
         "※楽天アフィリエイトを利用しています",
