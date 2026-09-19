@@ -50,7 +50,7 @@ def money(value: float) -> str:
     return f"¥{value:,.2f}"
 
 
-def choose_category(category_id: str, category: dict):
+def choose_category(category_id: str, category: dict, min_discount: float = 8.0, max_discount: float = 55.0):
     raw_items = category.get("items") or []
     valid = []
     for item in raw_items:
@@ -108,8 +108,9 @@ def choose_category(category_id: str, category: dict):
         return None
     discount = (median - best) / median * 100
 
-    # Only publish useful but believable differences automatically.
-    if discount < 8 or discount > 55:
+    # Keep the quality gates above fixed, but allow callers to widen the
+    # discount threshold when they need a larger safe pool for rotation.
+    if discount < min_discount or discount > max_discount:
         return None
 
     return {
