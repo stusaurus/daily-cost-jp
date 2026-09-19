@@ -36,20 +36,20 @@ def slot_seed(now: datetime) -> int:
 
 
 def select_diverse(strict_rows: list[dict], broad_rows: list[dict], now: datetime) -> list[dict]:
-    """Keep the strongest strict deal and rotate four other safe categories."""
+    """Rotate five safe deal categories so the top slot does not freeze indefinitely."""
     if not broad_rows:
         return strict_rows[:5]
 
-    anchor = strict_rows[0] if strict_rows else broad_rows[0]
-    pool = [row for row in broad_rows if row["id"] != anchor["id"]][:ROTATING_POOL_SIZE]
+    pool = broad_rows[:ROTATING_POOL_SIZE]
     if not pool:
-        return [anchor]
+        return []
 
-    # Pick four from a larger pool. With five or more alternatives, at least
-    # one category changes between adjacent slots instead of freezing forever.
+    # Rotate the full five-item set, including the first slot. The candidates
+    # remain subject to the same confidence/outlier/discount safety filters.
+    # This avoids presenting the same category as the permanent #1 deal.
     offset = (slot_seed(now) * 3) % len(pool)
     rotated = pool[offset:] + pool[:offset]
-    selected = [anchor] + rotated[:4]
+    selected = rotated[:5]
 
     # Never duplicate a category even if upstream data changes unexpectedly.
     unique: list[dict] = []
@@ -61,7 +61,6 @@ def select_diverse(strict_rows: list[dict], broad_rows: list[dict], now: datetim
         seen.add(category_id)
         unique.append(row)
 
-    unique.sort(key=lambda row: (-row["discount"], row["unit_price"]))
     return unique[:5]
 
 
