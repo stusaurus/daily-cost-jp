@@ -29,11 +29,11 @@ def extract_rows(markup: str):
             continue
         rows.append({
             "rank": rank,
-            "image": image_match.group(1) if image_match else "",
+            "image": html_lib.unescape(image_match.group(1)) if image_match else "",
             "name": strip_tags(match.group(3)),
             "meta": strip_tags(match.group(4)),
-            "rakuten": rakuten_match.group(1) if rakuten_match else "",
-            "search": search_match.group(1) if search_match else "",
+            "rakuten": html_lib.unescape(rakuten_match.group(1)) if rakuten_match else "",
+            "search": html_lib.unescape(search_match.group(1)) if search_match else "",
         })
     rows.sort(key=lambda row: row["rank"])
     return rows

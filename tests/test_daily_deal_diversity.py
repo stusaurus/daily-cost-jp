@@ -28,8 +28,10 @@ class DailyDealDiversityTests(unittest.TestCase):
         strict = broad[:3]
         first = diversify.select_diverse(strict, broad, datetime(2026, 9, 19, 6, tzinfo=JST))
         second = diversify.select_diverse(strict, broad, datetime(2026, 9, 20, 6, tzinfo=JST))
-        self.assertEqual(first[0]["id"], "cat0")
-        self.assertEqual(second[0]["id"], "cat0")
+        # The top slot now rotates too (production change on September 19).
+        self.assertNotEqual(first[0]["id"], second[0]["id"])
+        self.assertEqual(len(first), 5)
+        self.assertEqual(len(second), 5)
         self.assertNotEqual({r["id"] for r in first}, {r["id"] for r in second})
 
     def test_no_duplicate_categories(self):

@@ -364,7 +364,7 @@ def generate_category_pages(updated_at):
 </section>
 """
         else:
-            ranking = '<div class="notice">現在、安全に単価比較できる商品が不足しています。次回の自動更新で再試行します。</div>'
+            ranking = f'<div id="{category["id"]}" class="notice">現在、安全に単価比較できる商品が不足しています。次回の自動更新で再試行します。</div>'
 
         related = "".join(
             f'<a class="category-page-link" href="../{other["id"]}/">{other["emoji"]} {core.html.escape(other["name"])}</a>'

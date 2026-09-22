@@ -159,7 +159,7 @@ def decision_markup(benchmarks):
     <button class="decision-button" id="judge-button" type="button">買いか判定する</button>
   </div>
   <div class="decision-result" id="judge-result" aria-live="polite"></div>
-  <p class="decision-note">※「買い／見送り」は当サイトが取得した今日の楽天市場・送料込み比較候補を基準にした目安です。市場全体の最安値を保証するものではありません。</p>
+  <p class="decision-note">※「買い／見送り」は取得できた楽天・送料込み候補に対する目安です。洗剤の濃縮度、トイレットペーパーの長さ・重ね数、ティッシュの組数などが違う場合は単位をそろえても単純比較できません。同じ商品の比較もご利用ください。市場全体の最安値を保証するものではありません。</p>
 </section>
 <script>
 (() => {{

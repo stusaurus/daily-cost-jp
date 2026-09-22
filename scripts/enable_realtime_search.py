@@ -8,6 +8,8 @@ if not PAGE.exists():
     raise SystemExit("site/products/index.html not found")
 
 html = PAGE.read_text(encoding="utf-8")
+offer_guard = Path(__file__).with_name("offer_validation.js").read_text(encoding="utf-8")
+html = html.replace("</head>", '<script id="offer-validation">' + offer_guard + '</script>\n</head>', 1)
 
 # The static shell installs a result-click listener too. The realtime listener
 # below replaces it and retains the same event with verified shipping details.
@@ -21,6 +23,10 @@ if removed != 1:
 html = html.replace("<span class=\"eyebrow\">毎朝自動更新</span>", "<span class=\"eyebrow\">楽天からリアルタイム検索</span>")
 html = html.replace("本日の検索対象：0製品", "商品名を入力して検索してください")
 html = html.replace("本日の検索対象：", "今日のおすすめ：")
+html = html.replace(
+    "※表示する「最低価格」は楽天の商品価格ナビ製品検索APIの購入可能な最低価格（中古を除く値を優先）です。送料・クーポン・ポイント条件は含めていないため、最終的な支払額はリンク先で必ず確認してください。",
+    "※送料込み価格は販売条件を確認できた候補に限り表示します。容量や個数を選ぶ商品は、楽天で購入条件と総額を確認してください。クーポン・ポイント還元は表示価格に含めていません。"
+)
 html = html.replace(
     "現在は日用品カテゴリから毎朝取得した製品スナップショットを検索しています。",
     "検索時に楽天の商品価格ナビと楽天市場へ問い合わせ、その時点で取得できる製品候補と送料込み価格をまとめて確認します。"
@@ -112,18 +118,18 @@ script = f"""
       const quantity = p.sale_quantity_label ? `${{esc(p.sale_quantity_label)}}・` : '商品価格 ';
       priceHtml = `${{quantity}}${{yen(includedPrice)}} <small>（送料込み）</small>`;
       detail = `<div class="shipping-price-note">${{shop ? shop.slice(1) : '楽天市場で確認できた購入候補'}}</div>`;
-      button = 'この価格で楽天へ';
+      button = '楽天でこの商品の最新価格を見る';
     }} else if (p.shipping_lookup_pending) {{
       priceHtml = '<span class="shipping-price-pending">送料込み価格を追加確認中…</span>';
       detail = '<div class="shipping-price-note">JANコードなどで同一商品を確認しています</div>';
       button = '楽天で価格を確認';
     }} else {{
       priceHtml = '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
-      detail = '<div class="shipping-price-note">価格は楽天サイトでご確認ください</div>';
-      button = '楽天で価格を確認';
+      detail = `<div class="shipping-price-note">${{p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : '価格は楽天サイトでご確認ください'}}</div>`;
+      button = '楽天で容量と価格を確認';
     }}
 
-    return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{displayImage ? `<img src="${{esc(displayImage)}}" alt="" loading="lazy">` : ''}}${{imageBadge}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
+    return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{displayImage ? `<img src="${{esc(displayImage)}}" alt="" width="128" height="128" loading="lazy" decoding="async">` : ''}}${{imageBadge}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
   }}
 
   function updateStatus() {{
@@ -165,6 +171,8 @@ script = f"""
           target.shipping_included_image = data.shipping_included_image || '';
           target.shipping_match_score = Number(data.shipping_match_score || 0);
           target.sale_quantity_label = data.sale_quantity_label || '';
+          target.shipping_match_name = data.shipping_match_name || '';
+          Object.assign(target, window.dailyCostVerifiedOffer(target));
         }}
         target.shipping_lookup_pending = false;
         patchCard(target.product_id);
@@ -205,7 +213,7 @@ script = f"""
     setBusy(true);
     try {{
       const data = await fetchPage(currentTerm, currentPage);
-      let rows = Array.isArray(data.products) ? data.products : [];
+      let rows = Array.isArray(data.products) ? data.products.map(window.dailyCostVerifiedOffer) : [];
       let fallbackCount = 0;
       rows = rows.map((p) => {{
         const needsFallback = !Number(p.shipping_included_price || 0) && fallbackCount < FALLBACK_LIMIT;

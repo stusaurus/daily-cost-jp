@@ -28,6 +28,9 @@ if 'id="exact-store-compare"' in markup:
     print("Exact store comparison already present")
     raise SystemExit(0)
 
+offer_guard = Path(__file__).with_name("offer_validation.js").read_text(encoding="utf-8")
+markup = markup.replace("</head>", '<script id="offer-validation">' + offer_guard + '</script>\n</head>', 1)
+
 css = r'''
 .exact-compare{margin:14px 0 20px;padding:16px;border:1px solid #d9e3dc;border-radius:18px;background:linear-gradient(180deg,#f7fff9 0%,#fff 100%);box-shadow:0 5px 18px rgba(34,80,49,.05)}
 .exact-kicker{font-size:11px;font-weight:900;color:#22663a;letter-spacing:.03em}.exact-compare h2{font-size:22px;line-height:1.28;margin:3px 0 5px}.exact-lead{margin:0 0 12px;color:#5f6368;font-size:12px;line-height:1.65}.exact-fields{display:grid;grid-template-columns:1fr 120px;gap:8px}.exact-fields input{min-width:0;height:46px;border:1px solid #cfd9d2;border-radius:11px;background:#fff;padding:0 11px;font-size:16px}.exact-fields button{grid-column:1/-1;min-height:46px;border:0;border-radius:11px;background:#22663a;color:#fff;font-size:14px;font-weight:900}.exact-guide{font-size:10px;color:#777;line-height:1.55;margin:8px 0 0}.exact-status{font-size:11px;color:#5f6368;margin-top:10px}.exact-candidates{display:grid;gap:9px;margin-top:10px}.exact-candidate{display:grid;grid-template-columns:70px 1fr;gap:10px;padding:10px;border:1px solid #e0e6e2;border-radius:13px;background:#fff}.exact-img{width:70px;height:70px;border:1px solid #e5e7eb;border-radius:10px;display:grid;place-items:center;overflow:hidden}.exact-img img{width:100%;height:100%;object-fit:contain}.exact-name{font-size:12px;font-weight:800;line-height:1.45;margin-bottom:4px}.exact-brand{font-size:9px;color:#777}.exact-price{font-size:17px;font-weight:900;color:#22663a}.exact-price small{font-size:9px;color:#777}.exact-choose{width:100%;margin-top:7px;min-height:36px;border:0;border-radius:9px;background:#252525;color:#fff;font-size:11px;font-weight:800}.exact-choose:disabled{background:#c4c8c5}.exact-result{display:none;margin-top:12px;padding:14px;border-radius:14px;background:#fff;border:1px solid #d8e4db}.exact-result.show{display:block}.exact-verdict{font-size:20px;font-weight:900;margin-bottom:6px}.exact-result p{font-size:11px;line-height:1.6;margin:4px 0}.exact-rakuten{display:flex;align-items:center;justify-content:center;min-height:42px;margin-top:10px;border-radius:10px;background:#b3261e;color:#fff;text-decoration:none;font-size:12px;font-weight:900}.exact-note{font-size:9px!important;color:#777}.exact-loading{padding:13px;border:1px dashed #ccd6cf;border-radius:12px;background:#fff;font-size:11px;color:#666}.exact-warning{margin-top:8px;padding:9px 10px;border-radius:10px;background:#fff8e8;border:1px solid #f0dfad;color:#725a18;font-size:10px;line-height:1.55}
@@ -135,12 +138,14 @@ section = f'''
     if (!response.ok) return p;
     const data = await response.json();
     if (data?.found && Number(data.shipping_included_price || 0) > 0) {{
-      return {{...p,
+      return window.dailyCostVerifiedOffer({{...p,
         shipping_included_price:Number(data.shipping_included_price),
         shipping_included_url:data.shipping_included_url || p.url,
         shipping_included_shop:data.shipping_included_shop || '',
-        shipping_included_image:data.shipping_included_image || ''
-      }};
+        shipping_included_image:data.shipping_included_image || '',
+        shipping_match_name:data.shipping_match_name || '',
+        sale_quantity_label:data.sale_quantity_label || ''
+      }});
     }}
     return p;
   }}
@@ -148,7 +153,7 @@ section = f'''
   function card(p, index) {{
     const price = Number(p.shipping_included_price || 0);
     const img = p.shipping_included_image || p.image || '';
-    return `<div class="exact-candidate"><div class="exact-img">${{img ? `<img src="${{esc(img)}}" alt="" loading="lazy">` : ''}}</div><div><div class="exact-brand">${{esc(p.brand || '')}}</div><div class="exact-name">${{esc(p.name || '')}}</div><div class="exact-price">${{price ? `${{yen(price)}} <small>送料込み確認済み</small>` : '<small>送料込み価格を確認できませんでした</small>'}}</div><button class="exact-choose" data-index="${{index}}" type="button" ${{price ? '' : 'disabled'}}>この商品と比較</button></div></div>`;
+    return `<div class="exact-candidate"><div class="exact-img">${{img ? `<img src="${{esc(img)}}" alt="" width="128" height="128" loading="lazy" decoding="async">` : ''}}</div><div><div class="exact-brand">${{esc(p.brand || '')}}</div><div class="exact-name">${{esc(p.name || '')}}</div><div class="exact-price">${{price ? `${{yen(price)}} <small>送料込み確認済み</small>` : '<small>送料込み価格を確認できませんでした</small>'}}</div><button class="exact-choose" data-index="${{index}}" type="button" ${{price ? '' : 'disabled'}}>この商品と比較</button></div></div>`;
   }}
 
   function render() {{
@@ -176,7 +181,7 @@ section = f'''
       const response = await fetch(`${{API}}?q=${{encodeURIComponent(term)}}&page=1&hits=20`, {{mode:'cors'}});
       if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
       const data = await response.json();
-      const all = Array.isArray(data.products) ? data.products : [];
+      const all = Array.isArray(data.products) ? data.products.map(window.dailyCostVerifiedOffer) : [];
       rows = all.filter(p => strictSameProduct(p, term)).slice(0, 6);
       for (let i = 0; i < rows.length; i += 1) {{
         if (!Number(rows[i].shipping_included_price || 0)) {{
@@ -209,7 +214,7 @@ section = f'''
     const url = p.shipping_included_url || p.url || '#';
     resultEl.className = 'exact-result show';
     const sale = p.sale_quantity_label ? `${{esc(p.sale_quantity_label)}}・` : '商品価格 ';
-    resultEl.innerHTML = `<div class="exact-verdict">${{verdict}}</div><p><strong>${{esc(p.name || '')}}</strong></p><p>店頭：<strong>${{yen(store)}}</strong> ／ 楽天：<strong>${{sale}}${{yen(rakuten)}}（送料込み）</strong></p><p class="exact-note">※画像・商品名・容量を見て同一商品であることを確認してください。楽天のポイント・クーポンは差額に含めていません。</p><a class="exact-rakuten" href="${{esc(url)}}" target="_blank" rel="nofollow sponsored noopener" data-exact-rakuten="1">楽天のこの商品を見る</a>`;
+    resultEl.innerHTML = `<div class="exact-verdict">${{verdict}}</div><p><strong>${{esc(p.name || '')}}</strong></p><p>店頭：<strong>${{yen(store)}}</strong> ／ 楽天：<strong>${{sale}}${{yen(rakuten)}}（送料込み）</strong></p><p class="exact-note">※画像・商品名・容量を見て同一商品であることを確認してください。楽天のポイント・クーポンは差額に含めていません。</p><a class="exact-rakuten" href="${{esc(url)}}" target="_blank" rel="nofollow sponsored noopener" data-exact-rakuten="1">楽天でこの商品の最新価格を見る</a>`;
     resultEl.scrollIntoView({{behavior:'smooth',block:'nearest'}});
     if (typeof window.gtag === 'function') window.gtag('event','same_product_compare_select',{{search_term:searchTerm,product_id:p.product_id||'',store_price:store,rakuten_shipping_price:rakuten,difference:store-rakuten}});
   }}
