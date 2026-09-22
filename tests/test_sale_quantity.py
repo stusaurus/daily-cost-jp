@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from sale_quantity import parse_sale_quantity, sale_quantity_for_item
+from sale_quantity import parse_sale_quantity, sale_quantity_for_item, ambiguous_quantity
 
 
 class SaleQuantityTests(unittest.TestCase):
@@ -34,6 +34,16 @@ class SaleQuantityTests(unittest.TestCase):
     def test_unit_price_consistency_is_required(self):
         self.assertIsNotNone(sale_quantity_for_item("水 500ml×24本", 1200, 10, "100ml"))
         self.assertIsNone(sale_quantity_for_item("水 500ml×24本", 1200, 20, "100ml"))
+
+    def test_selectable_packs_are_not_a_confirmed_sale_quantity(self):
+        for title in ("【選べる1～4個】アタックZERO 2100g", "洗剤2580g×6袋 4袋 2袋", "綿棒100本 選べる1〜3個セット", "【1個/3個/6個】洗剤2100g"):
+            with self.subTest(title=title):
+                self.assertTrue(ambiguous_quantity(title))
+                self.assertIsNone(parse_sale_quantity(title))
+
+    def test_explicit_pack_label(self):
+        self.assertEqual(self.label("【6個セット】さらさ1490g"), "1490g×6個")
+        self.assertIsNotNone(sale_quantity_for_item("【6個】さらさ1490g", 8280, 8280/89.4, "100g"))
 
 
 if __name__ == "__main__":

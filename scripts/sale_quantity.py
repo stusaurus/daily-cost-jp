@@ -20,6 +20,22 @@ def _number(value: str) -> str:
     return str(int(number)) if number.is_integer() else f"{number:g}"
 
 
+def ambiguous_quantity(title: str) -> bool:
+    """A listing's minimum price cannot safely be assigned to a selectable pack."""
+    text = re.sub(r"(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?", "", normalize(title))
+    if re.search(r"(?:種類|タイプ|サイズ|容量|個数)を選べる|選べる.{0,12}(?:\d|個数|容量|サイズ|種類|タイプ)", text):
+        return True
+    if re.search(rf"\d+\s*(?:{CONTAINER_UNITS})?\s*[~〜～/／]\s*\d+\s*(?:{CONTAINER_UNITS})", text):
+        return True
+    # e.g. 2580g×6袋 4袋 2袋: one price, three possible sale quantities.
+    if re.search(r"\d\s*(?:kg|g|ml|l)", text, re.I):
+        for unit in ("袋", "本", "個", "パック"):
+            counts = re.findall(rf"(\d+)\s*{unit}", text)
+            if len(set(counts)) > 1:
+                return True
+    return False
+
+
 def _consistent(price, unit_price, expected: float) -> bool:
     try:
         actual = float(price) / float(unit_price)
@@ -37,7 +53,7 @@ def parse_sale_quantity(title: str):
     ``metric_quantity`` is expressed in the same units used by unit_price.
     """
     text = normalize(title)
-    if re.search(r"(?:種類|タイプ|サイズ|容量|個数)を選べる", text):
+    if ambiguous_quantity(title):
         return None
 
     measure = list(re.finditer(
@@ -53,23 +69,29 @@ def parse_sale_quantity(title: str):
         m = measure[0]
         amount = float(m.group("n")); unit = m.group("u").lower()
         multiplier = int(m.group("m") or 1)
+        container = m.group("c")
+        # Standalone explicit pack labels, e.g. 【6個セット】1490g.
+        if not m.group("m"):
+            packs = re.findall(rf"[【\[(]\s*(\d+)\s*({CONTAINER_UNITS})(?:セット|入り)?\s*[】\])]", text)
+            if len(packs) == 1:
+                multiplier, container = int(packs[0][0]), packs[0][1]
         if amount <= 0 or multiplier <= 0:
             return None
         shown_unit = "L" if unit == "l" else unit
         label = f"{_number(m.group('n'))}{shown_unit}"
-        if m.group("m"):
-            container = "ロール" if m.group("c") == "巻" else m.group("c")
+        if container:
+            container = "ロール" if container == "巻" else container
             label += f"×{multiplier}{container}"
         base = amount * multiplier * (1000 if unit in ("kg", "l") else 1)
         return {
             "label": label,
             "kind": "weight" if unit in ("kg", "g") else "volume",
             "base_amount": base,
-            "confidence": 0.99 if m.group("m") else 0.90,
+            "confidence": 0.99 if container else 0.90,
         }
 
     compound = list(re.finditer(
-        rf"(?<![A-Za-z0-9.])(?P<n>\d+)\s*(?P<u>{COUNT_UNITS})\s*x\s*"
+        rf"(?<![A-Za-z0-9.])(?P<n>\d+)\s*(?P<u>{COUNT_UNITS})(?:入り|入)?\s*x\s*"
         rf"(?P<m>\d+)\s*(?P<c>{CONTAINER_UNITS})", text, re.IGNORECASE,
     ))
     if compound:

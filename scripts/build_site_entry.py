@@ -9,7 +9,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import build_site as core
-from sale_quantity import purchase_summary
+from sale_quantity import purchase_summary, ambiguous_quantity
 
 
 # Rakuten Ichiba Item Search API output semantics (2026-07-01):
@@ -72,6 +72,10 @@ def result_from_total(kind, total, category_kind, confidence, evidence):
 def safer_parse_measure_quantity(title, category_kind):
     """Reject variant titles unless all visible capacity evidence agrees."""
     text = core.normalize_text(title)
+    if ambiguous_quantity(title):
+        return None
+    # Stock/offer limits (先着100本限定) are not the quantity being sold.
+    text = re.sub(r"(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?", "", text)
 
     explicit_matches = list(re.finditer(
         r"(\d+(?:\.\d+)?)\s*(kg|g|ml|l)\s*x\s*(\d+)",
@@ -152,10 +156,12 @@ def safer_parse_measure_quantity(title, category_kind):
 
 def safer_parse_count_quantity(title, allowed_units):
     text = core.normalize_text(title)
+    if ambiguous_quantity(title):
+        return None
     units_re = "|".join(re.escape(unit) for unit in allowed_units)
 
     explicit_matches = list(re.finditer(
-        rf"(\d+(?:\.\d+)?)\s*({units_re})\s*x\s*(\d+)",
+        rf"(\d+(?:\.\d+)?)\s*({units_re})(?:入り|入)?\s*x\s*(\d+)",
         text,
         flags=re.IGNORECASE,
     ))
@@ -196,6 +202,8 @@ def safer_parse_count_quantity(title, allowed_units):
 
 
 def category_is_suitable(category_id, title):
+    if ambiguous_quantity(title):
+        return False
     ambiguous_variant_terms = (
         "種類を選べる",
         "タイプを選べる",

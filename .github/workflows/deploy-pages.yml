@@ -57,6 +57,9 @@ on:
       - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
       - "scripts/analytics_runtime.js"
+      - "scripts/offer_validation.js"
+      - "scripts/improve_purchase_pages.py"
+      - "scripts/validate_generated_site.py"
       - "scripts/add_search_landing_pages.py"
       - ".github/workflows/deploy-pages.yml"
 
@@ -181,6 +184,9 @@ jobs:
       - name: Add search landing pages
         run: python scripts/add_search_landing_pages.py
 
+      - name: Improve buying guidance, mobile CTAs and sitemap
+        run: python scripts/improve_purchase_pages.py
+
       - name: Add back-to-top button to all pages
         run: python scripts/add_back_to_top.py
 
@@ -188,6 +194,9 @@ jobs:
         env:
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
         run: python scripts/add_analytics.py
+
+      - name: Validate generated links, metadata and analytics
+        run: python scripts/validate_generated_site.py
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

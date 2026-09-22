@@ -77,13 +77,36 @@ test('ordinary home navigation does not invent product-search attribution',()=>{
   const p=page('products/', '<a href="../">home</a>'); p.click('a');
   assert.equal(p.w.sessionStorage.getItem('daily_cost_feature_navigation_v1'),null);
 });
-test('operator flag enabled, persisted, disabled and never added for normal traffic',()=>{
+test('operator flag enabled, persisted and explicitly zero for normal traffic',()=>{
   for(const [path,opts,marked] of [['?test=1&utm_source=x',{},true],['today/',{test:true},true],['?test=0',{test:true},false],['',{},false],['?test=1',{blocked:true},true],['',{blocked:true},false]]) {
     const p=page(path,link(),opts); p.w.gtag('event','product_result_click',{}); p.click('a');
-    for(const e of p.events.filter(e=>e[0]==='event')) assert.equal(e[2].operator_test,marked?'1':undefined);
+    for(const e of p.events.filter(e=>e[0]==='event')) assert.equal(e[2].operator_test,marked?'1':'0');
     assert.equal(p.events.some(e=>e[0]==='set' && e[1].operator_test==='1'),marked);
+    assert.ok(p.events.some(e=>e[0]==='set' && e[1].operator_test===(marked?'1':'0')));
     assert.equal(new URL(p.w.location.href).searchParams.has('test'),false);
   }
+});
+test('operator status can be disabled and synchronizes already open tabs',()=>{
+  const p=page('?test=1',link());
+  p.w.document.dispatchEvent(new p.w.Event('DOMContentLoaded'));
+  assert.match(p.w.document.getElementById('operator-test-status').textContent,/ON/);
+  p.click('a');
+  assert.match(p.w.document.getElementById('operator-test-events').textContent,/affiliate_click.*operator_test=1/);
+  p.click('#operator-test-status button'); p.click('a');
+  assert.equal(p.affiliate().at(-1)[2].operator_test,'0');
+  assert.equal(p.w.document.getElementById('operator-test-status'),null);
+  p.w.localStorage.setItem('daily_cost_operator_test_v1','1');
+  p.w.dispatchEvent(new p.w.StorageEvent('storage',{key:'daily_cost_operator_test_v1',newValue:'1'}));
+  p.click('a');assert.equal(p.affiliate().at(-1)[2].operator_test,'1');
+});
+test('legacy events carry the same source and affiliate capture survives bubbling handlers',()=>{
+  const p=page('products/',link('product-result-link'));
+  p.w.gtag('event','product_result_click',{});
+  p.w.gtag('event','same_product_rakuten_click',{});
+  assert.equal(p.events.find(e=>e[1]==='product_result_click')[2].conversion_source,'product_search');
+  assert.equal(p.events.find(e=>e[1]==='same_product_rakuten_click')[2].conversion_source,'same_product_compare');
+  p.w.document.querySelector('a').addEventListener('click',e=>{e.preventDefault();e.stopPropagation();});
+  p.click('a'); assert.equal(p.affiliate().length,1);
 });
 test('external non-Rakuten and deceptive domains ignored; middle click counted',()=>{
   const p=page('', '<a id="bad" href="https://rakuten.co.jp.evil.test/">bad</a><a id="internal" href="today/">today</a>'+link('real'));
@@ -115,6 +138,7 @@ test('actual generated product page: search -> result -> ONE affiliate and ONE l
   }
   const affiliate=events.find(e=>e[1]==='affiliate_click')[2];
   assert.equal(affiliate.conversion_source,'product_search');
+  assert.equal(events.find(e=>e[1]==='product_result_click')[2].conversion_source,'product_search');
   assert.equal(affiliate.search_term,'ティッシュ');
   assert.equal(affiliate.shipping_included_price,1000);
   assert.deepEqual(errors,[]);
