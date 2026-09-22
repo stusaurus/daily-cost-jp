@@ -9,9 +9,14 @@
   let operator = false;
   let persistent = true;
   try { operator = localStorage.getItem(TEST_KEY) === '1'; }
-  catch (_) {
-    persistent = false;
-    try { operator = sessionStorage.getItem(TEST_KEY) === '1'; } catch (_) {}
+  catch (_) { persistent = false; }
+  // Some browsers allow reads but reject writes (quota/private storage).
+  // Read the tab fallback even when localStorage.getItem itself succeeds.
+  if (!operator) {
+    try {
+      operator = sessionStorage.getItem(TEST_KEY) === '1';
+      if (operator) persistent = false;
+    } catch (_) {}
   }
   if (params.get('test') === '1' || params.get('test') === '0') {
     operator = params.get('test') === '1';

@@ -12,6 +12,7 @@ function page(path = '', html = '', opts = {}) {
   const events = [];
   w.gtag = (...args) => events.push(args);
   if (opts.test) w.localStorage.setItem('daily_cost_operator_test_v1', '1');
+  if (opts.sessionTest) w.sessionStorage.setItem('daily_cost_operator_test_v1', '1');
   if (opts.nav) w.sessionStorage.setItem('daily_cost_feature_navigation_v1', JSON.stringify(opts.nav));
   if (opts.blocked) {
     for (const key of ['localStorage', 'sessionStorage']) Object.defineProperty(w, key, {get(){throw Error('blocked');}});
@@ -98,6 +99,13 @@ test('operator status can be disabled and synchronizes already open tabs',()=>{
   p.w.localStorage.setItem('daily_cost_operator_test_v1','1');
   p.w.dispatchEvent(new p.w.StorageEvent('storage',{key:'daily_cost_operator_test_v1',newValue:'1'}));
   p.click('a');assert.equal(p.affiliate().at(-1)[2].operator_test,'1');
+});
+test('tab fallback survives navigation when localStorage is readable but not writable',()=>{
+  const p=page('today/',link(),{sessionTest:true});
+  p.click('a'); assert.equal(p.affiliate()[0][2].operator_test,'1');
+  const off=page('?test=0',link(),{sessionTest:true});
+  off.click('a'); assert.equal(off.affiliate()[0][2].operator_test,'0');
+  assert.equal(off.w.sessionStorage.getItem('daily_cost_operator_test_v1'),null);
 });
 test('legacy events carry the same source and affiliate capture survives bubbling handlers',()=>{
   const p=page('products/',link('product-result-link'));
