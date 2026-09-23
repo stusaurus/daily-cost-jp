@@ -11,8 +11,12 @@ window.dailyCostVerifiedOffer = function(product) {
   const mixedForm = refill.test(title) && /本体/.test(title);
   const differentForm = (refill.test(wanted) && /本体/.test(title)) ||
     (/本体/.test(wanted) && refill.test(title));
+  // A seller may mention indoor drying as a benefit of standard detergent.
+  // Require a named type; a trailing "部屋干し 消臭 抗菌" is not identity evidence.
+  const indoorVariant = /部屋干し(?:専用|用|タイプ)|(?:zero|ゼロ|アタック\s*0|アリエール|トップ|ボールド)\s*(?:洗濯(?:用)?洗剤\s*)?部屋干し/.test(title);
   const differentType = Boolean(wanted && title) && (
-    [/ドラム/, /部屋干し/].some(type => type.test(wanted) !== type.test(title)) ||
+    /ドラム/.test(wanted) !== /ドラム/.test(title) ||
+    /部屋干し/.test(wanted) !== indoorVariant ||
     mixedForm || differentForm);
   const selectable = /(?:種類|タイプ|サイズ|容量|個数)を選べる|選べる.{0,12}(?:\d|個数|容量|サイズ|種類|タイプ)|\d+\s*(?:個|袋|本|箱|パック)?\s*[~〜～/／]\s*\d+\s*(?:個|袋|本|箱|パック)|\d+種から/.test(title);
   const capacities = [...title.matchAll(/(\d+(?:\.\d+)?)\s*(kg|g|ml|l)/g)].map(m => {
