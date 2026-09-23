@@ -17,6 +17,8 @@ on:
     paths:
       - "scripts/build_site.py"
       - "scripts/sale_quantity.py"
+      - "scripts/product_quality.py"
+      - "scripts/validate_product_quality.py"
       - "tests/test_sale_quantity.py"
       - "scripts/build_site_entry.py"
       - "scripts/build_site_final.py"
@@ -133,10 +135,10 @@ jobs:
       - name: Restore descriptive trend labels
         run: python scripts/improve_trend_labels.py
 
-      - name: Sync product search examples to current trends
+      - name: Show relevant daily-goods search examples
         run: python scripts/sync_trend_search_chips.py
 
-      - name: Feature realtime ranking on homepage
+      - name: Link to general ranking without off-topic homepage products
         run: python scripts/promote_home_ranking.py
 
       - name: Move homepage ranking below search and checker
@@ -197,6 +199,17 @@ jobs:
 
       - name: Validate generated links, metadata and analytics
         run: python scripts/validate_generated_site.py
+
+      - name: Validate all product recommendations before publishing
+        run: python scripts/validate_product_quality.py
+
+      - name: Save product quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-quality-report
+          path: quality-report.json
+          retention-days: 14
 
       - name: Configure Pages
         uses: actions/configure-pages@v5

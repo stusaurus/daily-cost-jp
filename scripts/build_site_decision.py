@@ -20,6 +20,7 @@ import re
 from pathlib import Path
 
 import build_site_growth as growth
+from product_quality import filter_items
 
 core = growth.core
 final = growth.final
@@ -54,7 +55,7 @@ def load_benchmarks():
     for category_id, data in categories_data.items():
         category = category_map.get(category_id)
         metric = data.get("metric")
-        items = data.get("items") or []
+        items = filter_items(category_id, data.get("items") or [])
         meta = INPUT_META.get(metric)
         if not category or not metric or not meta or not items:
             continue

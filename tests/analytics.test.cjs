@@ -152,3 +152,15 @@ test('actual generated product page: search -> result -> ONE affiliate and ONE l
   assert.deepEqual(errors,[]);
   dom.window.close();
 });
+
+test('daily-goods search example keeps product_search attribution and test flag',()=>{
+  const p=page('products/', '<button class="chip" data-q="アタックZERO" data-conversion-source="product_search">アタックZERO</button>'+link('product-result-link'),{test:true});
+  p.click('.chip');
+  p.w.gtag('event','realtime_product_search',{search_term:'アタックZERO'});
+  p.w.gtag('event','product_result_click',{});
+  p.click('a');
+  assert.equal(p.affiliate().length,1);
+  assert.equal(p.affiliate()[0][2].conversion_source,'product_search');
+  assert.equal(p.affiliate()[0][2].operator_test,'1');
+  assert.equal(p.events.find(e=>e[1]==='product_result_click')[2].conversion_source,'product_search');
+});

@@ -27,6 +27,12 @@ def ambiguous_quantity(title: str) -> bool:
         return True
     if re.search(rf"\d+\s*(?:{CONTAINER_UNITS})?\s*[~〜～/／]\s*\d+\s*(?:{CONTAINER_UNITS})", text):
         return True
+    if re.search(r"\d+(?:\.\d+)?\s*(?:kg|g|ml|l)\s*[~〜～/／]\s*\d", text, re.I):
+        return True
+    if re.search(rf"\d+(?:\s+\d+){{2,}}\s*(?:{COUNT_UNITS})", text):
+        return True  # e.g. 100 80 50 20枚: minimum price, several sale quantities.
+    if re.search(r"(?:容量|個数|サイズ|タイプ|種類).{0,8}選択|選択.{0,8}(?:容量|個数|サイズ)|\d+種から", text):
+        return True
     # e.g. 2580g×6袋 4袋 2袋: one price, three possible sale quantities.
     if re.search(r"\d\s*(?:kg|g|ml|l)", text, re.I):
         for unit in ("袋", "本", "個", "パック"):

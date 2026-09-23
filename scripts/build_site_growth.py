@@ -14,6 +14,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import build_site_final as final
+from product_quality import filter_items
 
 app = final.app
 core = final.core
@@ -140,67 +141,7 @@ core.CATEGORIES.extend(
 core.METRIC_LABELS.update({"sheet": "1枚", "piece": "1本"})
 
 
-REQUIRED_TERMS = {
-    "softener": (("柔軟剤",),),
-    "shampoo": (("シャンプー",),),
-    "conditioner": (("コンディショナー", "リンス"),),
-    "body-soap": (("ボディソープ", "ボディウォッシュ"),),
-    "hand-soap": (("ハンドソープ",),),
-    "bath-cleaner": (("お風呂", "風呂", "バスクリーナー", "バスマジックリン"),),
-    "toilet-cleaner": (("トイレ",), ("洗剤", "クリーナー", "マジックリン", "サンポール")),
-    "laundry-bleach": (("漂白剤",),),
-    "mouthwash": (("マウスウォッシュ", "洗口液"),),
-    "paper-towel": (("ペーパータオル",),),
-    "garbage-bag-45l": (("45L", "45l"), ("ゴミ袋", "ごみ袋", "ポリ袋")),
-    "mask": (("マスク",),),
-    "toothbrush": (("歯ブラシ",),),
-    "cotton-swab": (("綿棒",),),
-    "floor-sheet": (("フローリング",), ("シート",)),
-}
-
-EXCLUSIONS = {
-    "softener": ("芳香剤", "ビーズのみ", "ケース"),
-    "shampoo": ("コンディショナー", "トリートメント", "リンス", "ブラシ", "ボトルのみ"),
-    "conditioner": ("シャンプー&", "シャンプー＆", "トリートメント", "ブラシ", "ボトルのみ"),
-    "body-soap": ("シャンプー", "ハンドソープ", "スポンジ", "タオル"),
-    "hand-soap": ("ディスペンサー", "ホルダー", "ボトルのみ"),
-    "bath-cleaner": ("ブラシ", "スポンジ", "バスソルト", "入浴剤", "防カビ剤"),
-    "toilet-cleaner": ("ブラシ", "便座シート", "トイレットペーパー", "収納"),
-    "laundry-bleach": ("キッチン", "台所", "食器", "排水口"),
-    "mouthwash": ("歯磨き粉", "歯ブラシ", "舌ブラシ", "ケース"),
-    "paper-towel": ("ホルダー", "ケース", "スタンド", "ディスペンサー"),
-    "garbage-bag-45l": ("ゴミ箱", "ごみ箱", "ホルダー", "スタンド"),
-    "mask": ("ケース", "ストラップ", "スプレー", "マスクフレーム", "収納"),
-    "toothbrush": ("電動", "替えブラシ", "ケース", "ホルダー", "スタンド"),
-    "cotton-swab": ("ケース", "容器", "綿棒入れ"),
-    "floor-sheet": ("ワイパー本体", "モップ本体", "ホルダー", "収納", "フロアタイル", "床材", "置くだけ", "置き敷き", "接着剤", "大理石", "石目", "床 タイル"),
-}
-
-_original_category_is_suitable = app.category_is_suitable
-
-
-def growth_category_is_suitable(category_id, title):
-    if not _original_category_is_suitable(category_id, title):
-        return False
-    text = core.normalize_text(title)
-
-    for group in REQUIRED_TERMS.get(category_id, ()):
-        if not any(term in text for term in group):
-            return False
-
-    if any(term in text for term in EXCLUSIONS.get(category_id, ())):
-        return False
-
-    # Avoid obvious mixed bundles where a single unit price would be misleading.
-    mixed_bundle_terms = ("選べるセット", "お試しセット", "福袋", "詰め合わせ", "アソート")
-    if any(term in text for term in mixed_bundle_terms):
-        return False
-
-    return True
-
-
-app.category_is_suitable = growth_category_is_suitable
-
+# All 21 category rules live in product_quality.py. No downstream override.
 
 GROWTH_CSS = r"""
     .category-pages-block { margin: 18px 0 24px; }
@@ -339,7 +280,7 @@ def generate_category_pages(updated_at):
     for category in core.CATEGORIES:
         category_data = categories_data.get(category["id"], {})
         metric = category_data.get("metric")
-        items = category_data.get("items") or []
+        items = filter_items(category["id"], category_data.get("items") or [])
         directory = core.OUTPUT_DIR / "categories" / category["id"]
         directory.mkdir(parents=True, exist_ok=True)
         canonical = core.SITE_URL + f"categories/{category['id']}/"
@@ -382,7 +323,7 @@ def generate_category_pages(updated_at):
   </div>
 </header>
 <main class="container">
-  <div class="category-summary">商品名から数量を高い確度で読み取れる商品のみ掲載しています。クーポン・一部ポイント還元は単価に含めていません。購入前に楽天市場の商品ページで最新情報をご確認ください。</div>
+  <div class="category-summary">用途・数量・送料込み価格を確認できる商品のみ掲載しています。空容器や周辺用品、容量・個数が選択式で確定できない商品は除外するため、5件未満になる場合があります。クーポン・一部ポイント還元は単価に含めていません。購入前に楽天市場の商品ページで最新情報をご確認ください。</div>
   {ranking}
   <section class="related-categories">
     <h2>ほかの日用品も比較</h2>

@@ -9,6 +9,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from sale_quantity import ambiguous_quantity, normalize, purchase_summary
+from product_quality import filter_items
 
 SITE = Path('site')
 BASE = 'https://stusaurus.github.io/daily-cost-jp/'
@@ -66,7 +67,7 @@ def unit_details(category_id, item):
 
 def price_answer(category_id, data):
     name, guide = PRIORITY[category_id]
-    items = [p for p in data.get('items', []) if float(p.get('unit_price') or 0) > 0 and not ambiguous_quantity(p.get('name', ''))]
+    items = filter_items(category_id, data.get('items', []))
     metric = {'100g': '100g', '100ml': '100ml', 'roll': '1ロール', 'box': '1箱', 'pack': '1パック'}.get(data.get('metric'), '同じ単位')
     if items:
         prices = [float(p['unit_price']) for p in items]
@@ -84,7 +85,7 @@ def price_answer(category_id, data):
     answers = {
         'laundry': ('洗濯洗剤はどこが安い？今日の比較価格', '同じ銘柄・タイプなら、店頭の税込価格を容量で割り、下の楽天送料込み単価と比べると買い先を選べます。濃縮度が違う洗剤同士は100g単価だけで決めず、1回使用量もそろえてください。'),
         'toilet-paper': ('トイレットペーパーはいくらなら安い？', '1ロールの長さが違うと、ロール単価の安さが逆転します。シングル同士・ダブル同士で「支払総額 ÷ 総メートル数」を比較してください。下のランキングは1ロール単価順で、長さは統一していません。'),
-        'tissue': ('ティッシュはいくらなら安い？今日の値段比較', '同じ組数なら1箱単価で比較できます。200組と250組など組数が違う場合は「支払総額 ÷ 箱数 ÷ 1箱の組数 × 100」で100組単価を比較してください。400枚（200組）は200組として計算します。'),
+        'tissue': ('ティッシュはどこが安い？今日の値段比較', '同じ組数なら1箱単価で比較できます。200組と250組など組数が違う場合は「支払総額 ÷ 箱数 ÷ 1箱の組数 × 100」で100組単価を比較してください。400枚（200組）は200組として計算します。'),
     }
     heading, answer = answers[category_id]
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
@@ -112,6 +113,14 @@ def enhance_priority(payload):
         marker = f'<details data-purchase-faq><summary>{q}</summary><p>{a}</p></details>'
         if 'data-purchase-faq' not in markup:
             markup = markup.replace('<section class="category-seo-faq" id="category-faq">', '<section class="category-seo-faq" id="category-faq">' + marker, 1)
+        demand_faq = {
+            'laundry': ('安い店ランキングとして使えますか？', '掲載商品を送料込み単価順に比較する一覧です。店舗全体の安さを順位付けしたものではありません。同じタイプ・容量・販売個数の商品を選び、商品カードのショップ名と支払総額を確認してください。'),
+            'tissue': ('ティッシュはどこで買うのが安いですか？', '同じ組数・箱数なら、店頭の税込価格と掲載商品の送料込み総額を比較できます。通販のまとめ買いは1箱単価が低くても支払総額が大きくなるため、保管場所と使う量も確認してください。'),
+            'toilet-paper': ('トイレットペーパーの最安値を探す注意点は？', 'シングルとダブル、通常巻きと長巻きを分けて比べます。この一覧では用途や販売数量が曖昧な候補を除外していますが、全店舗を網羅した最安値ではありません。最新価格と配送先の送料を楽天で確認してください。'),
+        }
+        dq, da = demand_faq[category_id]
+        if 'data-demand-faq' not in markup:
+            markup = markup.replace('<section class="category-seo-faq" id="category-faq">', '<section class="category-seo-faq" id="category-faq"><details data-demand-faq><summary>' + dq + '</summary><p>' + da + '</p></details>', 1)
         path.write_text(markup, encoding='utf-8')
 
 
@@ -122,7 +131,7 @@ def build_attack_guide(payload):
     title = 'アタックZEROはどこが安い？詰め替えの単価・送料込み価格比較'
     desc = 'アタックゼロの通常用・ドラム式用、容量・個数の違いをそろえて価格比較。100g単価の計算と楽天の最新価格検索で、店頭とどちらで買うか判断できます。'
     rows = []
-    for p in payload.get('categories', {}).get('laundry', {}).get('items', []):
+    for p in filter_items('laundry', payload.get('categories', {}).get('laundry', {}).get('items', [])):
         key = normalize(p.get('name', '')).lower().replace(' ', '')
         if ('アタックzero' in key or 'アタックゼロ' in key) and p.get('metric') == '100g' and not ambiguous_quantity(p['name']) and p.get('sale_quantity_label'):
             rows.append(p)

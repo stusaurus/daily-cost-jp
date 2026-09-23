@@ -114,7 +114,7 @@ def render_png(payload: dict) -> None:
 
     if jp:
         brand = "日用品コスパ比較"
-        title = "今日の買い候補5選"
+        title = f"今日の買い候補{len(payload.get('items') or [])}選" if payload.get("items") else "今日の買い候補"
         date_text = f"{now.year}年{now.month}月{now.day}日 更新"
         footer = "楽天送料込み・単価換算で毎朝比較"
         fallback_message = "本日の比較データを更新しました"

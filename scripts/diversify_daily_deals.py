@@ -92,9 +92,6 @@ def main() -> None:
         broad = candidate_rows(payload, FALLBACK_MIN_DISCOUNT)
         used_min_discount = FALLBACK_MIN_DISCOUNT
 
-    if not broad:
-        print("No safe daily deals available for diversified selection")
-        return
 
     now = datetime.now(JST)
     rows = select_diverse(strict, broad, now)
