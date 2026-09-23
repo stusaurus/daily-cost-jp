@@ -25,6 +25,7 @@ test('same capacity cannot hide a different detergent type or container',()=>{
     ['アタックZERO 洗濯洗剤 本体(400g)', 'アタックZERO ドラム式専用 本体400g'],
     ['アタックZERO 部屋干し 本体380g', 'アタックZERO 本体380g'],
     ['アタックZERO 本体380g', 'アタックZERO 部屋干し 本体380g'],
+    ['アタックZERO 部屋干し 詰替2100g', 'アタックZERO 詰め替え2100g 業務用洗濯洗剤 部屋干し 消臭 抗菌'],
     ['キレイキレイ ハンドソープ つめかえ450ml', 'キレイキレイ ハンドソープ 本体450ml'],
     ['キレイキレイ ハンドソープ 本体450ml', 'キレイキレイ ハンドソープ 詰替450ml'],
     ['アタックZERO 本体400g', 'アタックZERO 本体400g+詰め替え400gセット'],
@@ -46,6 +47,7 @@ test('matching types keep verified affiliate offers, including after fallback',(
     ['アタックZERO ドラム式専用 本体400g', '花王 アタックZERO ドラム式 本体400g'],
     ['アタックZERO 本体400g', '花王 アタックZERO ワンハンド 本体400g'],
     ['アタックZERO 部屋干し 詰替2100g', 'アタックZERO 部屋干し つめかえ2100g'],
+    ['アタックZERO 詰め替え2100g', '【大容量】 アタックZERO 詰め替え 2100g 花王 アタック ZERO ゼロ 液体 洗濯洗剤 アタックゼロ アタックゼロ詰め替え 業務用洗濯洗剤 部屋干し 消臭 抗菌 防臭 詰替 アタック0 液体洗剤 日用品 高濃度'],
     ['キレイキレイ 本体450ml','キレイキレイ ハンドソープ 本体450ml'],
   ]) {
     const result=w.dailyCostVerifiedOffer({name,shipping_match_name,shipping_included_price:2000,shipping_included_url:'https://hb.afl.rakuten.co.jp/hgc/test',offer_type_mismatch:true,offer_needs_selection:true});
