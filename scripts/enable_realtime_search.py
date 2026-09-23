@@ -125,7 +125,7 @@ script = f"""
       button = '楽天で価格を確認';
     }} else {{
       priceHtml = '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
-      detail = `<div class="shipping-price-note">${{p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : '価格は楽天サイトでご確認ください'}}</div>`;
+      detail = `<div class="shipping-price-note">${{p.offer_type_mismatch ? '用途・タイプが一致する購入候補を確認できないため、価格を表示していません' : p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : '価格は楽天サイトでご確認ください'}}</div>`;
       button = '楽天で容量と価格を確認';
     }}
 
