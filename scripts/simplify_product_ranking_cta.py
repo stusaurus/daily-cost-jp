@@ -29,14 +29,9 @@ def main():
     if TRENDS.exists():
         rank11_available = 'id="rank-11"' in TRENDS.read_text(encoding="utf-8")
 
-    if rank11_available:
-        description = 'トップページに1位〜10位を掲載中。続きは11位〜50位まで確認できます。'
-        href = '../trends/#rank-11'
-        label = '11位〜50位を見る →'
-    else:
-        description = '楽天総合リアルタイムランキングを確認できます。'
-        href = '../trends/'
-        label = 'ランキングを見る →'
+    description = '日用品以外も含む楽天市場全体の人気商品は、専用ページで確認できます。'
+    href = '../trends/'
+    label = '楽天総合ランキングTOP50を見る →'
 
     block = f'''<section id="product-ranking-cta" style="margin:24px 0 8px;padding:14px 16px;border:1px solid #e7e1dc;border-radius:16px;background:#fff">
   <strong style="display:block;font-size:14px;color:#252525">🔥 楽天総合リアルタイムランキング</strong>

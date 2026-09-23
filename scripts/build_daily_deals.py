@@ -14,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from sale_quantity import purchase_summary
+from product_quality import filter_items
 from x_post_strategy import choose_variant, strategy_version
 
 SITE = "https://stusaurus.github.io/daily-cost-jp/"
@@ -31,7 +32,7 @@ METRIC_LABELS = {
     "100ml": "100ml",
     "1L": "1L",
     "sheet": "1枚",
-    "piece": "1個",
+    "piece": "1本",
 }
 
 
@@ -51,7 +52,7 @@ def money(value: float) -> str:
 
 
 def choose_category(category_id: str, category: dict, min_discount: float = 8.0, max_discount: float = 55.0):
-    raw_items = category.get("items") or []
+    raw_items = filter_items(category_id, category.get("items") or [])
     valid = []
     for item in raw_items:
         unit_price = fnum(item.get("unit_price"))
@@ -145,6 +146,8 @@ def build_rows(payload: dict):
 
 def render_page(rows: list[dict], now: datetime) -> str:
     date_ja = f"{now.year}年{now.month}月{now.day}日"
+    title = f"今日の買い候補{len(rows)}選" if rows else "今日の買い候補"
+    empty_notice = '' if rows else '<p>現在、品質条件を満たす買い候補が不足しています。推測の商品は掲載せず、次回更新で再確認します。</p>'
     cards = []
     schema_items = []
     for position, row in enumerate(rows, start=1):
@@ -209,11 +212,11 @@ def render_page(rows: list[dict], now: datetime) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>今日の買い候補5選｜楽天送料込み単価比較 {date_ja}</title>
+<title>{title}｜楽天送料込み単価比較 {date_ja}</title>
 <meta name="description" content="{date_ja}に取得した楽天市場の日用品データから、送料込み・同一単位で比較できる候補を自動分析。極端な外れ値を除き、中央値より安い買い候補を掲載します。">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="{SITE}today/">
-<meta property="og:title" content="今日の買い候補5選｜{date_ja}">
+<meta property="og:title" content="{title}｜{date_ja}">
 <meta property="og:description" content="楽天市場の日用品を送料込み・単価換算で毎朝自動比較。">
 <meta property="og:url" content="{SITE}today/">
 <script type="application/ld+json">{schema}</script>
@@ -223,8 +226,8 @@ def render_page(rows: list[dict], now: datetime) -> str:
 </style>
 </head>
 <body>
-<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">📅 毎朝データから自動更新</span><h1>今日の買い候補5選</h1><p class="lead">楽天市場の日用品21カテゴリを送料込み・同一単位で比較。今日の取得データから、差が大きく信頼性の高い候補だけを見やすくまとめています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
-<main class="wrap"><div class="method">信頼性優先：単価計算の信頼度が高い商品だけを使い、極端に安すぎる単独データは外れ値として自動除外します。クーポン・ポイントは比較に含めません。</div>{''.join(cards)}<p class="footnote">※「安い」は当サイトが当日取得できた楽天市場の比較候補内での目安です。市場全体の最安値を保証するものではありません。当サイトは楽天アフィリエイトを利用しています。</p></main>
+<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">📅 毎朝データから自動更新</span><h1>{title}</h1><p class="lead">楽天市場の日用品21カテゴリを送料込み・同一単位で比較。今日の取得データから、差が大きく信頼性の高い候補だけを見やすくまとめています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
+<main class="wrap"><div class="method">信頼性優先：単価計算の信頼度が高い商品だけを使い、極端に安すぎる単独データは外れ値として自動除外します。クーポン・ポイントは比較に含めません。</div>{empty_notice}{''.join(cards)}<p class="footnote">※「安い」は当サイトが当日取得できた楽天市場の比較候補内での目安です。市場全体の最安値を保証するものではありません。当サイトは楽天アフィリエイトを利用しています。</p></main>
 </body></html>'''
 
 
@@ -248,7 +251,7 @@ def build_social(rows: list[dict], now: datetime):
         "送料込み・単価換算で比較しました👇",
         "店頭価格と比べる前の目安に👇",
         "同じ量あたりの価格で比べるとこんな結果👇",
-        "今日の5選と比較根拠はこちら👇",
+        "今日の買い候補と比較根拠はこちら👇",
         "買う前に単価だけ確認したいときはこちら👇",
     ]
 
@@ -263,7 +266,7 @@ def build_social(rows: list[dict], now: datetime):
         "date": now.date().isoformat(),
         "generated_at": now.isoformat(),
         "url": f"{SITE}today/",
-        "text": text,
+        "text": text if rows else "",
         "items": rows,
         "copy_variant": variant,
         "strategy_version": strategy_version(),
@@ -271,17 +274,21 @@ def build_social(rows: list[dict], now: datetime):
 
 
 def inject_home(rows: list[dict], now: datetime):
-    if not HOME.exists() or not rows:
+    if not HOME.exists():
         return
     markup = HOME.read_text(encoding="utf-8")
     import re
     markup = re.sub(r'<section id="today-deals-entry".*?</section>\s*', '', markup, flags=re.DOTALL)
+    if not rows:
+        HOME.write_text(markup, encoding='utf-8')
+        return
     top = rows[0]
+    title = f"今日の買い候補{len(rows)}選"
     block = f'''<section id="today-deals-entry" style="margin:12px 0 20px;padding:15px;border:1px solid #ecd8cf;border-radius:17px;background:linear-gradient(180deg,#fff8f5,#fff)">
   <div style="font-size:10px;font-weight:900;color:#b3261e">📅 {now.month}/{now.day} 毎朝自動更新</div>
-  <strong style="display:block;margin-top:2px;font-size:16px">今日の買い候補5選</strong>
-  <p style="margin:4px 0 9px;font-size:11px;color:#6b7280">いま最も差が大きいのは {html.escape(top['name'])}。比較候補の中央値より約{top['discount']:.0f}%安い候補があります。</p>
-  <a href="today/" style="display:block;padding:10px 12px;border-radius:10px;background:#b3261e;color:#fff;text-align:center;text-decoration:none;font-size:11px;font-weight:900">今日の5選を見る →</a>
+  <strong style="display:block;margin-top:2px;font-size:16px">{title}</strong>
+  <p style="margin:4px 0 9px;font-size:11px;color:#6b7280">今回の注目は {html.escape(top['name'])}。比較候補の中央値より約{top['discount']:.0f}%安い候補があります。</p>
+  <a href="today/" style="display:block;padding:10px 12px;border-radius:10px;background:#b3261e;color:#fff;text-align:center;text-decoration:none;font-size:11px;font-weight:900">今日の{len(rows)}選を見る →</a>
 </section>'''
     if '<main class="container">' in markup:
         markup = markup.replace('<main class="container">', '<main class="container">\n' + block, 1)
@@ -307,9 +314,6 @@ def main():
         raise SystemExit("site/data.json not found")
     payload = json.loads(DATA.read_text(encoding="utf-8"))
     rows = build_rows(payload)
-    if not rows:
-        print("No conservative daily deals available; keeping site without today page")
-        return
 
     now = datetime.now(ZoneInfo("Asia/Tokyo"))
     TODAY_DIR.mkdir(parents=True, exist_ok=True)

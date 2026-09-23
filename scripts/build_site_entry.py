@@ -9,7 +9,10 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import build_site as core
-from sale_quantity import purchase_summary, ambiguous_quantity
+from sale_quantity import purchase_summary
+from product_quality import (category_is_suitable, filter_items, safer_parse_measure_quantity,
+                             safer_parse_count_quantity)
+from pathlib import Path
 
 
 # Rakuten Ichiba Item Search API output semantics (2026-07-01):
@@ -31,220 +34,6 @@ def normalize_item_with_correct_postage(raw, category):
 
 
 core.normalize_item = normalize_item_with_correct_postage
-
-
-def to_base_amount(amount, unit):
-    unit = unit.lower()
-    amount = float(amount)
-    if unit == "kg":
-        return "weight", amount * 1000
-    if unit == "g":
-        return "weight", amount
-    if unit == "l":
-        return "volume", amount * 1000
-    if unit == "ml":
-        return "volume", amount
-    return None, None
-
-
-def result_from_total(kind, total, category_kind, confidence, evidence):
-    if not total or total <= 0:
-        return None
-    if kind == "weight":
-        metric = "100g"
-        quantity = total / 100
-    else:
-        metric = "1L" if category_kind == "water" else "100ml"
-        quantity = total / (1000 if metric == "1L" else 100)
-
-    if category_kind == "coffee" and metric != "100g":
-        return None
-    if quantity <= 0:
-        return None
-    return {
-        "metric": metric,
-        "quantity": quantity,
-        "confidence": confidence,
-        "evidence": evidence,
-    }
-
-
-def safer_parse_measure_quantity(title, category_kind):
-    """Reject variant titles unless all visible capacity evidence agrees."""
-    text = core.normalize_text(title)
-    if ambiguous_quantity(title):
-        return None
-    # Stock/offer limits (先着100本限定) are not the quantity being sold.
-    text = re.sub(r"(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?", "", text)
-
-    explicit_matches = list(re.finditer(
-        r"(\d+(?:\.\d+)?)\s*(kg|g|ml|l)\s*x\s*(\d+)",
-        text,
-        flags=re.IGNORECASE,
-    ))
-    if explicit_matches:
-        totals = []
-        kinds = []
-        for match in explicit_matches:
-            kind, base = to_base_amount(match.group(1), match.group(2))
-            totals.append(base * int(match.group(3)))
-            kinds.append(kind)
-        if len(set(kinds)) != 1 or max(totals) - min(totals) > 0.001:
-            return None
-
-        chosen = explicit_matches[0]
-        chosen_kind = kinds[0]
-        chosen_total = totals[0]
-
-        all_measures = re.findall(
-            r"(\d+(?:\.\d+)?)\s*(kg|g|ml|l)",
-            text,
-            flags=re.IGNORECASE,
-        )
-        visible_bases = []
-        for amount, unit in all_measures:
-            kind, base = to_base_amount(amount, unit)
-            if kind == chosen_kind:
-                visible_bases.append(base)
-        explicit_base = to_base_amount(chosen.group(1), chosen.group(2))[1]
-        if any(abs(base - explicit_base) > 0.001 and abs(base - chosen_total) > 0.001 for base in visible_bases):
-            return None
-
-        return result_from_total(
-            chosen_kind,
-            chosen_total,
-            category_kind,
-            0.99,
-            chosen.group(0),
-        )
-
-    all_measures = re.findall(
-        r"(\d+(?:\.\d+)?)\s*(kg|g|ml|l)",
-        text,
-        flags=re.IGNORECASE,
-    )
-    if len(all_measures) != 1:
-        return None
-
-    amount, unit = all_measures[0]
-    kind, base = to_base_amount(amount, unit)
-    if not kind or not base:
-        return None
-
-    pack_counts = [
-        int(value)
-        for value, pack_unit in re.findall(
-            r"(\d+)\s*(個|袋|本|パック|セット)",
-            text,
-            flags=re.IGNORECASE,
-        )
-        if int(value) > 1
-    ]
-    if len(pack_counts) == 1:
-        total = base * pack_counts[0]
-        evidence = f"{pack_counts[0]}個相当 × {amount}{unit}"
-        confidence = 0.94
-    elif len(pack_counts) == 0:
-        total = base
-        evidence = f"{amount}{unit}"
-        confidence = 0.88
-    else:
-        return None
-
-    return result_from_total(kind, total, category_kind, confidence, evidence)
-
-
-def safer_parse_count_quantity(title, allowed_units):
-    text = core.normalize_text(title)
-    if ambiguous_quantity(title):
-        return None
-    units_re = "|".join(re.escape(unit) for unit in allowed_units)
-
-    explicit_matches = list(re.finditer(
-        rf"(\d+(?:\.\d+)?)\s*({units_re})(?:入り|入)?\s*x\s*(\d+)",
-        text,
-        flags=re.IGNORECASE,
-    ))
-    if explicit_matches:
-        totals = [float(m.group(1)) * int(m.group(3)) for m in explicit_matches]
-        if max(totals) - min(totals) > 0.001:
-            return None
-        total = totals[0]
-        if total > 0 and float(total).is_integer():
-            return {
-                "metric": allowed_units[explicit_matches[0].group(2)],
-                "quantity": total,
-                "confidence": 0.99,
-                "evidence": explicit_matches[0].group(0),
-            }
-
-    singles = list(re.finditer(
-        rf"(\d+(?:\.\d+)?)\s*({units_re})",
-        text,
-        flags=re.IGNORECASE,
-    ))
-    if not singles:
-        return None
-
-    values = [float(m.group(1)) for m in singles]
-    if len(set(values)) > 1:
-        return None
-
-    total = values[0]
-    if total > 0 and total.is_integer():
-        return {
-            "metric": allowed_units[singles[0].group(2)],
-            "quantity": total,
-            "confidence": 0.88,
-            "evidence": singles[0].group(0),
-        }
-    return None
-
-
-def category_is_suitable(category_id, title):
-    if ambiguous_quantity(title):
-        return False
-    ambiguous_variant_terms = (
-        "種類を選べる",
-        "タイプを選べる",
-        "サイズを選べる",
-        "容量を選べる",
-        "個数を選べる",
-        "カラーを選べる",
-    )
-    if any(term in title for term in ambiguous_variant_terms):
-        return False
-
-    exclusions = {
-        "tissue": (
-            "ウェット", "ウエット", "おしり", "手口", "除菌シート",
-            "ペーパータオル", "キッチンペーパー", "ティッシュケース",
-            "ティッシュボックス", "ティッシュカバー", "ティッシュホルダー",
-            "シートバック", "収納ポケット", "車用ポケット",
-        ),
-        "dish": ("ディスペンサー", "ハンドソープ", "ソープディスペンサー", "洗濯用"),
-        "water": ("炭酸", "スパークリング", "ウォーターサーバー", "水筒"),
-        "coffee": ("コーヒーメーカー", "ドリッパー", "フィルター", "コーヒーミル", "マグカップ"),
-    }
-    if any(term in title for term in exclusions.get(category_id, ())):
-        return False
-
-    if category_id == "tissue":
-        tissue_product_terms = (
-            "ティッシュペーパー",
-            "ボックスティッシュ",
-            "箱ティッシュ",
-            "ソフトパックティッシュ",
-            "パックティッシュ",
-            "ポケットティッシュ",
-        )
-        if not any(term in title for term in tissue_product_terms):
-            return False
-
-    if category_id == "dish" and not any(term in title for term in ("食器", "台所", "キッチン", "ジョイ", "キュキュット", "チャーミー", "ヤシノミ")):
-        return False
-
-    return True
 
 
 def fetch_page(category, page):
@@ -279,37 +68,14 @@ def fetch_page(category, page):
 
 
 def fetch_category(category):
-    raw_items = fetch_page(category, 1)
-    normalized = [core.normalize_item(raw, category) for raw in raw_items]
-
-    excluded = ("ふるさと納税", "返礼品")
-    filtered = [
-        item
-        for item in normalized
-        if item.get("price", 0) > 0
-        and item.get("url")
-        and not any(term in item.get("name", "") for term in excluded)
-        and category_is_suitable(category["id"], item.get("name", ""))
-    ]
-
-    # Ranking is shipping-inclusive by default, so fetch a second page if the
-    # first page does not yield enough safely comparable shipping-inclusive items.
-    shipping_items = [item for item in filtered if item.get("postage") == "送料込み"]
-    _, ranked = _original_choose_ranked_items(shipping_items)
+    # Keep raw normalized candidates until the shared quality gate, including
+    # rejected rows in the build report. Fetch page 2 only if safe stock is low.
+    items = [core.normalize_item(raw, category) for raw in fetch_page(category, 1)]
+    _, ranked = _original_choose_ranked_items(filter_items(category['id'], items))
     if len(ranked) < 5:
         time.sleep(1.1)
-        raw_more = fetch_page(category, 2)
-        more = [core.normalize_item(raw, category) for raw in raw_more]
-        filtered.extend(
-            item
-            for item in more
-            if item.get("price", 0) > 0
-            and item.get("url")
-            and not any(term in item.get("name", "") for term in excluded)
-            and category_is_suitable(category["id"], item.get("name", ""))
-        )
-
-    return filtered
+        items.extend(core.normalize_item(raw, category) for raw in fetch_page(category, 2))
+    return items
 
 
 core.parse_measure_quantity = safer_parse_measure_quantity
@@ -466,6 +232,7 @@ def build_site_improved():
     category_snapshots = []
     serializable = {}
     successful_categories = 0
+    quality_report = {}
 
     for index, category in enumerate(core.CATEGORIES):
         error = None
@@ -478,6 +245,7 @@ def build_site_improved():
             error = str(exc)
             print(f"{category['name']}: fetch failed: {exc}", file=sys.stderr)
 
+        items = filter_items(category["id"], items, quality_report)
         metric, ranked = core.choose_ranked_items(items)
         serializable[category["id"]] = {
             "name": category["name"],
@@ -494,6 +262,8 @@ def build_site_improved():
     if successful_categories == 0:
         print("All Rakuten API requests failed; refusing to deploy an empty site.", file=sys.stderr)
         sys.exit(1)
+
+    Path("quality-report.json").write_text(json.dumps(quality_report, ensure_ascii=False, indent=2), encoding="utf-8")
 
     nav = "".join(
         f'<a href="#{core.html.escape(category["id"])}">{category["emoji"]} {core.html.escape(category["name"])}</a>'

@@ -97,7 +97,7 @@
   window.gtag = function(command, name, values) {
     if (command === 'event') {
       const data = { ...(values || {}) };
-      // An absent value is ambiguous in GA4. Explicit 0/1 applies to every event.
+      // An absent value is ambiguous in GA4. Explicit 0/1 applies to events sent through this wrapper.
       data.operator_test = operator ? '1' : '0';
       if (name === 'product_result_click') data.conversion_source = resultSource;
       if (name === 'same_product_rakuten_click') data.conversion_source = 'same_product_compare';
@@ -118,7 +118,8 @@
     }
     return original.apply(this, arguments);
   };
-  // Covers GA4 automatic events/page_view as well as explicit feature events.
+  // Set defaults before config. GA-generated events (e.g. session_start) may
+  // still omit this custom parameter; their GA4 reports must be checked separately.
   window.gtag('set', { operator_test: operator ? '1' : '0' });
   document.addEventListener('DOMContentLoaded', showOperatorStatus, { once: true });
   if (document.readyState !== 'loading') showOperatorStatus();
@@ -172,7 +173,10 @@
   document.addEventListener('click', (event) => {
     const target = event.target.closest ? event.target : event.target.parentElement;
     if (!target) return;
-    if (isProducts && target.closest('.chip[data-q]')) searchSource = 'trend';
+    if (isProducts && target.closest('.chip[data-q]')) {
+      const chip = target.closest('.chip[data-q]');
+      searchSource = chip.dataset.conversionSource === 'product_search' ? 'product_search' : 'trend';
+    }
     else if (isProducts && target.closest('#searchBtn')) searchSource = 'product_search';
     const link = target.closest('a[href]');
     if (!link || isRakuten(link)) return;
