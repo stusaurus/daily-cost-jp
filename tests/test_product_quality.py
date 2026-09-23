@@ -68,6 +68,30 @@ class ProductQualityTests(unittest.TestCase):
                       '粘着式耳かき 綿棒24本','再利用 合成ゴム 綿棒24本']:
             self.assertFalse(quality.category_is_suitable('cotton-swab',title))
 
+    def test_hygiene_evidence_required_even_when_title_says_cotton_swab(self):
+        for title in ['綿棒100本', '加湿器 フィルター 交換用6本 綿棒 給水芯',
+                      '加湿フィルター8×200mm 棒状交換用6本 綿棒',
+                      '5本セット 綿棒 給水芯 コットンバー 吸水芯',
+                      '犬 猫 歯磨き オーラバイオブラシ 綿棒サイズ 歯ブラシ2本セット',
+                      '紙軸 綿棒100本 精密機器クリーニング用',
+                      '抗菌 綿棒6本 加湿器交換用フィルター']:
+            self.assertFalse(quality.category_is_suitable('cotton-swab',title),title)
+        for title in ['紙軸 綿棒200本','衛生用 綿棒100本','ベビー綿棒100本','メイク用 綿棒200本']:
+            self.assertTrue(quality.category_is_suitable('cotton-swab',title),title)
+
+    def test_device_parts_are_rejected_in_every_category(self):
+        for cid, (good, _) in CASES.items():
+            self.assertFalse(quality.category_is_suitable(cid,good+' 交換用フィルター 給水芯'),cid)
+
+    def test_wrong_use_prices_do_not_turn_hygiene_swabs_into_outliers(self):
+        good=item(price=100)
+        wrong=[]
+        for title in ['加湿器 綿棒 6本 給水芯','交換用フィルター 綿棒6本','ペット用 歯ブラシ 綿棒サイズ6本']:
+            row=item(title,price=458);row['unit_price']=458/6
+            wrong.append(row)
+        safe=quality.filter_items('cotton-swab',[good,*wrong])
+        self.assertEqual([p['name'] for p in safe],[good['name']])
+
     def test_selectable_counts_and_capacities(self):
         for title in ['不織布マスク100 80 50 20枚','洗濯洗剤500ml/1000ml',
                       '洗濯洗剤 容量選択 1000ml','綿棒100本 個数を選べる']:
