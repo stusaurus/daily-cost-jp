@@ -56,6 +56,16 @@ class ProductQualityTests(unittest.TestCase):
     def test_unknown_category_fails_closed(self):
         self.assertFalse(quality.category_is_suitable('not-configured', '衛生用 綿棒100本'))
 
+    def test_open_ended_quantity_and_business_only_offers_are_excluded(self):
+        for category, title in [('cotton-swab', '紙軸 スパイラル黒綿棒 200本入 × 4個セット〜'),
+                                ('hand-soap', 'ハンドソープ500ml〜'),
+                                ('tissue', 'ボックスティッシュ5箱〜')]:
+            self.assertEqual(quality.category_rejection(category, title), 'selectable_quantity')
+            self.assertIsNone(quality.parsed_quantity(category, title))
+        for label in ['法人限定', '法人様専用', '個人宅配送不可']:
+            self.assertEqual(quality.category_rejection('garbage-bag-45l', f'ゴミ袋45L100枚【{label}】'), 'restricted_purchase')
+        self.assertTrue(quality.category_is_suitable('garbage-bag-45l', '業務用 ゴミ袋45L100枚'))
+
     def test_no_false_negative_for_safe_bulk_cases_and_negative_claims(self):
         for cid,title in [('softener','柔軟剤1350ml×6袋 1ケース'),
                           ('laundry','洗濯洗剤 無漂白剤 1.3kg×4袋（詰替容器スプーンなし）'),

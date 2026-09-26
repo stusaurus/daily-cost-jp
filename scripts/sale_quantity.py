@@ -34,6 +34,9 @@ def ambiguous_quantity(title: str) -> bool:
         return True
     if re.search(r"\d+(?:\.\d+)?\s*(?:kg|g|ml|l)\s*[~〜～/／]\s*\d", text, re.I):
         return True
+    # Open-ended offers (4個セット〜 / 500ml〜) do not identify a fixed pack.
+    if re.search(rf"\d+(?:\.\d+)?\s*(?:{CONTAINER_UNITS}|kg|g|ml|l)(?:入り|入|セット)?\s*[~〜～]", text, re.I):
+        return True
     if re.search(rf"\d+(?:\s+\d+){{2,}}\s*(?:{COUNT_UNITS})", text):
         return True  # e.g. 100 80 50 20枚: minimum price, several sale quantities.
     if re.search(r"(?:容量|個数|サイズ|タイプ|種類).{0,8}選択|選択.{0,8}(?:容量|個数|サイズ)|\d+種から", text):

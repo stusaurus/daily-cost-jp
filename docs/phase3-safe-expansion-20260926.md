@@ -49,3 +49,11 @@ Actions run 36235108214 / artifact 10903708305 と同ビルドのPagesデータ�
 除外計：1006件。理由合計：{"wrong_use_or_type": 355, "missing_price_or_quantity": 111, "unconfirmed_shipping": 149, "accessory": 212, "missing_category_evidence": 57, "selectable_quantity": 87, "mixed_bundle": 35}。
 
 ambiguous_quantity / unit_mismatch / quantity_price_mismatch / isolated_price_outlier は旧レポートでは0件。数量解析失敗が missing_price_or_quantity に集約されていたため、新レポートでは ambiguous_quantity を先に判別します（採用基準は同じ）。
+
+## 9/27 公開前の実データ検証
+
+PR #18のActions run 36279051894で1,359件を取得、重複13件を除く1,346候補を検査。251件が適合し、全21カテゴリで各5件に達しました。個別確認で「綿棒200本×4個セット〜」と「法人限定ゴミ袋」を見つけたため、公開前に共通ゲートを強化。上限未確定の数量・一般消費者が購入できない限定商品を除外し、回帰テストを追加しました。この105件は初回検査の件数であり、最終公開件数は再検査後のレポートで確認します。
+
+追加候補に多かった「P最大13倍★9/25限定」「セール中 9/28 23:59迄」「P5倍☆彡〜28日9:59迄」も販促だけのラベルとして表示時に除去します。ブランド・数量などとの混在ラベルは削除しません。
+
+9/27再取得：Search Consoleは9/26まで要求しても最新実績は9/24のまま。GA4は9/23〜9/26のaffiliate_clickが17件（operator_test=1が16件、0が1件）。0の1件は同じティッシュページへのgoogle / organic流入です。

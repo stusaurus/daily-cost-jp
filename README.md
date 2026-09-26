@@ -38,6 +38,8 @@ GA4 Property: `552907444` / Measurement: `G-GFVSZ8YDQ5`。イベントスコー�
 
 品質レポートの `acquisition.baseline` は同一ビルド内の元の取得範囲、`requests` は取得語・ページ・件数、`published` は最終掲載件数です。日本語単位（4リットル等）の表記だけを正規化し、単位・数量・送料の不明な商品は救済しません。`product_display.py` は販促だけで構成される先頭ラベルを表示時だけ除き、元の商品名・数量解析・価格・URL・today/Xの照合データを維持します。
 
+「4個セット〜」「500ml〜」等の上限未確定の数量も選択式として除外します。法人限定・個人宅配送不可の商品は一般向け比較から外します（通常の業務用まとめ買いは対象）。
+
 同一リポジトリのPRでは `audit_product_candidates.py` が楽天から実取得し、公開せずに品質を検証します。`candidate-quality-preview` アーティファクトで結果を確認後にマージできます。既存のPages公開直前の品質ゲートも引き続き動作します。
 
 Windsor.ai / GA4では既存イベントだけで「Google自然検索 → 入り口ページ → 楽天クリック」を集計できます。使用項目は `landing_page_plus_query_string`、`session_source_medium`、`event_name`、`event_count`、`customevent_conversion_source`、`customevent_operator_test`。`session_source_medium = google / organic` と上記のクリック・テスト条件を使い、ランディングページとクリック発生元別に集計します。Search Consoleの検索語を個別ユーザーのクリックへ結び付けるものではありません。検索語はページ単位の流入改善に使い、楽天クリックを購入成果とみなしません。

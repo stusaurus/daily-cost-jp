@@ -15,6 +15,8 @@ class ProductDisplayTests(unittest.TestCase):
         product='ペーパータオル エコタイプ 小判 200枚入 × 40袋'
         for prefix in ['【9/25 24時間限定★P5倍＋最大1,500円OFFクーポン】',
                        '【9月25日限定】【ポイント10倍】', '＼マラソン中／【P10倍】',
+                       '【P最大13倍★9/25限定】', '＼P5倍☆彡〜28日9:59迄／',
+                       '【セール中 9/28 23:59迄】',
                        '本日限定！ ']:
             self.assertEqual(clean_display_name(prefix+product),product)
 

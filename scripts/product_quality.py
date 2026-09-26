@@ -88,6 +88,8 @@ def category_rejection(category_id, title):
         return 'selectable_quantity'
     if re.search(r'ふるさと納税|返礼品', text):
         return 'donation'
+    if re.search(r'法人(?:様)?(?:限定|専用)|個人宅(?:配送|配達)?不可', text):
+        return 'restricted_purchase'
     if ACCESSORY.search(text):
         return 'accessory'
     if MIXED.search(text):
