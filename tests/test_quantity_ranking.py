@@ -10,6 +10,19 @@ import build_site_entry as entry
 
 
 class QuantityRankingTests(unittest.TestCase):
+    def test_japanese_unit_spelling_keeps_exact_capacity_and_type(self):
+        from sale_quantity import sale_quantity_for_item
+        for title in ['キレイキレイ 薬用ハンドソープ 詰め替え 4リットル',
+                      'ミヨシ 無添加せっけん 泡のボディソープ 4リットル']:
+            parsed=entry.safer_parse_measure_quantity(title,'measure')
+            self.assertEqual((parsed['metric'],parsed['quantity']),('100ml',40))
+            self.assertEqual(sale_quantity_for_item(title,2000,50,'100ml')['sale_quantity_label'],'4L')
+        self.assertEqual(entry.safer_parse_measure_quantity('洗濯洗剤500グラム','measure')['quantity'],5)
+        self.assertEqual(entry.safer_parse_measure_quantity('洗濯洗剤2キログラム','measure')['quantity'],20)
+        self.assertIsNone(entry.safer_parse_measure_quantity('ハンドソープ4リットル/5リットル','measure'))
+        self.assertIsNone(entry.safer_parse_measure_quantity('ハンドソープ500ミリリットル 容量選択','measure'))
+        self.assertIsNone(entry.safer_parse_measure_quantity('ハンドソープ4リットル×2本 3本','measure'))
+
     def test_selectable_packs_cannot_be_ranked_at_maximum_pack_size(self):
         for title in ['【選べる1～4個】アタックZERO 2100g', 'アリエール2580g×6袋 4袋 2袋']:
             self.assertIsNone(entry.safer_parse_measure_quantity(title, 'measure'))

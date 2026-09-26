@@ -10,9 +10,14 @@ CONTAINER_UNITS = "ロール|巻|個|本|箱|パック|袋|枚|セット"
 
 
 def normalize(text: str) -> str:
-    return (unicodedata.normalize("NFKC", str(text or ""))
+    text = (unicodedata.normalize("NFKC", str(text or ""))
             .replace("×", "x").replace("✕", "x").replace("*", "x")
             .replace(",", ""))
+    # Equivalent spellings only; do not infer missing units or convert mass to
+    # volume. This also lets the existing ambiguity checks see Japanese units.
+    units = {'ミリリットル': 'ml', 'リットル': 'L', 'キログラム': 'kg', 'グラム': 'g'}
+    return re.sub(r'(?<=\d)\s*(ミリリットル|リットル|キログラム|グラム)',
+                  lambda match: units[match.group(1)], text)
 
 
 def _number(value: str) -> str:
@@ -28,6 +33,9 @@ def ambiguous_quantity(title: str) -> bool:
     if re.search(rf"\d+\s*(?:{CONTAINER_UNITS})?\s*[~〜～/／]\s*\d+\s*(?:{CONTAINER_UNITS})", text):
         return True
     if re.search(r"\d+(?:\.\d+)?\s*(?:kg|g|ml|l)\s*[~〜～/／]\s*\d", text, re.I):
+        return True
+    # Open-ended offers (4個セット〜 / 500ml〜) do not identify a fixed pack.
+    if re.search(rf"\d+(?:\.\d+)?\s*(?:{CONTAINER_UNITS}|kg|g|ml|l)(?:入り|入|セット)?\s*[~〜～]", text, re.I):
         return True
     if re.search(rf"\d+(?:\s+\d+){{2,}}\s*(?:{COUNT_UNITS})", text):
         return True  # e.g. 100 80 50 20枚: minimum price, several sale quantities.

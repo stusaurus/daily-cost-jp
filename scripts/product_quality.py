@@ -88,6 +88,8 @@ def category_rejection(category_id, title):
         return 'selectable_quantity'
     if re.search(r'ふるさと納税|返礼品', text):
         return 'donation'
+    if re.search(r'法人(?:様)?(?:限定|専用)|個人宅(?:配送|配達)?不可', text):
+        return 'restricted_purchase'
     if ACCESSORY.search(text):
         return 'accessory'
     if MIXED.search(text):
@@ -113,6 +115,10 @@ def item_rejection(category_id, item):
     reason = category_rejection(category_id, item.get('name', ''))
     if reason:
         return reason
+    # Diagnose parsing failures explicitly; acceptance rules are unchanged.
+    parsed = parsed_quantity(category_id, item.get('name', ''))
+    if not parsed:
+        return 'ambiguous_quantity'
     try:
         price, unit = float(item['price']), float(item['unit_price'])
         confidence = float(item['confidence'])
@@ -125,9 +131,6 @@ def item_rejection(category_id, item):
     url = urlsplit(str(item.get('url') or ''))
     if url.scheme != 'https' or not (url.hostname or '').endswith('.rakuten.co.jp'):
         return 'invalid_destination'
-    parsed = parsed_quantity(category_id, item.get('name', ''))
-    if not parsed:
-        return 'ambiguous_quantity'
     if parsed['metric'] != item.get('metric'):
         return 'unit_mismatch'
     if not math.isclose(price / parsed['quantity'], unit, rel_tol=.0001, abs_tol=.0001):

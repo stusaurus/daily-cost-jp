@@ -51,9 +51,10 @@ SEARCH_TARGETS = {
         "heading": "洗濯洗剤はどこが安い？価格とコスパの比較ポイント",
     },
     "tissue": {
-        "title": "ティッシュの値段比較｜1箱・100組の価格と安い目安",
+        "title": "ティッシュはどこが安い？今日の楽天送料込み価格・値段比較",
         "h1": "ティッシュの値段比較｜どこが安い？",
         "lead": "ティッシュの楽天送料込み価格を1箱あたりで比較。200組・250組など組数が違う商品は100組単価も確認し、店頭価格と比べられます。",
+        "description": "ティッシュはどこが安い？今日取得した楽天の送料込み価格を、1箱・100組あたりで値段比較。販売箱数と支払総額、200組・250組の違いを確認し、店頭価格と比べて買い先を選べます。",
         "heading": "ティッシュはどこが安い？価格を比べるポイント",
     },
 }
@@ -141,7 +142,7 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
     title = target.get("title", base_title) + " | 日用品コスパ比較"
     h1 = target.get("h1", f"{name}の安い順・単価ランキング")
     lead = target.get("lead", f"楽天市場の{name}を送料込み価格で{label}あたりに換算し、今日の安い順に比較します。")
-    description = target.get("lead", f"{alias}を楽天市場の送料込み価格で{label}あたりに換算し、安い順に比較。") + " 毎朝更新のランキングとリアルタイム価格検索で購入候補を確認できます。"
+    description = target.get("description") or (target.get("lead", f"{alias}を楽天市場の送料込み価格で{label}あたりに換算し、安い順に比較。") + " 毎朝更新のランキングとリアルタイム価格検索で購入候補を確認できます。")
 
     markup = replace_once(markup, r"<title>.*?</title>", f"<title>{html.escape(title)}</title>")
     markup = replace_once(markup, r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{html.escape(description, quote=True)}">')

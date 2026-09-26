@@ -10,6 +10,7 @@ from pathlib import Path
 
 from sale_quantity import ambiguous_quantity, normalize, purchase_summary
 from product_quality import filter_items
+from product_display import clean_display_name
 
 SITE = Path('site')
 BASE = 'https://stusaurus.github.io/daily-cost-jp/'
@@ -135,7 +136,7 @@ def build_attack_guide(payload):
         key = normalize(p.get('name', '')).lower().replace(' ', '')
         if ('アタックzero' in key or 'アタックゼロ' in key) and p.get('metric') == '100g' and not ambiguous_quantity(p['name']) and p.get('sale_quantity_label'):
             rows.append(p)
-    cards = ''.join(f'<article class="card"><h3>{esc(p["name"])}</h3><p><strong>{money(p["unit_price"])}／100g</strong><br>{esc(purchase_summary(p))}<br>{esc(p.get("shop", ""))}</p><a class="cta primary" data-conversion-source="product_guide" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener">楽天でこの商品の最新価格を見る</a><p class="purchase-note">価格・在庫・地域別送料は購入前に確認してください。</p></article>' for p in rows)
+    cards = ''.join(f'<article class="card"><h3>{esc(clean_display_name(p["name"]))}</h3><p><strong>{money(p["unit_price"])}／100g</strong><br>{esc(purchase_summary(p))}<br>{esc(p.get("shop", ""))}</p><a class="cta primary" data-conversion-source="product_guide" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener">楽天でこの商品の最新価格を見る</a><p class="purchase-note">価格・在庫・地域別送料は購入前に確認してください。</p></article>' for p in rows)
     if not cards:
         cards = '<p>今回のカテゴリ取得分には、タイプ・販売個数を確定できるアタックZEROの掲載候補がありません。推測の単価は掲載せず、下の商品検索から容量を指定して確認できます。</p>'
     schema = {'@context': 'https://schema.org', '@graph': [

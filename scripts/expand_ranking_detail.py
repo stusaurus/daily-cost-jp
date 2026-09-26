@@ -1,4 +1,5 @@
 import html
+from product_display import clean_display_name
 import json
 import os
 import re
@@ -272,7 +273,7 @@ def render(rows):
         direct = f'<a class="rakuten" href="{html.escape(row["url"], quote=True)}" target="_blank" rel="nofollow sponsored noopener">楽天の商品を見る</a>' if row["url"] else ""
         search = f'<a class="search" href="../products/?q={q}">送料込み最安値を探す</a>' if row["query"] else ""
         cards.append(
-            f'<article class="card"><div class="pic">{image}</div><div><div class="rank"><b>{row["rank"]}位</b>楽天総合リアルタイム</div><div class="name">{html.escape(row["name"])}</div><div class="meta">{price} ・ {postage}</div><div class="actions">{search}{direct}</div></div></article>'
+            f'<article class="card"><div class="pic">{image}</div><div><div class="rank"><b>{row["rank"]}位</b>楽天総合リアルタイム</div><div class="name">{html.escape(clean_display_name(row["name"]))}</div><div class="meta">{price} ・ {postage}</div><div class="actions">{search}{direct}</div></div></article>'
         )
     card_html = "".join(cards) if cards else '<p class="note">現在、楽天リアルタイムランキングを取得できませんでした。次回更新で再取得します。</p>'
     schema = json.dumps({
