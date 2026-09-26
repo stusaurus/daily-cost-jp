@@ -16,7 +16,7 @@ ONのときだけ状態と直近イベントの確認欄を表示します。確
 
 `conversion_source` は `product_search`、`buy_judge`、`top_pick`、`category`、`trend`、`daily_pick`（today）、`ranking`、`same_product_compare`、`product_guide`、`price_guide`、`other`。ガイドから商品検索へ進んだ場合は発生元を引き継ぎ、新しく検索語を入力した場合は `product_search` に戻します。
 
-GA4 Property: `552907444` / Measurement: `G-GFVSZ8YDQ5`。イベントスコープのカスタムディメンション「クリック発生元」=`conversion_source`、「運営者テスト」=`operator_test` を使います。新実装以後の通常クリックは `event_name=affiliate_click` かつ `operator_test=0` で分析できます。過去の `(not set)` は一般ユーザーと断定せず、別集計にしてください。恒久除外フィルタは設定しません。`page_view`・`session_start` 等のGA4自動イベントには、既定値を設定していても空欄が残る場合があります。全イベントへの付与は保証せず、収益導線の評価は上記の明示的なクリックイベントで行ってください。
+GA4 Property: `552907444` / Measurement: `G-GFVSZ8YDQ5`。イベントスコープのカスタムディメンション「クリック発生元」=`conversion_source`、「運営者テスト」=`operator_test` を使います。収益導線の集計は `event_name=affiliate_click` かつ `operator_test != 1` を基本とし、`0`（テスト未設定）と `(not set)`（判別情報なし）は内訳を分けます。`0` も一般ユーザーと断定できません。過去の自己アクセスは遡って識別できません。恒久除外フィルタは設定しません。`page_view`・`session_start` 等のGA4自動イベントには、既定値を設定していても空欄が残る場合があります。全イベントへの付与は保証せず、収益導線の評価は上記の明示的なクリックイベントで行ってください。
 
 ## 価格・公開前検証
 
@@ -31,3 +31,13 @@ GA4 Property: `552907444` / Measurement: `G-GFVSZ8YDQ5`。イベントスコー�
 商品検索の候補は日用品の具体的な商品名・ブランドに限定し、総合トレンドから自動転記しません。総合TOP50は `/trends/` に残し、トップからは入口を案内します。既存の `trend_chip_click` イベント名は互換性のため維持し、日用品の検索候補からの楽天クリックには `conversion_source=product_search` を付けます。
 
 優先カテゴリの本文・CTAと商品ガイドは `scripts/improve_purchase_pages.py` で生成します。朝の更新、19:00の再取得、19:30のX/Buffer投稿は既存ワークフローを維持します。
+
+## 安全な候補拡充と自然検索の評価
+
+取得1ページ目で品質適合のランキング候補が5件未満なら2ページ目を追加し、まだ不足するときだけ具体的な日用品・ブランドによる補助検索を最大3回行います。1カテゴリ最大5リクエスト、リクエスト間は1.15秒以上。商品コード・商品URLで重複を除き、全候補を同じ `product_quality.py` に通します。補助検索の失敗で取得済み候補を捨てません。掲載件数は最大5件のままで、未達でも条件を緩めません。
+
+品質レポートの `acquisition.baseline` は同一ビルド内の元の取得範囲、`requests` は取得語・ページ・件数、`published` は最終掲載件数です。日本語単位（4リットル等）の表記だけを正規化し、単位・数量・送料の不明な商品は救済しません。`product_display.py` は販促だけで構成される先頭ラベルを表示時だけ除き、元の商品名・数量解析・価格・URL・today/Xの照合データを維持します。
+
+同一リポジトリのPRでは `audit_product_candidates.py` が楽天から実取得し、公開せずに品質を検証します。`candidate-quality-preview` アーティファクトで結果を確認後にマージできます。既存のPages公開直前の品質ゲートも引き続き動作します。
+
+Windsor.ai / GA4では既存イベントだけで「Google自然検索 → 入り口ページ → 楽天クリック」を集計できます。使用項目は `landing_page_plus_query_string`、`session_source_medium`、`event_name`、`event_count`、`customevent_conversion_source`、`customevent_operator_test`。`session_source_medium = google / organic` と上記のクリック・テスト条件を使い、ランディングページとクリック発生元別に集計します。Search Consoleの検索語を個別ユーザーのクリックへ結び付けるものではありません。検索語はページ単位の流入改善に使い、楽天クリックを購入成果とみなしません。

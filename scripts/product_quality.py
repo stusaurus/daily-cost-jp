@@ -113,6 +113,10 @@ def item_rejection(category_id, item):
     reason = category_rejection(category_id, item.get('name', ''))
     if reason:
         return reason
+    # Diagnose parsing failures explicitly; acceptance rules are unchanged.
+    parsed = parsed_quantity(category_id, item.get('name', ''))
+    if not parsed:
+        return 'ambiguous_quantity'
     try:
         price, unit = float(item['price']), float(item['unit_price'])
         confidence = float(item['confidence'])
@@ -125,9 +129,6 @@ def item_rejection(category_id, item):
     url = urlsplit(str(item.get('url') or ''))
     if url.scheme != 'https' or not (url.hostname or '').endswith('.rakuten.co.jp'):
         return 'invalid_destination'
-    parsed = parsed_quantity(category_id, item.get('name', ''))
-    if not parsed:
-        return 'ambiguous_quantity'
     if parsed['metric'] != item.get('metric'):
         return 'unit_mismatch'
     if not math.isclose(price / parsed['quantity'], unit, rel_tol=.0001, abs_tol=.0001):

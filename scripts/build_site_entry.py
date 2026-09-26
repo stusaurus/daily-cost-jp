@@ -13,6 +13,10 @@ from sale_quantity import purchase_summary
 from product_quality import (category_is_suitable, filter_items, safer_parse_measure_quantity,
                              safer_parse_count_quantity)
 from pathlib import Path
+from candidate_acquisition import acquire
+from product_display import clean_display_name
+
+ACQUISITION_REPORT = {}
 
 
 # Rakuten Ichiba Item Search API output semantics (2026-07-01):
@@ -23,6 +27,7 @@ _original_normalize_item = core.normalize_item
 def normalize_item_with_correct_postage(raw, category):
     normalized = _original_normalize_item(raw, category)
     source = raw.get("Item", raw) if isinstance(raw, dict) else {}
+    normalized['item_code'] = str(source.get('itemCode') or '')
     postage_flag = source.get("postageFlag")
     if postage_flag in (0, "0"):
         normalized["postage"] = "送料込み"
@@ -51,6 +56,10 @@ def fetch_page(category, page):
     }
     if core.AFFILIATE_ID:
         params["affiliateId"] = core.AFFILIATE_ID
+    if category.get('_supplementary'):
+        # Input flag means included-only. Still verify the response's flag in
+        # normalize_item_with_correct_postage and the shared quality gate.
+        params['postageFlag'] = 1
 
     url = core.API_URL + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
@@ -68,13 +77,9 @@ def fetch_page(category, page):
 
 
 def fetch_category(category):
-    # Keep raw normalized candidates until the shared quality gate, including
-    # rejected rows in the build report. Fetch page 2 only if safe stock is low.
-    items = [core.normalize_item(raw, category) for raw in fetch_page(category, 1)]
-    _, ranked = _original_choose_ranked_items(filter_items(category['id'], items))
-    if len(ranked) < 5:
-        time.sleep(1.1)
-        items.extend(core.normalize_item(raw, category) for raw in fetch_page(category, 2))
+    items, report = acquire(category, fetch_page, core.normalize_item,
+                            _original_choose_ranked_items, time.sleep)
+    ACQUISITION_REPORT[category['id']] = report
     return items
 
 
@@ -87,18 +92,6 @@ _original_choose_ranked_items = core.choose_ranked_items
 def choose_ranked_shipping_included(items):
     shipping_included = [item for item in items if item.get("postage") == "送料込み"]
     return _original_choose_ranked_items(shipping_included)
-
-
-def clean_display_name(name):
-    """Remove leading promotional labels for readability; source title is unchanged."""
-    text = str(name or "").strip()
-    previous = None
-    while text != previous:
-        previous = text
-        text = re.sub(r"^\s*[【\[].{1,60}?[】\]]\s*", "", text)
-    text = re.sub(r"^\s*(?:送料無料|送料込|SALE[^ ]*|セール)\s*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"\s+", " ", text).strip()
-    return text or str(name or "")
 
 
 def render_product_card_clean(item, rank, metric):
@@ -226,6 +219,7 @@ IMPROVED_HEAD = core.HTML_HEAD.replace("  </style>", EXTRA_CSS + "\n  </style>")
 
 
 def build_site_improved():
+    ACQUISITION_REPORT.clear()
     core.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     updated_at = datetime.now(ZoneInfo("Asia/Tokyo"))
     category_results = []
@@ -247,6 +241,11 @@ def build_site_improved():
 
         items = filter_items(category["id"], items, quality_report)
         metric, ranked = core.choose_ranked_items(items)
+        quality_report[category['id']]['acquisition'] = ACQUISITION_REPORT.get(category['id'], {})
+        quality_report[category['id']]['published'] = len(ranked)
+        quality_report[category['id']]['published_products'] = [
+            {key: p.get(key) for key in ('name', 'price', 'unit_price', 'metric', 'url', 'evidence')}
+            for p in ranked]
         serializable[category["id"]] = {
             "name": category["name"],
             "metric": metric,

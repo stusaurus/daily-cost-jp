@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import html
 import json
+from product_display import clean_display_name
 import statistics
 from collections import Counter
 from datetime import datetime
@@ -151,6 +152,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
     cards = []
     schema_items = []
     for position, row in enumerate(rows, start=1):
+        display_name = clean_display_name(row['product_name'])
         fallback = (
             f'<div class="image-placeholder"><span class="fallback-emoji">{html.escape(row["emoji"])}</span>'
             f'<span>{html.escape(row["name"])}</span></div>'
@@ -158,7 +160,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
         if row["image"]:
             image = (
                 f'<img src="{html.escape(row["image"], quote=True)}" '
-                f'alt="{html.escape(row["product_name"], quote=True)}" loading="lazy" decoding="async" '
+                f'alt="{html.escape(display_name, quote=True)}" loading="lazy" decoding="async" '
                 f'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'
                 f'<div class="image-placeholder" hidden><span class="fallback-emoji">{html.escape(row["emoji"])}</span>'
                 f'<span>{html.escape(row["name"])}</span></div>'
@@ -178,7 +180,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
       <span class="discount-chip"><strong>{row['discount']:.0f}%</strong> 安い</span>
     </div>
     <div class="discount-note">今日取得した比較候補の中央値より</div>
-    <h2>{html.escape(row['product_name'])}</h2>
+    <h2>{html.escape(display_name)}</h2>
     <div class="price-panel">
       <div class="unit-price">{money(row['unit_price'])} <span>/ {html.escape(row['metric_label'])}</span></div>
       <div class="deal-purchase">{html.escape(purchase_summary(row))}</div>
@@ -196,7 +198,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
         schema_items.append({
             "@type": "ListItem",
             "position": position,
-            "name": f"{row['name']}：{row['product_name']}",
+            "name": f"{row['name']}：{display_name}",
             "url": f"{SITE}categories/{row['id']}/",
         })
 
