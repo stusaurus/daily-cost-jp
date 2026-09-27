@@ -8,19 +8,55 @@ from urllib.parse import urlsplit
 
 from product_quality import REQUIRED, filter_items, item_rejection
 from sync_trend_search_chips import checked_suggestions
+from product_display import clean_display_name
+from build_freshness import freshness_errors
+from candidate_acquisition import TARGET, MAX_REQUESTS, SUPPLEMENTAL_QUERIES
 
 
 class Links(HTMLParser):
     def __init__(self):
         super().__init__()
         self.external, self.chips = [], []
+        self.display_names, self._name_tag, self._name_parts = [], None, []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
+        if tag in ('h2', 'h3') or (tag == 'span' and 'top-pick-name' in a.get('class', '').split()):
+            self._name_tag, self._name_parts = tag, []
         if tag == 'a' and (urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp'):
             self.external.append(a['href'])
         if tag == 'button' and 'chip' in a.get('class', '').split():
             self.chips.append(a.get('data-q'))
+
+    def handle_data(self, data):
+        if self._name_tag:
+            self._name_parts.append(data)
+
+    def handle_endtag(self, tag):
+        if tag == self._name_tag:
+            self.display_names.append(' '.join(''.join(self._name_parts).split()))
+            self._name_tag = None
+
+
+def validate_acquisition(catalog, report):
+    errors = []
+    for cid, category in catalog.get('categories', {}).items():
+        audit = report.get(cid, {})
+        items = category.get('items') or []
+        acquisition = audit.get('acquisition', {})
+        requests = acquisition.get('requests', [])
+        if audit.get('published') != len(items) or [p.get('url') for p in audit.get('published_products', [])] != [p['url'] for p in items]:
+            errors.append(f'{cid}: acquisition report differs from catalog')
+        if category.get('error') and not items:
+            continue  # A failed first request is visible as an empty category.
+        if not requests or len(requests) > MAX_REQUESTS:
+            errors.append(f'{cid}: missing/unbounded acquisition evidence')
+        baseline = acquisition.get('baseline', {}).get('ranked')
+        if baseline is None:
+            errors.append(f'{cid}: missing baseline count')
+        elif baseline < TARGET and not any(r.get('supplementary') and r.get('query') in SUPPLEMENTAL_QUERIES.get(cid, ()) for r in requests):
+            errors.append(f'{cid}: supplemental acquisition was skipped')
+    return errors
 
 
 def validate_catalog(payload):
@@ -73,13 +109,16 @@ def validate_recommendations(payload, accepted):
     return errors
 
 
-def validate(root=Path('site')):
+def validate(root=Path('site'), report_path=Path('quality-report.json')):
     payload = json.loads((root / 'data.json').read_text(encoding='utf-8'))
     errors, accepted = validate_catalog(payload)
+    errors.extend(validate_acquisition(payload, json.loads(report_path.read_text(encoding='utf-8'))))
     today = json.loads((root / 'today/data.json').read_text(encoding='utf-8'))
     social = json.loads((root / 'social/latest.json').read_text(encoding='utf-8'))
     errors.extend(validate_recommendations(today, accepted))
     errors.extend(validate_recommendations(social, accepted))
+    errors.extend(freshness_errors(today, payload))
+    errors.extend(freshness_errors(social, payload))
     if today.get('items') != social.get('items'):
         errors.append('Today and X have different product candidates')
     all_urls = {url for rows in accepted.values() for url in rows}
@@ -90,6 +129,8 @@ def validate(root=Path('site')):
         if rel in ('trends/index.html', 'products/index.html'):
             continue
         page = Links(); page.feed(path.read_text(encoding='utf-8'))
+        if any(clean_display_name(name) != name for name in page.display_names):
+            errors.append(f'{rel}: unformatted promotional product title')
         if rel == 'today/index.html':
             allowed = today_urls
         elif rel.startswith('categories/') and rel != 'categories/index.html':

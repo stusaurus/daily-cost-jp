@@ -17,6 +17,8 @@ class ProductDisplayTests(unittest.TestCase):
                        '【9月25日限定】【ポイント10倍】', '＼マラソン中／【P10倍】',
                        '【P最大13倍★9/25限定】', '＼P5倍☆彡〜28日9:59迄／',
                        '【セール中 9/28 23:59迄】',
+                       '【最大1000円引クーポン9/29 9:59迄】',
+                       '【最大1,500円引きクーポン】【ポイント最大10倍】',
                        '本日限定！ ']:
             self.assertEqual(clean_display_name(prefix+product),product)
 
@@ -26,6 +28,7 @@ class ProductDisplayTests(unittest.TestCase):
                       '【無添加 泡ハンドソープ 詰め替え】230ml×3個',
                       '【9/25限定 アタックZERO 2100g】詰め替え',
                       '【P5倍 200枚×40袋】ペーパータオル',
+                      '【1000円引クーポン アタックZERO】詰替2100g',
                       '【エリエール】ティッシュ200組5箱',
                       '【ポイント10倍】']:
             self.assertEqual(clean_display_name(title),title)

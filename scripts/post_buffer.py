@@ -15,6 +15,8 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from build_freshness import freshness_errors
+from validate_product_quality import validate_catalog, validate_recommendations
 
 BUFFER_API = "https://api.buffer.com"
 SOCIAL_PAYLOAD_URL = os.environ.get(
@@ -24,6 +26,7 @@ SOCIAL_PAYLOAD_URL = os.environ.get(
 TARGET_CHANNEL = os.environ.get("BUFFER_CHANNEL_NAME", "nichiyo_cost").strip().lower()
 JST = ZoneInfo("Asia/Tokyo")
 PLAIN_TODAY_URL = "https://stusaurus.github.io/daily-cost-jp/today/"
+CATALOG_URL = "https://stusaurus.github.io/daily-cost-jp/data.json"
 
 
 def fail(message: str) -> None:
@@ -61,7 +64,7 @@ def gql(query: str) -> dict:
     return payload.get("data") or {}
 
 
-def fetch_today_social() -> dict:
+def fetch_today_social(not_before=None) -> dict:
     expected_date = datetime.now(JST).date().isoformat()
     last_date = None
 
@@ -82,7 +85,23 @@ def fetch_today_social() -> dict:
                 payload = json.loads(response.read().decode("utf-8"))
             last_date = payload.get("date")
             if last_date == expected_date and str(payload.get("text") or "").strip():
-                return payload
+                request = urllib.request.Request(
+                    f"{CATALOG_URL}?v={int(time.time())}",
+                    headers={"Cache-Control": "no-cache", "User-Agent": "daily-cost-jp-github-actions/1.0"},
+                )
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    catalog = json.loads(response.read().decode("utf-8"))
+                errors, accepted = validate_catalog(catalog)
+                errors.extend(validate_recommendations(payload, accepted))
+                errors.extend(freshness_errors(
+                    payload, catalog,
+                    not_before=not_before or datetime.now(JST).replace(hour=0, minute=0, second=0, microsecond=0),
+                    expected_sha=os.environ.get('EXPECTED_BUILD_SHA', ''),
+                    expected_run_id=os.environ.get('EXPECTED_BUILD_RUN_ID', ''),
+                ))
+                if not errors:
+                    return payload
+                print('Waiting for verified current candidates: ' + '; '.join(errors))
         except Exception as exc:
             print(f"Social payload attempt {attempt + 1}/12 failed: {exc}")
 

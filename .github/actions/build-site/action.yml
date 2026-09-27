@@ -1,0 +1,19 @@
+name: Build and validate daily-cost site
+description: The same fetch, render and quality gates for PR and production.
+runs:
+  using: composite
+  steps:
+    - name: Test product quality and repeated refreshes
+      shell: bash
+      run: python -m unittest discover -s tests -v
+    - name: Prepare optional social image dependencies
+      shell: bash
+      continue-on-error: true
+      run: |
+        python -m pip install --quiet Pillow
+        if ! fc-list | grep -qi "Noto Sans CJK"; then
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+        fi
+    - name: Fetch, render and validate all production pages
+      shell: bash
+      run: python scripts/build_pipeline.py
