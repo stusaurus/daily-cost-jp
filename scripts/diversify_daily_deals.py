@@ -100,7 +100,7 @@ def main() -> None:
     base.SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
     (base.TODAY_DIR / "index.html").write_text(base.render_page(rows, now), encoding="utf-8")
 
-    social = base.build_social(social_order(rows, now), now)
+    social = base.build_social(social_order(rows, now), now, catalog=payload)
     social["items"] = rows
     social["selection_mode"] = "daily_rotating_safe_pool"
     social["strict_eligible_count"] = len(strict)

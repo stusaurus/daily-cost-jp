@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 import post_buffer as buffer
 from x_post_strategy import choose_variant, strategy_version
+from product_display import clean_display_name
 
 JST = ZoneInfo("Asia/Tokyo")
 
@@ -54,7 +55,7 @@ def build_evening_text(payload: dict) -> str:
     item = candidates[day_seed % len(candidates)]
 
     name = str(item.get("name") or "日用品")
-    product = str(item.get("product_name") or "").strip()
+    product = clean_display_name(item.get("product_name"))
     if len(product) > 44:
         product = product[:43] + "…"
     try:
@@ -109,7 +110,8 @@ def build_evening_text(payload: dict) -> str:
 
 
 def main() -> None:
-    payload = buffer.fetch_today_social()
+    # A delayed/failed 19:00 refresh must not silently reuse the morning set.
+    payload = buffer.fetch_today_social(not_before=datetime.now(JST).replace(hour=19, minute=0, second=0, microsecond=0))
     text = build_evening_text(payload)
     org_id, org_name, channel = buffer.discover_x_channel()
     channel_id = str(channel.get("id") or "")

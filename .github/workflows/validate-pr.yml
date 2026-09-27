@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   live-candidates:
-    name: Check live candidate expansion without publishing
+    name: Build production pages without publishing
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -18,12 +18,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Fetch candidates through the shared quality gate
+      - name: Build and validate through the shared pipeline
+        uses: ./.github/actions/build-site
         env:
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/audit_product_candidates.py
+          GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
       - name: Save reviewable acquisition and quality results
         if: always()
         uses: actions/upload-artifact@v4
@@ -31,7 +32,7 @@ jobs:
           name: candidate-quality-preview
           path: |
             quality-report.json
-            site/data.json
+            site/
           retention-days: 14
 
   validate:

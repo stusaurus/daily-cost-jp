@@ -15,6 +15,9 @@ on:
     branches:
       - main
     paths:
+      - "scripts/build_pipeline.py"
+      - "scripts/build_freshness.py"
+      - ".github/actions/build-site/**"
       - "scripts/build_site.py"
       - "scripts/sale_quantity.py"
       - "scripts/product_quality.py"
@@ -88,122 +91,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build comparison site and realtime product finder
+      - name: Build and validate through the shared pipeline
+        uses: ./.github/actions/build-site
         env:
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/build_realtime_products.py
-
-      - name: Connect product finder to Cloudflare realtime API
-        run: python scripts/enable_realtime_search.py
-
-      - name: Improve search-facing SEO metadata
-        run: python scripts/improve_seo.py
-
-      - name: Strengthen category SEO pages
-        run: python scripts/improve_category_seo.py
-
-      - name: Polish category comparison design
-        run: python scripts/improve_category_design.py
-
-      - name: Clarify homepage value proposition
-        run: python scripts/sharpen_home_value_prop.py
-
-      - name: Build dynamic Rakuten trend hub
-        env:
-          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
-          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/build_dynamic_trends_v2.py
-
-      - name: Expand detailed ranking to top 50
-        env:
-          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
-          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/expand_ranking_detail.py
-
-      - name: Show unavailable ranking positions explicitly
-        run: python scripts/fill_ranking_gaps.py
-
-      - name: Validate dynamic trend search links
-        env:
-          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
-          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/fix_trend_query_links.py
-
-      - name: Restore descriptive trend labels
-        run: python scripts/improve_trend_labels.py
-
-      - name: Show relevant daily-goods search examples
-        run: python scripts/sync_trend_search_chips.py
-
-      - name: Link to general ranking without off-topic homepage products
-        run: python scripts/promote_home_ranking.py
-
-      - name: Move homepage ranking below search and checker
-        run: python scripts/move_home_ranking_below_tools.py
-
-      - name: Polish homepage hierarchy and primary actions
-        run: python scripts/polish_home_design.py
-
-      - name: Add exact store-vs-Rakuten comparison
-        run: python scripts/add_exact_store_compare.py
-
-      - name: Add daily buy picks
-        run: python scripts/add_daily_buy_picks.py
-
-      - name: Build automatic daily deals landing page
-        run: python scripts/build_daily_deals.py
-
-      - name: Rotate trusted daily deals for variety
-        run: python scripts/diversify_daily_deals.py
-
-      - name: Generate daily OG image for social cards
-        continue-on-error: true
-        run: |
-          python -m pip install --quiet Pillow || true
-          if ! fc-list | grep -qi "Noto Sans CJK"; then
-            sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk || true
-          fi
-          python scripts/build_daily_og.py
-
-      - name: Continue detailed ranking from rank 11
-        run: python scripts/jump_to_rank11.py
-
-      - name: Simplify ranking on product search page
-        run: python scripts/simplify_product_ranking_cta.py
-
-      - name: Improve realtime product search ordering
-        run: python scripts/improve_realtime_search_ux.py
-
-      - name: Add price-method FAQ and trust notes
-        run: python scripts/add_trust_faq.py
-
-      - name: Track trend chips through Rakuten clicks
-        run: python scripts/add_trend_conversion_tracking.py
-
-      - name: Add search landing pages
-        run: python scripts/add_search_landing_pages.py
-
-      - name: Improve buying guidance, mobile CTAs and sitemap
-        run: python scripts/improve_purchase_pages.py
-
-      - name: Add back-to-top button to all pages
-        run: python scripts/add_back_to_top.py
-
-      - name: Add GA4 tracking to all pages
-        env:
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
-        run: python scripts/add_analytics.py
-
-      - name: Validate generated links, metadata and analytics
-        run: python scripts/validate_generated_site.py
-
-      - name: Validate all product recommendations before publishing
-        run: python scripts/validate_product_quality.py
 
       - name: Save product quality report
         if: always()
@@ -252,4 +146,6 @@ jobs:
         env:
           BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
           BUFFER_CHANNEL_NAME: nichiyo_cost
+          EXPECTED_BUILD_SHA: ${{ github.sha }}
+          EXPECTED_BUILD_RUN_ID: ${{ github.run_id }}
         run: python scripts/post_buffer.py

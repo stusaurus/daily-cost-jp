@@ -9,6 +9,7 @@ from __future__ import annotations
 import html
 import json
 from product_display import clean_display_name
+from build_freshness import provenance
 import statistics
 from collections import Counter
 from datetime import datetime
@@ -233,7 +234,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
 </body></html>'''
 
 
-def build_social(rows: list[dict], now: datetime):
+def build_social(rows: list[dict], now: datetime, catalog=None):
     date_short = f"{now.month}/{now.day}"
     bullets = [f"・{row['name']} 約{row['discount']:.0f}%安い" for row in rows[:3]]
 
@@ -265,6 +266,7 @@ def build_social(rows: list[dict], now: datetime):
         + "\n※当日取得できた比較候補内の目安"
     )
     return {
+        **(provenance(catalog) if catalog is not None else {}),
         "date": now.date().isoformat(),
         "generated_at": now.isoformat(),
         "url": f"{SITE}today/",
@@ -321,7 +323,7 @@ def main():
     TODAY_DIR.mkdir(parents=True, exist_ok=True)
     SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
     (TODAY_DIR / "index.html").write_text(render_page(rows, now), encoding="utf-8")
-    social = build_social(rows, now)
+    social = build_social(rows, now, catalog=payload)
     (TODAY_DIR / "data.json").write_text(json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8")
     (SOCIAL_DIR / "latest.json").write_text(json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8")
     (SOCIAL_DIR / "latest.txt").write_text(social["text"] + "\n", encoding="utf-8")
