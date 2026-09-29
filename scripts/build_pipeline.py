@@ -89,6 +89,9 @@ def main():
             print('Optional OG image unavailable; no old image reused.', flush=True)
         finally:
             print('::endgroup::', flush=True)
+    verification_file = ROOT / 'googlef35e71acece62b67.html'
+    if verification_file.exists():
+        shutil.copy2(verification_file, site / verification_file.name)
     write_build_info()
 
 
