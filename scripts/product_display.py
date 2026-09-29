@@ -4,11 +4,20 @@ import unicodedata
 
 PROMO = re.compile(
     r'(?:最大\s*)?[\d,]+\s*(?:円|%)\s*(?:OFF|オフ|引き?)(?:\s*クーポン)?'
+    r'|(?:先着(?:限定)?)?クーポンで(?:最安)?(?:1箱)?[\d,]+円(?:[~〜～])?'
     r'|(?:ポイント\s*|P\s*)(?:最大\s*)?\d+\s*倍'
     r'|\d+\s*時間限定|本日(?:限定|限り)|マラソン(?:中|期間中|限定)'
+    r'|(?:\d{4}年(?:間)?)?(?:楽天)?ランキング\d+位(?:受賞)?'
+    r'|楽天\d+位|高評価|まとめ買いお得|365日最短当日出荷'
     r'|送料無料|送料込み|クーポン対象|SALE|セール中?', re.I)
 DATE = re.compile(r'(?:\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日)(?:限定|限り)?')
 LEADING_LABEL = re.compile(r'^\s*(?:【([^】]+)】|\[([^\]]+)\]|＼([^／]+)／)\s*')
+BARE_PROMO = re.compile(
+    r'^\s*(?:高評価|レビュー記入で[\d,]+円クーポンプレゼント)'
+    r'[\s★☆彡!！+＋・♪／/、。~〜～:：%％-]*', re.I)
+BARE_DATE_TIME = re.compile(
+    r'^\s*(?:\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日)(?:限定|限り)?'
+    r'(?:\s*\d{1,2}:\d{2}(?:迄|まで)?)?\s*')
 
 
 def promotion_only(label):
@@ -24,13 +33,29 @@ def promotion_only(label):
 def clean_display_name(name):
     original = str(name or '').strip()
     text = original
-    while match := LEADING_LABEL.match(text):
-        if not promotion_only(next(g for g in match.groups() if g is not None)):
+    removed_promotion = False
+    while True:
+        before = text
+        if match := LEADING_LABEL.match(text):
+            if promotion_only(next(g for g in match.groups() if g is not None)):
+                remainder = text[match.end():].lstrip()
+                if remainder:
+                    text = remainder
+                    removed_promotion = True
+                    continue
+        if match := BARE_PROMO.match(text):
+            remainder = text[match.end():].lstrip()
+            if remainder:
+                text = remainder
+                removed_promotion = True
+                continue
+        if removed_promotion and (match := BARE_DATE_TIME.match(text)):
+            remainder = text[match.end():].lstrip()
+            if remainder:
+                text = remainder
+                continue
+        if text == before:
             break
-        remainder = text[match.end():].lstrip()
-        if not remainder:
-            break
-        text = remainder
     # Bare, exact promotion prefixes only. Keep unknown/mixed wording intact.
     text = re.sub(r'^(?:(?:送料無料|送料込み|本日限定|本日限り|マラソン中)\s*[!！★☆＋+・]*\s*)+', '', text)
     return re.sub(r'\s+', ' ', text).strip() or original
