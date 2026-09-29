@@ -68,6 +68,7 @@ on:
       - "scripts/improve_purchase_pages.py"
       - "scripts/validate_generated_site.py"
       - "scripts/add_search_landing_pages.py"
+      - "googlef35e71acece62b67.html"
       - ".github/workflows/deploy-pages.yml"
 
 permissions:
