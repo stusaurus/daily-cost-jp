@@ -626,6 +626,9 @@ HTML_HEAD = """<!doctype html>
 
 def build_site():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    verification_file = Path("googlef35e71acece62b67.html")
+    if verification_file.exists():
+        (OUTPUT_DIR / verification_file.name).write_text(verification_file.read_text(encoding="utf-8"), encoding="utf-8")
     updated_at = datetime.now(ZoneInfo("Asia/Tokyo"))
     category_results = []
     serializable = {}
