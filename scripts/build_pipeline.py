@@ -89,6 +89,15 @@ def main():
             print('Optional OG image unavailable; no old image reused.', flush=True)
         finally:
             print('::endgroup::', flush=True)
+    # Keep a minimal diagnostic sitemap alongside the production sitemap.
+    # This isolates Search Console fetch problems without changing sitemap.xml.
+    (site / 'sitemap-test.xml').write_text(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        '  <url><loc>https://stusaurus.github.io/daily-cost-jp/</loc></url>\n'
+        '</urlset>\n',
+        encoding='utf-8',
+    )
     verification_file = ROOT / 'googlef35e71acece62b67.html'
     if verification_file.exists():
         shutil.copy2(verification_file, site / verification_file.name)
