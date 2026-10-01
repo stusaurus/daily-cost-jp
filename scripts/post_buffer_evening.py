@@ -1,7 +1,7 @@
 """Publish a second, different evening X post from today's trusted deal set."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import post_buffer as buffer
@@ -9,6 +9,17 @@ from x_post_strategy import choose_variant, strategy_version
 from product_display import clean_display_name
 
 JST = ZoneInfo("Asia/Tokyo")
+
+
+def required_evening_refresh_time(now: datetime | None = None) -> datetime:
+    """Return the intended 19:00 refresh boundary for a delayed evening run."""
+    current = now or datetime.now(JST)
+    boundary = current.replace(hour=19, minute=0, second=0, microsecond=0)
+    # GitHub scheduled runs can start several hours late. During the overnight
+    # grace window, the relevant scheduled boundary is the previous evening.
+    if current.hour < 6:
+        boundary -= timedelta(days=1)
+    return boundary
 
 
 def evening_url(payload: dict, variant: int, category_id: str) -> str:
@@ -111,7 +122,7 @@ def build_evening_text(payload: dict) -> str:
 
 def main() -> None:
     # A delayed/failed 19:00 refresh must not silently reuse the morning set.
-    payload = buffer.fetch_today_social(not_before=datetime.now(JST).replace(hour=19, minute=0, second=0, microsecond=0))
+    payload = buffer.fetch_today_social(not_before=required_evening_refresh_time())
     text = build_evening_text(payload)
     org_id, org_name, channel = buffer.discover_x_channel()
     channel_id = str(channel.get("id") or "")
