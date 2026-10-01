@@ -164,6 +164,18 @@ class RefreshRegressionTests(unittest.TestCase):
             self.assertIn('ドラム式専用 詰替2100g×6袋',text)
         self.assertEqual(payload['items'][0]['product_name'],raw)
 
+    def test_evening_refresh_boundary_handles_overnight_github_delay(self):
+        delayed = datetime(2026,10,2,2,5,tzinfo=JST)
+        on_time = datetime(2026,10,2,19,30,tzinfo=JST)
+        self.assertEqual(
+            evening.required_evening_refresh_time(delayed),
+            datetime(2026,10,1,19,tzinfo=JST),
+        )
+        self.assertEqual(
+            evening.required_evening_refresh_time(on_time),
+            datetime(2026,10,2,19,tzinfo=JST),
+        )
+
     def test_pr_and_production_share_the_full_pipeline_and_schedules(self):
         root=Path(__file__).resolve().parents[1]
         for name in ('deploy-pages.yml','validate-pr.yml'):
