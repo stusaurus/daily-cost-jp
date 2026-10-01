@@ -27,6 +27,7 @@ class ProductDisplayTests(unittest.TestCase):
                        '【10/1限定＼当選確率2分の1／最大100%ポイントバック】',
                        '【 10月1日から31日限定！ エントリーで全品ポイント5倍】ランキング1位受賞 ',
                        '【まとめ買いお得！★クーポン利用で498円~】【高評価人気商品】',
+                       '[最大1,000円OFFクーポン★くらしにプラス] ',
                        '本日限定！ ']:
             self.assertEqual(clean_display_name(prefix+product),product)
 
