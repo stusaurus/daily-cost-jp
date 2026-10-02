@@ -45,10 +45,13 @@ def validate(root=Path('site')):
         rel = path.relative_to(root).as_posix()
         page = Page(); page.feed(text); pages[rel] = page
         expected = BASE + rel.removesuffix('index.html')
-        if page.canonical != [expected]: errors.append(f'{rel}: canonical mismatch {page.canonical}')
+        if rel == '404.html':
+            if 'noindex' not in page.meta.get('robots', '').lower(): errors.append(f'{rel}: 404 must be noindex')
+        elif page.canonical != [expected]:
+            errors.append(f'{rel}: canonical mismatch {page.canonical}')
         if page.h1 != 1: errors.append(f'{rel}: expected one H1')
         if not page.title or not page.meta.get('description'): errors.append(f'{rel}: missing title/description')
-        if 'noindex' in page.meta.get('robots', '').lower(): errors.append(f'{rel}: unexpectedly noindex')
+        if rel != '404.html' and 'noindex' in page.meta.get('robots', '').lower(): errors.append(f'{rel}: unexpectedly noindex')
         titles[page.title].append(rel); descriptions[page.meta.get('description')].append(rel)
         for schema in page.schema:
             try: json.loads(schema)
@@ -77,7 +80,7 @@ def validate(root=Path('site')):
             if len(group) > 1: errors.append(f'duplicate {kind}: {group}')
     sitemap = ET.parse(root / 'sitemap.xml')
     actual = {n.text for n in sitemap.iter() if n.tag.endswith('}loc')}
-    expected = {p.canonical[0] for p in pages.values() if len(p.canonical) == 1}
+    expected = {p.canonical[0] for rel, p in pages.items() if rel != '404.html' and len(p.canonical) == 1}
     if actual != expected: errors.append('sitemap does not cover exactly the canonical pages')
     return errors, {'pages': len(pages), 'rakuten_links': rakuten, 'sitemap_urls': len(actual)}
 
