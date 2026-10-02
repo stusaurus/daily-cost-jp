@@ -133,11 +133,31 @@ def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
 """
 
 
-def faq_section(name: str, label: str) -> str:
+PRIORITY_FAQS = {
+    "tissue": [
+        ("ティッシュはどこが安いか、何を見れば分かりますか？", "箱数だけでなく1箱あたりと100組あたりの価格をそろえて比較します。200組・250組など中身が違う商品も、同じ基準に直すと判断しやすくなります。"),
+        ("ティッシュはいくらなら安いですか？", "販売箱数や組数で条件が変わるため、固定の総額ではなく、このページの最新ランキングで1箱・100組あたりの単価を確認するのが安全です。"),
+    ],
+    "toilet-paper": [
+        ("トイレットペーパーはいくらなら安いですか？", "ロール数だけではなく1ロールの長さが違うため、総額だけで判断せず、1ロールあたりと長さをそろえて比較するのがポイントです。"),
+        ("トイレットペーパーの最安値はどう比較しますか？", "送料込みの商品にそろえたうえで、ロール数と巻きの長さを確認します。大容量でも長さが短ければ必ずしも割安とは限りません。"),
+    ],
+    "laundry": [
+        ("洗濯洗剤はどこが安いか、どう比較しますか？", "本体・詰め替え・大容量で総額が違うため、100g・100mlあたりの単価にそろえて比較します。濃縮タイプは1回の使用量も確認すると実際のコストを判断しやすくなります。"),
+        ("洗濯洗剤の安い店を探すときの注意点は？", "表示価格だけでなく容量とセット数、送料を確認します。このページでは楽天市場で送料込みと確認できた商品を同じ単位に換算して比較しています。"),
+    ],
+}
+
+def faq_section(category_id: str, name: str, label: str) -> str:
     safe_name, safe_label = html.escape(name), html.escape(label)
+    extra = "".join(
+        f"<details><summary>{html.escape(q)}</summary><p>{html.escape(a)}</p></details>"
+        for q, a in PRIORITY_FAQS.get(category_id, [])
+    )
     return f"""
 <section class="category-seo-faq" id="category-faq">
   <h2>{safe_name}の価格比較FAQ</h2>
+  {extra}
   <details><summary>{safe_name}は何を基準に安い順にしていますか？</summary><p>楽天市場で送料込みと確認でき、商品名から容量や個数を高い確度で読み取れた商品を、{safe_label}あたりの単価に換算して比較しています。</p></details>
   <details><summary>送料はランキング価格に含まれていますか？</summary><p>送料込みの商品を対象に比較しています。クーポンや一部のポイント還元は単価に含めていないため、購入前に楽天市場の商品ページで最終価格をご確認ください。</p></details>
   <details><summary>価格はいつ更新されますか？</summary><p>カテゴリランキングは毎朝自動更新します。特定の商品を今すぐ確認したい場合は、商品名検索からリアルタイムの送料込み購入候補を探せます。</p></details>
@@ -189,8 +209,8 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
             else: markup = markup.replace("</main>", links + "\n</main>", 1)
     if 'id="category-faq"' not in markup:
         marker = '<section class="related-categories">'
-        if marker in markup: markup = markup.replace(marker, faq_section(name, label) + "\n" + marker, 1)
-        else: markup = markup.replace("</main>", faq_section(name, label) + "\n</main>", 1)
+        if marker in markup: markup = markup.replace(marker, faq_section(category_id, name, label) + "\n" + marker, 1)
+        else: markup = markup.replace("</main>", faq_section(category_id, name, label) + "\n</main>", 1)
     path.write_text(markup, encoding="utf-8")
     return True
 
