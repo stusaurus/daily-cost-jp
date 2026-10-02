@@ -67,7 +67,8 @@ on:
       - "scripts/offer_validation.js"
       - "scripts/improve_purchase_pages.py"
       - "scripts/validate_generated_site.py"
-      - "scripts/add_search_landing_pages.py"\n      - "scripts/generate_seo_files.py"
+      - "scripts/add_search_landing_pages.py"
+      - "scripts/generate_seo_files.py"
       - "googlef35e71acece62b67.html"
       - ".github/workflows/deploy-pages.yml"
 
@@ -100,7 +101,12 @@ jobs:
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
 
-      - name: Generate SEO discovery files\n        env:\n          SITE_URL: https://stusaurus.github.io/daily-cost-jp/\n        run: python scripts/generate_seo_files.py\n\n      - name: Save product quality report
+      - name: Generate SEO discovery files
+        env:
+          SITE_URL: https://stusaurus.github.io/daily-cost-jp/
+        run: python scripts/generate_seo_files.py
+
+      - name: Save product quality report
         if: always()
         uses: actions/upload-artifact@v4
         with:
