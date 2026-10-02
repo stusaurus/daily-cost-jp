@@ -68,6 +68,23 @@ METRIC_LABELS = {
 }
 
 
+
+PRIORITY_LINKS = [
+    ("tissue", "ティッシュの値段比較"),
+    ("toilet-paper", "トイレットペーパーはいくらなら安い？"),
+    ("laundry", "洗濯洗剤はどこが安い？"),
+]
+
+def priority_links(current_id: str) -> str:
+    links = [
+        f'<a href="../{slug}/">{html.escape(label)}</a>'
+        for slug, label in PRIORITY_LINKS if slug != current_id
+    ]
+    if not links:
+        return ""
+    return '<nav class="search-priority-links" aria-label="よく比較されている日用品"><strong>よく比較されている日用品</strong>' + "".join(links) + '</nav>'
+
+
 def replace_once(text: str, pattern: str, replacement: str) -> str:
     return re.sub(pattern, replacement, text, count=1, flags=re.DOTALL)
 
@@ -133,7 +150,7 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
-.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
+.search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
 """
 
@@ -164,6 +181,12 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
             markup = markup[:insert_at] + "\n" + seo_section(category_id, name, alias, label) + markup[insert_at:]
         else:
             markup = markup.replace('<main class="container">', '<main class="container">\n' + seo_section(category_id, name, alias, label), 1)
+    if 'class="search-priority-links"' not in markup:
+        marker = '<section class="related-categories">'
+        links = priority_links(category_id)
+        if links:
+            if marker in markup: markup = markup.replace(marker, links + "\n" + marker, 1)
+            else: markup = markup.replace("</main>", links + "\n</main>", 1)
     if 'id="category-faq"' not in markup:
         marker = '<section class="related-categories">'
         if marker in markup: markup = markup.replace(marker, faq_section(name, label) + "\n" + marker, 1)
