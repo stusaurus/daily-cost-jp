@@ -43,12 +43,14 @@ SEARCH_TARGETS = {
         "h1": "トイレットペーパーはいくらなら安い？値段比較と目安",
         "lead": "トイレットペーパーの送料込み価格を比較。1ロールの価格に加え、長さ・シングルとダブルの違いを確認して、店頭と楽天のどちらで買うか判断できます。",
         "heading": "トイレットペーパーの値段はどこが安い？比較のコツ",
+        "intent_note": "「トイレットペーパー いくらなら安い」「最安値」「値段比較」で探す場合も、総額ではなく1ロールあたりの価格と巻きの長さをそろえて比べるのがポイントです。",
     },
     "laundry": {
         "title": "洗濯洗剤はどこが安い？送料込み単価の比較と買い目安",
         "h1": "洗濯洗剤はどこが安い？単価で価格比較",
         "lead": "洗濯洗剤の楽天送料込み価格を100g・100mlあたりで比較。店頭価格との比べ方、詰め替えの販売個数、濃縮洗剤の1回あたりコストまで確認できます。",
         "heading": "洗濯洗剤はどこが安い？価格とコスパの比較ポイント",
+        "intent_note": "「洗濯洗剤 どこが安い」「値段比較」「安い店」で探すときは、本体・詰め替え・大容量で総額が大きく違うため、100g・100mlあたりの単価をそろえて確認できます。",
     },
     "tissue": {
         "title": "ティッシュはどこが安い？今日の楽天送料込み価格・値段比較",
@@ -56,6 +58,7 @@ SEARCH_TARGETS = {
         "lead": "ティッシュの楽天送料込み価格を1箱あたりで比較。200組・250組など組数が違う商品は100組単価も確認し、店頭価格と比べられます。",
         "description": "ティッシュはどこが安い？今日取得した楽天の送料込み価格を、1箱・100組あたりで値段比較。販売箱数と支払総額、200組・250組の違いを確認し、店頭価格と比べて買い先を選べます。",
         "heading": "ティッシュはどこが安い？価格を比べるポイント",
+        "intent_note": "「ティッシュ どこが安い」「ティッシュ 値段比較」で探すときは、箱数だけでなく1箱あたり・100組あたりの価格をそろえると、200組や250組の商品も比較しやすくなります。",
     },
 }
 
@@ -96,10 +99,13 @@ def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
     target = SEARCH_TARGETS.get(category_id, {})
     heading = html.escape(target.get("heading", f"{name}はどこが安い？比較するときのポイント"))
+    intent_note = target.get("intent_note", "")
+    intent_html = f'<p class="search-intent-note">{html.escape(intent_note)}</p>' if intent_note else ""
     return f"""
 <section class="category-seo-guide" id="compare-guide">
   <h2>{heading}</h2>
   <p>{safe_alias}は、商品価格だけでは容量や個数の違いで安さを判断しにくいため、このページでは楽天市場で送料込みと確認できた商品を<strong>{safe_label}あたり</strong>にそろえて価格比較しています。</p>
+  {intent_html}
   <ul>
     <li><strong>単価で比較：</strong>容量違い・まとめ買いでも{safe_label}あたりに換算</li>
     <li><strong>送料込みを優先：</strong>表示価格だけ安く見える送料別商品を避けて比較</li>
