@@ -17,6 +17,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 from sale_quantity import purchase_summary
 from product_quality import filter_items
+from comparison_units import comparison_unit, quantity_label
 from x_post_strategy import choose_variant, strategy_version
 
 SITE = "https://stusaurus.github.io/daily-cost-jp/"
@@ -70,6 +71,17 @@ def choose_category(category_id: str, category: dict, min_discount: float = 8.0,
             continue
         valid.append(item)
 
+    comparison_label = None
+    if category_id in ('tissue', 'toilet-paper'):
+        normalized = []
+        for item in valid:
+            unit = comparison_unit(category_id, item)
+            if unit:
+                normalized.append({**item, '_raw_unit_price':item['unit_price'], '_comparison_label':unit[0], 'unit_price':unit[1]})
+        counts = Counter(item['_comparison_label'] for item in normalized)
+        if not counts: return None
+        comparison_label = counts.most_common(1)[0][0]
+        valid = [item for item in normalized if item['_comparison_label'] == comparison_label]
     if len(valid) < 5:
         return None
 
@@ -122,7 +134,9 @@ def choose_category(category_id: str, category: dict, min_discount: float = 8.0,
         "emoji": str(category.get("emoji") or "🛒"),
         "metric": metric,
         "metric_label": METRIC_LABELS[metric],
-        "unit_price": best,
+        "unit_price": candidate.get("_raw_unit_price", best),
+        "comparison_unit_price": best,
+        "comparison_label": comparison_label or METRIC_LABELS[metric],
         "median": median,
         "discount": discount,
         "sample": len(same_metric),
@@ -178,17 +192,19 @@ def render_page(rows: list[dict], now: datetime) -> str:
   <div class="deal-body">
     <div class="deal-topline">
       <span class="category-chip">{html.escape(row['emoji'])} {html.escape(row['name'])}</span>
-      <span class="discount-chip"><strong>{row['discount']:.0f}%</strong> 安い</span>
+      <span class="discount-chip"><strong>{row['discount']:.0f}%</strong> 単価が低い</span>
     </div>
-    <div class="discount-note">今日取得した比較候補の中央値より</div>
+    <div class="discount-note">今日取得した比較候補の中央値より（{html.escape(row.get('comparison_label', row['metric_label']))}基準）</div>
     <h2>{html.escape(display_name)}</h2>
+    <p class="history-fact">{html.escape(row.get('selection_reason', '同じ比較単位で単価が低い候補'))}</p>
     <div class="price-panel">
       <div class="unit-price">{money(row['unit_price'])} <span>/ {html.escape(row['metric_label'])}</span></div>
       <div class="deal-purchase">{html.escape(purchase_summary(row))}</div>
+      <p>総数量：{html.escape(quantity_label(row))}</p>
     </div>
     <div class="deal-details">
       <div><span>ショップ</span><strong>{html.escape(row['shop'])}</strong></div>
-      <div><span>比較基準</span><strong>中央値 {money(row['median'])} ・ 送料込み {row['sample']}件</strong></div>
+      <div><span>比較基準</span><strong>中央値 {money(row['median'])}／{html.escape(row.get('comparison_label', row['metric_label']))} ・ 送料込み {row['sample']}件</strong></div>
     </div>
     <div class="deal-actions">
       <a class="buy-button" href="{html.escape(row['url'], quote=True)}" target="_blank" rel="nofollow sponsored noopener">楽天市場で価格を見る</a>
@@ -236,7 +252,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
 
 def build_social(rows: list[dict], now: datetime, catalog=None):
     date_short = f"{now.month}/{now.day}"
-    bullets = [f"・{row['name']} 約{row['discount']:.0f}%安い" for row in rows[:3]]
+    bullets = [f"・{row['name']} 約{row['discount']:.0f}%単価低め" for row in rows[:3]]
 
     # Rotate the framing as well as the products. Even when the same categories
     # remain strong for several days, followers should not see copy that feels
@@ -248,7 +264,7 @@ def build_social(rows: list[dict], now: datetime, catalog=None):
         f"【買い物前に3つだけチェック｜{date_short}】",
         f"【今日、価格差が大きかった日用品｜{date_short}】",
         f"【送料込み単価で見つけた候補｜{date_short}】",
-        f"【日用品の買い時メモ｜{date_short}】",
+        f"【日用品の単価メモ｜{date_short}】",
     ]
     closings = [
         "送料込み・単価換算で比較しました👇",
@@ -291,7 +307,7 @@ def inject_home(rows: list[dict], now: datetime):
     block = f'''<section id="today-deals-entry" style="margin:12px 0 20px;padding:15px;border:1px solid #ecd8cf;border-radius:17px;background:linear-gradient(180deg,#fff8f5,#fff)">
   <div style="font-size:10px;font-weight:900;color:#b3261e">📅 {now.month}/{now.day} 毎朝自動更新</div>
   <strong style="display:block;margin-top:2px;font-size:16px">{title}</strong>
-  <p style="margin:4px 0 9px;font-size:11px;color:#6b7280">今回の注目は {html.escape(top['name'])}。比較候補の中央値より約{top['discount']:.0f}%安い候補があります。</p>
+  <p style="margin:4px 0 9px;font-size:11px;color:#6b7280">今回の注目は {html.escape(top['name'])}。比較候補の中央値より約{top['discount']:.0f}%単価が低い候補があります。</p>
   <a href="today/" style="display:block;padding:10px 12px;border-radius:10px;background:#b3261e;color:#fff;text-align:center;text-decoration:none;font-size:11px;font-weight:900">今日の{len(rows)}選を見る →</a>
 </section>'''
     if '<main class="container">' in markup:

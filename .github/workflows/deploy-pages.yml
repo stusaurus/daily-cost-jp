@@ -104,14 +104,18 @@ jobs:
       - name: Generate SEO discovery files
         env:
           SITE_URL: https://stusaurus.github.io/daily-cost-jp/
-        run: python scripts/generate_seo_files.py
+        run: |
+          python scripts/generate_seo_files.py
+          python scripts/validate_generated_site.py
 
       - name: Save product quality report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: product-quality-report
-          path: quality-report.json
+          path: |
+            quality-report.json
+            quality-monitor-report.json
           retention-days: 14
 
       - name: Configure Pages

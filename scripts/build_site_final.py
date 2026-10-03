@@ -5,6 +5,7 @@ plus exact top-pick anchors for mobile navigation.
 """
 import build_site_entry as app
 from sale_quantity import purchase_summary
+from comparison_units import comparison_unit, quantity_label
 
 core = app.core
 
@@ -43,6 +44,11 @@ def render_product_card_final(item, rank, metric, anchor_id):
         price_label = "価格情報なし"
     purchase_label = core.html.escape(purchase_summary(item)) if raw_price else price_label
 
+    normalized = comparison_unit(item.get('category_id', ''), item)
+    supplemental = ''
+    if normalized and item.get('category_id') in ('tissue', 'toilet-paper'):
+        supplemental = f'<p class="purchase-summary">¥{normalized[1]:,.2f}／{core.html.escape(normalized[0])}</p>'
+    quantity = core.html.escape(quantity_label(item))
     image_html = (
         f'<img src="{image}" alt="" loading="lazy">'
         if image
@@ -57,6 +63,7 @@ def render_product_card_final(item, rank, metric, anchor_id):
         <h3>{name}</h3>
         <div class="unit-price">{core.yen(item["unit_price"])} <span>/ {metric_label}</span></div>
         <div class="purchase-summary">{purchase_label}</div>
+        <p class="purchase-summary">総数量：{quantity}</p>{supplemental}
         <div class="meta-grid">
           <span>{core.html.escape(review)}</span>
           <span>{core.html.escape(point)}</span>

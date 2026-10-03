@@ -337,7 +337,7 @@ def choose_ranked_items(items):
             continue
         seen.add(key)
         ranked.append(item)
-        if len(ranked) >= 5:
+        if len(ranked) >= 12:
             break
 
     return dominant_metric, ranked

@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import json
+import hashlib
+from pathlib import Path
+from price_observations import identity, stats
+from datetime import timedelta
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -35,7 +39,7 @@ def slot_seed(now: datetime) -> int:
     return now.date().toordinal() * 2 + refresh_slot
 
 
-def select_diverse(strict_rows: list[dict], broad_rows: list[dict], now: datetime) -> list[dict]:
+def select_diverse(strict_rows: list[dict], broad_rows: list[dict], now: datetime, history=None) -> list[dict]:
     """Rotate five safe deal categories so the top slot does not freeze indefinitely."""
     if not broad_rows:
         return strict_rows[:5]
@@ -47,8 +51,20 @@ def select_diverse(strict_rows: list[dict], broad_rows: list[dict], now: datetim
     # Rotate the full five-item set, including the first slot. The candidates
     # remain subject to the same confidence/outlier/discount safety filters.
     # This avoids presenting the same category as the permanent #1 deal.
-    offset = (slot_seed(now) * 3) % len(pool)
-    rotated = pool[offset:] + pool[:offset]
+    if history and history.get('selections'):
+        recent = history['selections'][-14:]
+        exposure = {}
+        for entry in recent:
+            for key in entry.get('keys', []): exposure[key] = exposure.get(key, 0) + 1
+        def score(row):
+            # Price drops override repetition; unchanged candidates receive less exposure.
+            drop = max(0, row.get('observed_drop', 0))
+            return (-(row['discount'] + min(20, drop) - 4*exposure.get(row.get('product_key'), 0)),
+                    hashlib.sha256(f"{now.date()}:{row['id']}".encode()).hexdigest())
+        rotated = sorted(pool, key=score)
+    else:
+        offset = (slot_seed(now) * 3) % len(pool)
+        rotated = pool[offset:] + pool[:offset]
     selected = rotated[:5]
 
     # Never duplicate a category even if upstream data changes unexpectedly.
@@ -94,7 +110,20 @@ def main() -> None:
 
 
     now = datetime.now(JST)
-    rows = select_diverse(strict, broad, now)
+    history_path = Path('site/price-observations.json')
+    history = json.loads(history_path.read_text()) if history_path.exists() else {}
+    for row in broad:
+        item = next(p for p in payload['categories'][row['id']]['items'] if p['url'] == row['url'])
+        row['product_key'] = identity(row['id'], item)
+        fact = stats(row['id'], item, history)
+        row['observed_drop'] = fact['drop_percent'] if fact else 0
+        row['selection_reason'] = (f"同じ商品の前回観測日より支払総額が{fact['drop_percent']:.1f}%下がりました" if fact and fact['drop_percent'] >= 1 else '今日取得した同じ比較単位の候補より単価が低い商品。値下がりを示すものではありません。')
+    rows = select_diverse(strict, broad, now, history)
+    entry = {'at':payload['updated_at'],'keys':[row['product_key'] for row in rows]}
+    history.setdefault('selections', [])
+    if not any(e['at'] == entry['at'] for e in history['selections']): history['selections'].append(entry)
+    history['selections'] = history['selections'][-120:]
+    if history_path.exists(): history_path.write_text(json.dumps(history,ensure_ascii=False),encoding='utf-8')
 
     base.TODAY_DIR.mkdir(parents=True, exist_ok=True)
     base.SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
@@ -102,7 +131,7 @@ def main() -> None:
 
     social = base.build_social(social_order(rows, now), now, catalog=payload)
     social["items"] = rows
-    social["selection_mode"] = "daily_rotating_safe_pool"
+    social["selection_mode"] = "observed_price_and_recent_exposure"
     social["strict_eligible_count"] = len(strict)
     social["eligible_count"] = len(broad)
     social["rotation_min_discount"] = used_min_discount

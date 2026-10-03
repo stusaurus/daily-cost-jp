@@ -149,7 +149,7 @@ class RefreshRegressionTests(unittest.TestCase):
                 self.assertFalse((root/'site/stale.html').exists())
                 if args[-1].endswith('validate_product_quality.py'):
                     raise subprocess.CalledProcessError(1,args)
-            with patch.object(pipeline,'ROOT',root), patch.object(pipeline.subprocess,'run',side_effect=run), patch.object(pipeline,'write_build_info') as manifest, redirect_stdout(io.StringIO()):
+            with patch('price_observations.prepare'), patch.object(pipeline,'ROOT',root), patch.object(pipeline.subprocess,'run',side_effect=run), patch.object(pipeline,'write_build_info') as manifest, redirect_stdout(io.StringIO()):
                 with self.assertRaises(subprocess.CalledProcessError):
                     pipeline.main()
                 manifest.assert_not_called()
@@ -184,7 +184,7 @@ class RefreshRegressionTests(unittest.TestCase):
             self.assertNotIn('run: python scripts/audit_product_candidates.py',text)
         self.assertIn('python scripts/build_pipeline.py',(root/'.github/actions/build-site/action.yml').read_text())
         self.assertEqual(pipeline.STEPS[0],'build_realtime_products')
-        self.assertEqual(pipeline.STEPS[-2:],('validate_generated_site','validate_product_quality'))
+        self.assertEqual(pipeline.STEPS[-3:],('validate_generated_site','validate_product_quality','monitor_quality'))
         self.assertEqual(len(pipeline.STEPS),len(set(pipeline.STEPS)))
         self.assertTrue(all((root/'scripts'/f'{name}.py').is_file() for name in pipeline.STEPS))
         self.assertFalse(any(name.startswith('post_buffer') for name in pipeline.STEPS))
