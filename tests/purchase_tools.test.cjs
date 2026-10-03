@@ -6,9 +6,9 @@ const code = fs.readFileSync('scripts/purchase_tools.js','utf8');
 const source = fs.readFileSync('scripts/analytics_runtime.js','utf8');
 async function fixture(blockStorage=false) {
   const dom=new JSDOM(`<section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><article class="product-card"><div class="product-body"><h3>A</h3><a href="https://hb.afl.rakuten.co.jp/a">楽天</a></div></article><article class="product-card"><div class="product-body"><h3>B</h3><a href="https://hb.afl.rakuten.co.jp/b">楽天</a></div></article>`,{url:'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',runScripts:'outside-only'});
-  dom.window.fetch=async()=>({ok:true,json:async()=>[
+  dom.window.fetch=async(url,options)=>{dom.window.catalogFetchOptions=options;return {ok:true,json:async()=>[
     {key:'a',category:'tissue',name:'A',url:'https://hb.afl.rakuten.co.jp/a',quantity:'60箱',price:3600,unit:['100組',40],rank:1,updated_at:'2026-10-03T06:00:00+09:00'},
-    {key:'b',category:'tissue',name:'B',url:'https://hb.afl.rakuten.co.jp/b',quantity:'60箱',price:4200,unit:['100組',35],rank:2,updated_at:'2026-10-03T06:00:00+09:00'}]});
+    {key:'b',category:'tissue',name:'B',url:'https://hb.afl.rakuten.co.jp/b',quantity:'60箱',price:4200,unit:['100組',35],rank:2,updated_at:'2026-10-03T06:00:00+09:00'}]};};
   if(blockStorage)Object.defineProperty(dom.window,'localStorage',{value:{getItem:()=>null,setItem:()=>{throw Error('quota');}}});
   dom.window.eval(code);await new Promise(resolve=>setImmediate(resolve));return dom;
 }
@@ -21,6 +21,9 @@ test('comparison orders equal content correctly despite box rank, resolves saved
   d.querySelector('[data-product-tool="save"]').click();d.getElementById('show-saved').click();
   assert.equal(d.querySelector('#purchase-tool-panel a').dataset.conversionSource,'saved');
   assert.deepEqual(JSON.parse(dom.window.localStorage.getItem('daily_cost_saved_products_v1')),['a']);dom.window.close();
+});
+test('revisits request current comparison data instead of a cached price catalog',async()=>{
+  const dom=await fixture();assert.equal(dom.window.catalogFetchOptions.cache,'no-store');dom.window.close();
 });
 test('storage failure is reported without losing comparison',async()=>{
   const dom=await fixture(true);const d=dom.window.document;

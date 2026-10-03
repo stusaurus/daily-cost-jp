@@ -1,5 +1,6 @@
 """Final generated purchase tools backed only by the current verified catalog."""
 import html
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -48,7 +49,9 @@ def main():
                 'history':stats(cid,item,history),'updated_at':payload['updated_at']})
     assets = SITE/'assets'; assets.mkdir(exist_ok=True)
     (assets/'comparison-catalog.json').write_text(json.dumps(catalog,ensure_ascii=False),encoding='utf-8')
-    (assets/'purchase-tools.js').write_text(Path('scripts/purchase_tools.js').read_text(),encoding='utf-8')
+    tools_source = Path('scripts/purchase_tools.js').read_text()
+    (assets/'purchase-tools.js').write_text(tools_source,encoding='utf-8')
+    tools_version = hashlib.sha256(tools_source.encode()).hexdigest()[:12]
     for path in [SITE/'index.html', SITE/'today/index.html', *SITE.glob('categories/*/index.html')]:
         markup = path.read_text()
         if path.parent.parent.name == 'categories':
@@ -69,7 +72,7 @@ def main():
             markup = re.sub(r'(<section class="purchase-answer" id="buying-answer">.*?</section>)', lambda m:m.group()+toolbar,markup,count=1,flags=re.S)
         else:
             markup = re.sub(r'(<main\b[^>]*>)',lambda m:m.group()+toolbar,markup,count=1)
-        markup = markup.replace('</head>',STYLE+'</head>',1).replace('</body>','<script src="/daily-cost-jp/assets/purchase-tools.js" defer></script></body>',1)
+        markup = markup.replace('</head>',STYLE+'</head>',1).replace('</body>',f'<script src="/daily-cost-jp/assets/purchase-tools.js?v={tools_version}" defer></script></body>',1)
         path.write_text(markup,encoding='utf-8')
     (SITE/'404.html').write_text('<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ページが見つかりません | 日用品コスパ比較</title><meta name="description" content="指定されたページは見つかりません。日用品のカテゴリ一覧から価格比較を続けられます。"><meta name="robots" content="noindex,follow"></head><body><main><h1>ページが見つかりません</h1><p><a href="/daily-cost-jp/">日用品コスパ比較へ</a></p><p><a href="/daily-cost-jp/categories/">カテゴリから探す</a></p></main></body></html>',encoding='utf-8')
     print('Generated normalized comparison tables, observed histories and saved/comparison tools.')

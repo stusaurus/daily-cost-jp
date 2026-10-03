@@ -19,6 +19,23 @@ from diversify_daily_deals import select_diverse
 from build_site import choose_ranked_items
 
 class CompletionTests(unittest.TestCase):
+    def test_generated_purchase_script_is_versioned_to_refresh_revisitors(self):
+        import hashlib
+        import complete_purchase_flow
+        with tempfile.TemporaryDirectory() as tmp, patch('complete_purchase_flow.SITE', Path(tmp)):
+            root = Path(tmp)
+            (root/'today').mkdir()
+            (root/'data.json').write_text(json.dumps({'updated_at':'2026-10-03T06:00:00+09:00','categories':{}}))
+            (root/'price-observations.json').write_text(json.dumps({'products':{}}))
+            for page in (root/'index.html',root/'today/index.html'):
+                page.write_text('<html><head></head><body><main></main></body></html>')
+            complete_purchase_flow.main()
+            source = Path('scripts/purchase_tools.js').read_text()
+            version = hashlib.sha256(source.encode()).hexdigest()[:12]
+            self.assertIn(f'purchase-tools.js?v={version}',(root/'index.html').read_text())
+            self.assertIn(f'purchase-tools.js?v={version}',(root/'today/index.html').read_text())
+            self.assertEqual((root/'assets/purchase-tools.js').read_text(),source)
+
     def test_conditional_and_used_prices_are_rejected_without_removing_generic_coupon_ads(self):
         for condition in ['中古','定期便','初回限定','クーポン利用で']:
             self.assertEqual(category_rejection('tissue',f'箱ティッシュ150組60箱 {condition}'),'conditional_or_used_price')

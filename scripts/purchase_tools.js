@@ -72,7 +72,7 @@
   }
   document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
   document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
-  fetch(ROOT+'assets/comparison-catalog.json').then(r=>{if(!r.ok)throw new Error('catalog');return r.json();}).then(data=>{
+  fetch(ROOT+'assets/comparison-catalog.json', {cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog');return r.json();}).then(data=>{
     catalog = data;
     document.querySelectorAll('.product-card, .deal-card').forEach(card=>{
       const link = card.querySelector('a[href*="hb.afl.rakuten.co.jp"]');
