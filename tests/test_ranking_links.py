@@ -2,8 +2,11 @@ import sys
 import unittest
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from urllib.error import HTTPError
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
+import fix_trend_query_links as trend
 from promote_home_ranking import extract_rows, item_link
 from expand_ranking_detail import render
 
@@ -22,3 +25,10 @@ class RankingLinkTests(unittest.TestCase):
         self.assertEqual(query['rafcid'], ['test'])
         self.assertNotIn('amp;rafcid', query)
         self.assertEqual(query['pc'], ['https://item.rakuten.co.jp/shop/sku/'])
+
+    def test_rate_limit_stops_optional_queries_without_inventing_matches(self):
+        with patch.object(trend,'_cache',{}), patch.object(trend,'_rate_limited',False), patch.object(trend.urllib.request,'urlopen',side_effect=HTTPError('https://example.test',429,'rate limited',{},None)) as opener:
+            self.assertFalse(trend.has_products('アタックZERO'))
+            self.assertFalse(trend.has_products('スコッティ200組'))
+            self.assertEqual(trend.choose_query('スコッティ200組','スコッティ200組'),'')
+            self.assertEqual(opener.call_count,1)

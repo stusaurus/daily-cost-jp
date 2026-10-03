@@ -5,6 +5,7 @@ import re
 import time
 import urllib.parse
 import urllib.request
+import urllib.error
 from pathlib import Path
 
 PRODUCT_API = "https://openapi.rakuten.co.jp/ichibaproduct/api/Product/Search/20250801"
@@ -79,12 +80,16 @@ def candidates(title, current):
 
 
 _cache = {}
+_rate_limited = False
 
 
 def has_products(query):
+    global _rate_limited
     key = compact(query)
     if key in _cache:
         return _cache[key]
+    if _rate_limited:
+        return False
     params = {
         "applicationId": APP_ID,
         "keyword": query,
@@ -109,6 +114,13 @@ def has_products(query):
             payload = json.loads(response.read().decode("utf-8"))
         source = payload.get("Products") or payload.get("items") or []
         found = bool(source) or int(payload.get("count") or 0) > 0
+    except urllib.error.HTTPError as exc:
+        if exc.code == 429:
+            _rate_limited = True
+            print("Product API rate limited; stop optional trend lookups for this build.")
+        else:
+            print(f"Trend query validation failed for {query!r}: {exc}")
+        found = False
     except Exception as exc:
         print(f"Trend query validation failed for {query!r}: {exc}")
         found = False
@@ -118,6 +130,8 @@ def has_products(query):
 
 def choose_query(title, current):
     for query in candidates(title, current):
+        if _rate_limited:
+            return ""
         time.sleep(1.1)
         if has_products(query):
             return query
