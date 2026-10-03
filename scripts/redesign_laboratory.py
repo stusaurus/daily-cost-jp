@@ -261,7 +261,7 @@ def main(site=SITE):
             image['srcset']=photo_url(original,240)+' 240w, '+photo_url(original,420)+' 420w';image['sizes']='(max-width:600px) 110px, 280px'
         # Give existing daily units the same number/unit hierarchy, without
         # changing the displayed value or interpreting product data again.
-        for unit in soup.select('.deal-card .unit-price'):
+        for unit in soup.select('.deal-card .unit-price, .answer-pick strong'):
             text=unit.get_text(' ',strip=True)
             match=re.fullmatch(r'¥([\d,.]+)\s*[/／]\s*(.+)',text)
             if match:

@@ -131,3 +131,6 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 @media(max-width:360px){.product-card{grid-template-columns:100px minmax(0,1fr)}.product-image{height:160px;padding:12px}.unit-price .lab-price-value{font-size:36px}.lab-sample-unit .lab-price-value{font-size:34px}.lab-hero h1{font-size:30px}.lab-answer{grid-template-columns:72px minmax(0,1fr)}}
 /* Fit long prices to the mobile information column, rather than the whole screen. */
 @supports(font-size:1cqw){@media(max-width:600px){.product-body{container-type:inline-size}.unit-price .lab-price-value{font-size:clamp(28px,20cqw,42px)}}}
+.answer-pick .lab-price-value{display:block;font:40px/1.15 var(--serif);font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.025em;white-space:nowrap}
+.answer-pick .lab-price-unit{display:block;font:13px/1.8 var(--sans);color:var(--muted);font-weight:400;letter-spacing:0}
+@media(max-width:600px){.answer-pick .lab-price-value{font-size:31px}.comparison-table,.comparison-table td,.comparison-table th,.comparison-table td:first-child{font-size:13px;line-height:1.8}}
