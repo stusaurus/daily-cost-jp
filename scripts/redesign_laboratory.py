@@ -201,6 +201,23 @@ def main(site=SITE):
         for field in soup.select('input:not([aria-label]):not([id])'):
             if field.get('placeholder'):field['aria-label']=field['placeholder']
         group_normalized_cards(soup,payload['categories'])
+        answer=soup.select_one('#buying-answer')
+        if answer:
+            picked=answer.select_one('.answer-pick a[href]')
+            match=re.fullmatch(r'#(.+)-rank-(\d+)',picked['href']) if picked else None
+            if match and match[1] in payload['categories']:
+                rows=payload['categories'][match[1]]['items'];rank=int(match[2])
+                if 0<rank<=len(rows):
+                    answer['class']=list(answer.get('class',[]))+['lab-answer']
+                    content=soup.new_tag('div',attrs={'class':'lab-answer-body'})
+                    for child in list(answer.contents):content.append(child.extract())
+                    photo=fragment('<div class="lab-answer-photo">'+image_markup(rows[rank-1],True)+'</div>').div
+                    context=soup.new_tag('details',attrs={'class':'lab-answer-context'})
+                    summary=soup.new_tag('summary');summary.string='価格の目安・比較条件';context.append(summary)
+                    for child in list(content.find_all('p',recursive=False)):context.append(child.extract())
+                    picked_block=content.select_one('.answer-pick')
+                    if picked_block:picked_block.insert_after(context)
+                    answer.append(photo);answer.append(content)
         # Secondary units become the main number; the actual catalog remains intact.
         for image in soup.select('.deal-image img'):
             original=image.get('src','');image['src']=photo_url(original);image['width']='420';image['height']='420'

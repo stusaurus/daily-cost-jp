@@ -22,7 +22,7 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertEqual(photo_url('https://example.com/image?a=1'),'https://example.com/image?a=1')
 
     def test_rebuild_preserves_metadata_urls_scripts_tools_and_idempotence(self):
-        markup='''<!doctype html><html lang="ja"><head><title>既存SEO</title><meta name="description" content="既存の説明"><link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/"><script type="application/ld+json">{"@type":"WebSite"}</script><style>body{color:red}</style></head><body><header><h1>旧画面</h1><p class="updated">更新日時</p></header><main><section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><section id="product-finder-home"><form><input name="q" placeholder="商品名"></form></section><section id="exact-store-compare"><input id="exact-name"></section><section id="buy-judge"><button id="judge-button"></button></section><section class="category-section" id="tissue"><div class="product-list"><article class="product-card" id="tissue-rank-1"></article><article class="product-card" id="tissue-rank-2"></article></div></section><script>window.feature = 'keep';</script></main></body></html>'''
+        markup='''<!doctype html><html lang="ja"><head><title>既存SEO</title><meta name="description" content="既存の説明"><link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/"><script type="application/ld+json">{"@type":"WebSite"}</script><style>body{color:red}</style></head><body><header><h1>旧画面</h1><p class="updated">更新日時</p></header><main><section class="purchase-answer" id="buying-answer"><h2>今日の比較</h2><div class="answer-pick"><a href="#tissue-rank-1">商品A</a><p><strong>100組単価</strong></p></div><p class="answer-price">1箱参考</p></section><section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><section id="product-finder-home"><form><input name="q" placeholder="商品名"></form></section><section id="exact-store-compare"><input id="exact-name"></section><section id="buy-judge"><button id="judge-button"></button></section><section class="category-section" id="tissue"><div class="product-list"><article class="product-card" id="tissue-rank-1"></article><article class="product-card" id="tissue-rank-2"></article></div></section><script>window.feature = 'keep';</script></main></body></html>'''
         with tempfile.TemporaryDirectory() as tmp:
             site=Path(tmp);(site/'today').mkdir();(site/'assets').mkdir()
             (site/'data.json').write_text(json.dumps({'updated_at':'2026-10-03','categories':self.categories}))
@@ -35,6 +35,8 @@ class LaboratoryDesignTests(unittest.TestCase):
             for id_ in ['show-saved','show-comparison','exact-name','judge-button','tissue-rank-1','tissue-rank-2']:
                 self.assertEqual(len(s.select('#'+id_)),1)
             c=BeautifulSoup(category.read_text(),'html.parser')
+            self.assertIn('/a.jpg',c.select_one('.lab-answer-photo img')['src'])
+            self.assertIn('1箱参考',c.select_one('.lab-answer-context').text)
             self.assertEqual(c.select_one('#tissue-rank-1 .buy-button')['href'],self.items[0]['url'])
             self.assertIn('nofollow',c.select_one('#tissue-rank-1 .buy-button')['rel'])
             self.assertIn('100組',c.select_one('#tissue-rank-1 .unit-price').text)
