@@ -16,8 +16,23 @@ class RakutenRequestTests(unittest.TestCase):
         opener=Mock(side_effect=HTTPError('https://example.test',503,'Unavailable',{},None));pause=Mock()
         with self.assertRaises(HTTPError):fetch_json('request',opener,pause)
         self.assertEqual(opener.call_count,3);self.assertEqual(pause.call_count,2)
-    def test_invalid_request_and_rate_limit_are_not_retried(self):
-        for code in (400,429):
+    def test_invalid_requests_are_not_retried(self):
+        for code in (400,401):
             opener=Mock(side_effect=HTTPError('https://example.test',code,'error',{},None));pause=Mock()
             with self.assertRaises(HTTPError):fetch_json('request',opener,pause)
             self.assertEqual(opener.call_count,1);pause.assert_not_called()
+
+    def test_rate_limit_waits_for_provider_before_bounded_retry(self):
+        response=MagicMock();response.__enter__.return_value.read.return_value=b'{"Items":[]}'
+        opener=Mock(side_effect=[HTTPError('https://example.test',429,'rate limited',{'Retry-After':'12'},None),response]);pause=Mock()
+        self.assertEqual(fetch_json('request',opener,pause),{'Items':[]})
+        pause.assert_called_once_with(12)
+    def test_long_provider_cooldown_stops_the_build(self):
+        opener=Mock(side_effect=HTTPError('https://example.test',429,'rate limited',{'Retry-After':'120'},None));pause=Mock()
+        with self.assertRaises(HTTPError):fetch_json('request',opener,pause)
+        self.assertEqual(opener.call_count,1);pause.assert_not_called()
+    def test_rate_limit_without_header_cools_down_and_still_stops(self):
+        opener=Mock(side_effect=HTTPError('https://example.test',429,'rate limited',{},None));pause=Mock()
+        with self.assertRaises(HTTPError):fetch_json('request',opener,pause)
+        self.assertEqual(opener.call_count,3)
+        self.assertEqual([c.args[0] for c in pause.call_args_list],[30,60])
