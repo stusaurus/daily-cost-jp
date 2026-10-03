@@ -88,7 +88,7 @@ def masthead():
     return f'<a class="lab-skip" href="#lab-content">本文へ移動</a><div class="lab-masthead"><div class="lab-masthead-inner"><a class="lab-brand" href="{ROOT}"><span class="lab-mark" aria-hidden="true">日</span><span>日用品コスパ比較<small>DAILY COST / 暮らしの価格研究所</small></span></a><nav class="lab-nav" aria-label="メインナビゲーション"><a href="{ROOT}categories/">カテゴリから探す</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名で探す ↗</a></nav></div></div>'
 
 def footer():
-    return f'<footer class="lab-footer"><div class="lab-footer-brand">同じものさしで、暮らしの値段を。</div><p>日用品コスパ比較 / 暮らしの価格研究所</p><nav aria-label="フッターナビゲーション"><a href="{ROOT}categories/">21カテゴリの比較</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名から探す</a><a href="{ROOT}guides/tissue-price-per-box/">単価の計算方法</a><a href="{ROOT}trends/">楽天総合ランキング</a></nav><p>当サイトは楽天アフィリエイトを利用しています。掲載時点の取得データに基づく比較です。価格・在庫・地域別送料は楽天の商品ページで確認してください。</p></footer>'
+    return f'<footer class="lab-footer"><div class="lab-footer-brand">同じものさしで、暮らしの値段を。</div><p>日用品コスパ比較 / 暮らしの価格研究所</p><nav aria-label="フッターナビゲーション"><a href="{ROOT}categories/">21カテゴリの比較</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名から探す</a><a href="{ROOT}guides/tissue-price-per-box/">単価の計算方法</a><a href="{ROOT}trends/">楽天総合ランキング</a></nav><p>当サイトは楽天アフィリエイトを利用しています。リンク経由の購入により運営者に報酬が発生する場合があります。楽天グループ株式会社が運営するサイトではありません。掲載時点の取得データに基づく比較です。価格・在庫・地域別送料は楽天の商品ページで確認してください。</p></footer>'
 
 def redesign_home(soup,payload,today):
     categories=payload['categories']; main=soup.main
