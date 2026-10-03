@@ -7,3 +7,5 @@
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
 
 .comparison-photo{display:block;width:100px;height:100px;object-fit:contain;margin-bottom:15px}.comparison-tools button+button{margin-left:6px}#purchase-tool-panel{scroll-margin-top:100px}
+
+.lab-unit-group{margin:24px 0 36px}.lab-unit-group>h3{font-size:13px;font-weight:500;border-bottom:1px solid var(--line);padding-bottom:12px}.product-card .rank-badge{display:none}@media(max-width:600px){input,select,textarea,.decision-grid select{font-size:16px}.lab-unit-group{margin:20px 0 28px}}

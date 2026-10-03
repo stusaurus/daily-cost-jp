@@ -133,6 +133,32 @@ def redesign_home(soup,payload,today):
     if ranking:main.append(ranking.extract())
 
 
+def group_normalized_cards(soup,categories):
+    """Display comparable paper cards together; retain source ranks in data/IDs."""
+    for section in soup.select('section.category-section'):
+        cid=section.get('id')
+        if cid not in ('tissue','toilet-paper'):continue
+        old=section.select_one('.product-list')
+        if not old:continue
+        groups={}
+        for card in list(old.select('.product-card')):
+            rank=int(card['id'].rsplit('-',1)[1]);item=categories[cid]['items'][rank-1]
+            unit=comparison_unit(cid,item)
+            label=unit[0] if unit else '条件が未確認の商品'
+            groups.setdefault(label,[]).append((unit[1] if unit else float('inf'),card))
+        wrapper=soup.new_tag('div',attrs={'class':'lab-unit-groups'})
+        for label,rows in sorted(groups.items(),key=lambda x:x[0]=='条件が未確認の商品'):
+            group=soup.new_tag('div',attrs={'class':'lab-unit-group'})
+            heading=soup.new_tag('h3');heading.string=label+'で比較' if label!='条件が未確認の商品' else label
+            group.append(heading);grid=soup.new_tag('div',attrs={'class':'product-list'})
+            for _,card in sorted(rows,key=lambda x:x[0]):grid.append(card.extract())
+            group.append(grid);wrapper.append(group)
+        old.replace_with(wrapper)
+        heading=section.select_one('.section-heading h2')
+        if heading:heading.string=categories[cid]['name']+'の比較候補'
+        note=section.select_one('.section-heading p')
+        if note:note.string='同じ条件ごとに単価の低い順。素材・用途と購入する量も確認してください。'
+
 def main(site=SITE):
     payload=json.loads((site/'data.json').read_text())
     today=json.loads((site/'today/data.json').read_text())
@@ -160,6 +186,7 @@ def main(site=SITE):
             el.replace_with(fragment(card_markup(cid,c,c['items'][rank-1],rank,anchor)))
         for field in soup.select('input:not([aria-label]):not([id])'):
             if field.get('placeholder'):field['aria-label']=field['placeholder']
+        group_normalized_cards(soup,payload['categories'])
         # Secondary units become the main number; the actual catalog remains intact.
         for image in soup.select('.deal-image img'):
             image['src']=photo_url(image.get('src',''));image['width']='420';image['height']='420'
