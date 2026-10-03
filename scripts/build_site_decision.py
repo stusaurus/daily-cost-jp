@@ -191,6 +191,18 @@ def decision_markup(benchmarks):
     }}
     const comparableUnits = q / d.factor;
     const mine = p / comparableUnits;
+    // Box/roll counts alone cannot establish a purchasing advantage.
+    // Leave the arithmetic usable, but require verified groups/length/ply.
+    if (d.id === 'tissue' || d.id === 'toilet-paper') {{
+      result.className = 'decision-result show';
+      const specification = d.id === 'tissue' ? '1箱の組数' : '1ロールの長さ・シングル／ダブル';
+      result.innerHTML = '<div class="decision-verdict">容量の条件をそろえて比較してください</div>' +
+        '<p>あなたの店頭単価：<strong>' + yen(mine) + ' / ' + d.metric_label + '</strong></p>' +
+        '<p>' + specification + 'が未確認のため、この単価だけでは買いか判断できません。</p>' +
+        '<p><a href="/daily-cost-jp/categories/' + d.id + '/">' +
+        (d.id === 'tissue' ? '100組あたりの比較を見る' : '重ね数別・10mあたりの比較を見る') + '</a></p>';
+      return;
+    }}
     let verdict, message;
     if (mine <= d.best * 1.05) {{ verdict = '🔥 かなり買い'; message = '今日の楽天最安候補と同等か、それより安い水準です。'; }}
     else if (mine <= d.median * 0.90) {{ verdict = '◎ 買い'; message = '今日の楽天比較候補の中央値より10%以上安い水準です。'; }}
