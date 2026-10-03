@@ -17,6 +17,7 @@ on:
     paths:
       - "requirements-render.txt"
       - "scripts/redesign_laboratory.py"
+      - "scripts/art_direction.py"
       - "scripts/design/**"
       - "scripts/build_pipeline.py"
       - "scripts/build_freshness.py"

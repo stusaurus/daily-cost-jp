@@ -6,12 +6,29 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from redesign_laboratory import main, photo_url, sample_pair, price_markup, category_showroom, demo_markup
+from art_direction import art_picture, CATEGORY_ART
 
 class LaboratoryDesignTests(unittest.TestCase):
+    def test_art_is_responsive_bounded_and_distinct_from_product_evidence(self):
+        for key in ('hero','paper','tissue','wash','care','clean'):
+            s=BeautifulSoup(art_picture(key,key=='hero'),'html.parser')
+            image=s.img
+            self.assertIn('assets/art/',image['src'])
+            self.assertIn('.webp?v=',image['src'])
+            self.assertIn('srcset',image.attrs)
+            self.assertGreater(int(image['width']),0)
+            self.assertGreater(int(image['height']),0)
+            self.assertEqual(image['loading'],'eager' if key=='hero' else 'lazy')
+            for filename in Path('scripts/design/art').glob(key+'-*.webp'):
+                self.assertLess(filename.stat().st_size,120000)
+        self.assertEqual(CATEGORY_ART['tissue'],'tissue')
     def test_mobile_hero_restores_one_column_after_desktop_refinement(self):
         css = Path('scripts/design/laboratory.css').read_text()
+        self.assertIn('.lab-hero-grid{grid-template-columns:1fr;', css)
         mobile = css[css.rfind('@media(max-width:600px){\n'):]
-        self.assertIn('.lab-hero-grid{grid-template-columns:1fr;', mobile)
+        self.assertIn('.art-cover{display:flex;flex-direction:column;', mobile)
+        self.assertIn('.art-data{display:block;', mobile)
+        self.assertIn('.art-search form{display:flex;flex-direction:row;', css)
 
     def setUp(self):
         self.items=[{'name':'箱ティッシュ150組60箱','price':3600,'unit_price':60,'metric':'box','url':'https://hb.afl.rakuten.co.jp/a','image':'https://thumbnail.image.rakuten.co.jp/a.jpg?_ex=128x128','shop':'A'}, {'name':'箱ティッシュ200組60箱','price':4200,'unit_price':70,'metric':'box','url':'https://hb.afl.rakuten.co.jp/b','image':'','shop':'B'}]
@@ -63,6 +80,13 @@ class LaboratoryDesignTests(unittest.TestCase):
             self.assertEqual(c.select_one('#tissue .product-list .product-card')['id'],'tissue-rank-2')
             self.assertEqual(c.select_one('#tissue-rank-2 .buy-button')['data-rank'],'2')
             self.assertEqual(len(s.select('h1')),1)
+            self.assertIn('本当に安い',s.h1.text)
+            self.assertEqual(len(s.select('#product-finder-home')),1)
+            self.assertIsNotNone(s.select_one('.art-cover #product-finder-home'))
+            self.assertIsNotNone(s.select_one('#art-data .lab-sample-photo img[src*="rakuten"]'))
+            self.assertFalse(s.select('.product-card img[src*="assets/art"]'))
+            self.assertEqual(s.select_one('.art-cover img')['fetchpriority'],'high')
+            self.assertTrue((site/'assets/art/hero-800.webp').is_file())
             self.assertEqual(len(s.select('.lab-mobile-nav')),1)
             self.assertNotIn('body{color:red}',text)
             main(site);self.assertEqual(page.read_text(),text)
