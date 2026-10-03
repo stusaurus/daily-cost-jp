@@ -12,6 +12,7 @@ from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from bs4 import BeautifulSoup
 from comparison_units import comparison_unit, quantity_label, LABELS
 from product_display import clean_display_name
+from art_direction import install_art, apply_art
 
 SITE = Path('site')
 ROOT = '/daily-cost-jp/'
@@ -200,6 +201,7 @@ def main(site=SITE):
     (site/'assets').mkdir(exist_ok=True)
     (site/'assets/laboratory.css').write_text(Path('scripts/design/laboratory.css').read_text(),encoding='utf-8')
     (site/'assets/favicon.svg').write_text(Path('scripts/design/favicon.svg').read_text(),encoding='utf-8')
+    install_art(site)
     for path in site.rglob('*.html'):
         if path.name.startswith('google'):continue
         soup=BeautifulSoup(path.read_text(),'html.parser')
@@ -291,6 +293,7 @@ def main(site=SITE):
             mobile=fragment(f'<nav class="lab-mobile-nav" aria-label="スマートフォン用ナビゲーション"><a href="{ROOT}categories/">カテゴリ</a><a href="{ROOT}today/">今日の候補</a><a href="#purchase-tools">保存・比較</a></nav>')
         else:mobile=fragment(f'<nav class="lab-mobile-nav" aria-label="スマートフォン用ナビゲーション"><a href="{ROOT}">ホーム</a><a href="{ROOT}categories/">カテゴリ</a><a href="{ROOT}today/">今日の候補</a></nav>')
         soup.body.append(mobile)
+        apply_art(soup,path,site)
         path.write_text(str(soup),encoding='utf-8')
     print('Rebuilt the editorial laboratory design from the verified live catalog.')
 
