@@ -110,7 +110,7 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 @media(max-width:900px){.lab-hero-grid{gap:30px}.lab-life-grid{gap:22px}.lab-life:nth-child(-n+2){border:0}.lab-showroom-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.deal-card{grid-template-columns:240px 1fr;gap:28px}.deal-image{height:220px}.lab-category-grid{column-gap:24px}}
 @media(max-width:600px){
  .lab-brand small{font-size:9px}.lab-nav a:first-child{font-size:12px}.lab-masthead-inner{min-height:66px}
- .lab-hero{padding:28px 0}.lab-hero-grid{gap:26px}.lab-hero h1{font-size:34px;line-height:1.5;letter-spacing:0;margin:17px 0 18px}.lab-hero .lead{font-size:14px;line-height:1.9}
+ .lab-hero{padding:28px 0}.lab-hero-grid{grid-template-columns:1fr;gap:26px}.lab-hero h1{font-size:34px;line-height:1.5;letter-spacing:0;margin:17px 0 18px}.lab-hero .lead{font-size:14px;line-height:1.9}
  .lab-kicker{font-size:11px}.lab-actions .lab-button{font-size:13px;padding:12px 10px}
  .lab-demo{padding:0}.lab-demo-caption{font-size:11px;gap:8px}.lab-demo-grid{gap:16px;margin-top:16px}
  .lab-sample-photo{height:135px;padding:14px}.lab-sample-photo img{height:100%}.lab-sample-name{font-size:12px;line-height:1.7;min-height:41px;margin:12px 0 8px}.lab-sample-total{font-size:12px;line-height:1.8}.lab-sample-total b{font-size:16px}

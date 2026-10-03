@@ -8,6 +8,11 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 from redesign_laboratory import main, photo_url, sample_pair, price_markup, category_showroom, demo_markup
 
 class LaboratoryDesignTests(unittest.TestCase):
+    def test_mobile_hero_restores_one_column_after_desktop_refinement(self):
+        css = Path('scripts/design/laboratory.css').read_text()
+        mobile = css[css.rfind('@media(max-width:600px){\n'):]
+        self.assertIn('.lab-hero-grid{grid-template-columns:1fr;', mobile)
+
     def setUp(self):
         self.items=[{'name':'箱ティッシュ150組60箱','price':3600,'unit_price':60,'metric':'box','url':'https://hb.afl.rakuten.co.jp/a','image':'https://thumbnail.image.rakuten.co.jp/a.jpg?_ex=128x128','shop':'A'}, {'name':'箱ティッシュ200組60箱','price':4200,'unit_price':70,'metric':'box','url':'https://hb.afl.rakuten.co.jp/b','image':'','shop':'B'}]
         self.categories={'tissue':{'name':'ティッシュ','items':self.items}}
