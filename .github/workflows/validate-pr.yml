@@ -25,6 +25,18 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
+      - name: Audit generated mobile and desktop layouts with Lighthouse
+        continue-on-error: true
+        timeout-minutes: 4
+        run: |
+          mkdir -p /tmp/daily-lab-web lighthouse-reports
+          ln -s "$GITHUB_WORKSPACE/site" /tmp/daily-lab-web/daily-cost-jp
+          python -m http.server 8765 --directory /tmp/daily-lab-web > /tmp/daily-lab-http.log 2>&1 &
+          audit_server_pid=$!
+          trap 'kill "$audit_server_pid"' EXIT
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/?test=1' --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/home-mobile --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/categories/tissue/?test=1' --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/tissue-mobile --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/today/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/today-desktop --quiet
       - name: Save reviewable acquisition and quality results
         if: always()
         uses: actions/upload-artifact@v4
@@ -32,6 +44,7 @@ jobs:
           name: candidate-quality-preview
           path: |
             quality-report.json
+            lighthouse-reports/
             site/
           retention-days: 14
 
@@ -45,6 +58,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: Install rendering dependencies
+        run: python -m pip install --quiet -r requirements-render.txt
 
       - name: Test sale quantity parsing
         run: python -m unittest discover -s tests -v

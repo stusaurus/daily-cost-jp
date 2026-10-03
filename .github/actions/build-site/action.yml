@@ -3,6 +3,9 @@ description: The same fetch, render and quality gates for PR and production.
 runs:
   using: composite
   steps:
+    - name: Install rendering dependencies
+      shell: bash
+      run: python -m pip install --quiet -r requirements-render.txt
     - name: Test product quality and repeated refreshes
       shell: bash
       run: python -m unittest discover -s tests -v

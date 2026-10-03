@@ -43,11 +43,16 @@
         rows.sort((a,b) => a.unit[1] - b.unit[1]);
         const diff = rows[rows.length-1].unit[1] - rows[0].unit[1];
         panel.append(node('p', `${first.unit[0]}あたりの安い順。単価差は最大${money(diff)}。用途・濃縮度・素材も確認してください。`));
+        if (rows.some(p => p.price < rows[0].price)) panel.append(node('p','支払総額が低い候補と、単価が低い候補は異なります。購入する量も合わせて確認してください。'));
       } else panel.append(node('p', 'カテゴリ・比較単位が異なるため、安い順には並べません。同じ用途・単位の商品を選んでください。'));
     }
     const list = node('ul');
     rows.forEach(p => {
-      const row = node('li'); row.append(node('strong', p.name));
+      const row = node('li');
+      if (p.image && /^https:\/\//.test(p.image)) {
+        const image = node('img'); image.src=p.image;image.alt=p.name;image.width=100;image.height=100;image.loading='lazy';image.className='comparison-photo';row.append(image);
+      }
+      row.append(node('strong', p.name));
       row.append(node('p', `${p.quantity}・支払総額 ${money(p.price)}（送料込み）`));
       row.append(node('p', p.unit ? `${money(p.unit[1])}／${p.unit[0]}` : '組数・長さ・重ね数が不明のため条件をそろえた比較対象外'));
       row.append(node('p', `取得日時：${p.updated_at.replace('T',' ').slice(0,16)}（日本時間）`));
@@ -63,9 +68,10 @@
     }); panel.append(list);
     const clear = node('button','この一覧を空にする');clear.type = 'button';
     clear.addEventListener('click',()=>{set.clear();if(mode==='saved')persist();sync();show();});panel.append(clear);
+    const close=node('button','比較・保存の一覧を閉じる');close.type='button';close.addEventListener('click',()=>{panel.hidden=true;});panel.append(close);
   }
-  document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';show();});
-  document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';show();});
+  document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
+  document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
   fetch(ROOT+'assets/comparison-catalog.json').then(r=>{if(!r.ok)throw new Error('catalog');return r.json();}).then(data=>{
     catalog = data;
     document.querySelectorAll('.product-card, .deal-card').forEach(card=>{

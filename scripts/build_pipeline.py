@@ -42,6 +42,7 @@ STEPS = (
     'improve_purchase_pages',
     'complete_purchase_flow',
     'add_back_to_top',
+    'redesign_laboratory',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',
@@ -96,6 +97,7 @@ def main():
             print('Optional OG image unavailable; no old image reused.', flush=True)
         finally:
             print('::endgroup::', flush=True)
+    subprocess.run(['node', 'scripts/check_rendered_interactions.cjs'], cwd=ROOT, check=True)
     # Keep a minimal diagnostic sitemap alongside the production sitemap.
     # This isolates Search Console fetch problems without changing sitemap.xml.
     (site / 'sitemap-test.xml').write_text(

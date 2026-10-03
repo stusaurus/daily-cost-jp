@@ -42,7 +42,7 @@ def main():
         for rank, item in enumerate(category['items'], 1):
             unit = comparison_unit(cid, item)
             catalog.append({'key':identity(cid,item),'category':cid,'category_name':category['name'],'rank':rank,
-                'name':clean_display_name(item['name']),'url':item['url'],'price':item['price'],
+                'name':clean_display_name(item['name']),'url':item['url'],'price':item['price'],'image':item.get('image',''),
                 'quantity':quantity_label(item),'unit':list(unit) if unit else None,
                 'base_unit':[LABELS.get(item['metric'],item['metric']),item['unit_price']],
                 'history':stats(cid,item,history),'updated_at':payload['updated_at']})
