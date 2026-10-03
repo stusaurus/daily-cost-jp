@@ -129,3 +129,5 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
  .lab-mobile-nav a{font-size:12px}#purchase-tool-panel li>strong,#purchase-tool-panel li p,#purchase-tool-panel li a{font-size:13px}#purchase-tool-panel li p:nth-of-type(2){font-size:34px}
 }
 @media(max-width:360px){.product-card{grid-template-columns:100px minmax(0,1fr)}.product-image{height:160px;padding:12px}.unit-price .lab-price-value{font-size:36px}.lab-sample-unit .lab-price-value{font-size:34px}.lab-hero h1{font-size:30px}.lab-answer{grid-template-columns:72px minmax(0,1fr)}}
+/* Fit long prices to the mobile information column, rather than the whole screen. */
+@supports(font-size:1cqw){@media(max-width:600px){.product-body{container-type:inline-size}.unit-price .lab-price-value{font-size:clamp(28px,20cqw,42px)}}}
