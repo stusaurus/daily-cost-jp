@@ -27,3 +27,11 @@ test('storage failure is reported without losing comparison',async()=>{
   d.querySelector('[data-product-tool="save"]').click();assert.match(d.getElementById('purchase-tool-status').textContent,/保存できませんでした/);
   d.querySelector('[data-product-tool="compare"]').click();d.getElementById('show-comparison').click();assert.match(d.getElementById('purchase-tool-panel').textContent,/A/);dom.window.close();
 });
+test('comparison explains a real total/unit inversion and can be dismissed without losing selections',async()=>{
+  const dom=await fixture();const d=dom.window.document;
+  d.querySelectorAll('[data-product-tool="compare"]').forEach(b=>b.click());d.getElementById('show-comparison').click();
+  assert.match(d.getElementById('purchase-tool-panel').textContent,/支払総額が低い候補と、単価が低い候補は異なります/);
+  Array.from(d.querySelectorAll('#purchase-tool-panel button')).find(b=>b.textContent==='比較・保存の一覧を閉じる').click();
+  assert.equal(d.getElementById('purchase-tool-panel').hidden,true);
+  assert.match(d.getElementById('show-comparison').textContent,/2/);dom.window.close();
+});

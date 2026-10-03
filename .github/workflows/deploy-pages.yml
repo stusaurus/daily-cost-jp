@@ -15,6 +15,9 @@ on:
     branches:
       - main
     paths:
+      - "requirements-render.txt"
+      - "scripts/redesign_laboratory.py"
+      - "scripts/design/**"
       - "scripts/build_pipeline.py"
       - "scripts/build_freshness.py"
       - ".github/actions/build-site/**"
