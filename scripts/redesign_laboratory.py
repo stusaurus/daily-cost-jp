@@ -38,7 +38,7 @@ def photo_url(url, size=420):
 def image_markup(item, eager=False):
     image = photo_url(item.get('image',''))
     if not image: return '<div class="image-placeholder">商品画像なし</div>'
-    return f'<img src="{esc(image)}" alt="{esc(clean_display_name(item["name"]))}" width="420" height="420" loading="{"eager" if eager else "lazy"}" decoding="async">'
+    return f'<img src="{esc(image)}" alt="{esc(clean_display_name(item["name"]))}" width="420" height="420" loading="{"eager" if eager else "lazy"}" decoding="async" srcset="{esc(photo_url(item.get("image",""),240))} 240w, {esc(image)} 420w" sizes="(max-width:600px) {"170" if eager else "120"}px, 350px">'
 
 def category_metric(cid,item):
     if cid=="tissue":return "100組"
@@ -127,7 +127,19 @@ def redesign_home(soup,payload,today):
     # as 200 cards in the primary discovery experience.
     details=soup.new_tag('details',attrs={'class':'lab-all-rankings'})
     summary=soup.new_tag('summary');summary.string='全カテゴリの商品データ・単価一覧を見る';details.append(summary)
-    for el in list(main.select('.category-section')):details.append(el.extract())
+    for el in list(main.select('.category-section')):
+        cid=el.get('id');c=categories.get(cid)
+        if not c:continue
+        # Retain every old deep anchor and actual unit, without hydrating hundreds
+        # of duplicate purchase widgets on the homepage.
+        archive=soup.new_tag('section',attrs={'id':cid,'class':'lab-archive-category'})
+        heading=soup.new_tag('h2');heading.string=c['name'];archive.append(heading)
+        for rank,item in enumerate(c['items'],1):
+            unit=comparison_unit(cid,item)
+            label,value=unit if unit else (LABELS.get(item['metric'],item['metric']),item['unit_price'])
+            row=fragment(f'<div class="lab-archive-row" id="{cid}-rank-{rank}"><a class="category-page-link" href="{ROOT}categories/{cid}/#{cid}-rank-{rank}">{esc(clean_display_name(item["name"]))}</a><strong>{money(value)} <small>／{esc(label)}</small></strong></div>').div
+            archive.append(row)
+        details.append(archive);el.decompose()
     main.append(details)
     ranking=main.select_one('#home-ranking-hero')
     if ranking:main.append(ranking.extract())
@@ -164,6 +176,7 @@ def main(site=SITE):
     today=json.loads((site/'today/data.json').read_text())
     (site/'assets').mkdir(exist_ok=True)
     (site/'assets/laboratory.css').write_text(Path('scripts/design/laboratory.css').read_text(),encoding='utf-8')
+    (site/'assets/favicon.svg').write_text(Path('scripts/design/favicon.svg').read_text(),encoding='utf-8')
     for path in site.rglob('*.html'):
         if path.name.startswith('google'):continue
         soup=BeautifulSoup(path.read_text(),'html.parser')
@@ -174,6 +187,7 @@ def main(site=SITE):
         for el in soup.find_all(style=True):del el['style']
         css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css')
         css['data-laboratory-design']='v1';soup.head.append(css)
+        if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
         soup.main['id']='lab-content'
         ishome=path==site/'index.html'
@@ -189,7 +203,8 @@ def main(site=SITE):
         group_normalized_cards(soup,payload['categories'])
         # Secondary units become the main number; the actual catalog remains intact.
         for image in soup.select('.deal-image img'):
-            image['src']=photo_url(image.get('src',''));image['width']='420';image['height']='420'
+            original=image.get('src','');image['src']=photo_url(original);image['width']='420';image['height']='420'
+            image['srcset']=photo_url(original,240)+' 240w, '+photo_url(original,420)+' 420w';image['sizes']='(max-width:600px) 110px, 280px'
         for link in soup.select('a.buy-button'):
             link.clear();link.append('楽天で商品を確認する ↗')
         for el in soup.select('.deal-topline .category-chip,.eyebrow,h1,.section-heading h2'):

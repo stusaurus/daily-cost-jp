@@ -9,3 +9,5 @@
 .comparison-photo{display:block;width:100px;height:100px;object-fit:contain;margin-bottom:15px}.comparison-tools button+button{margin-left:6px}#purchase-tool-panel{scroll-margin-top:100px}
 
 .lab-unit-group{margin:24px 0 36px}.lab-unit-group>h3{font-size:13px;font-weight:500;border-bottom:1px solid var(--line);padding-bottom:12px}.product-card .rank-badge{display:none}@media(max-width:600px){input,select,textarea,.decision-grid select{font-size:16px}.lab-unit-group{margin:20px 0 28px}}
+
+summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{margin:24px 0}.lab-archive-category h2{font-size:22px}.lab-archive-row{display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding:13px 0;border-bottom:1px solid var(--line)}.lab-archive-row .category-page-link{padding:0;border:0;font-size:12px;flex:1}.lab-archive-row strong{font:24px var(--serif);white-space:nowrap}.lab-archive-row small{font:11px var(--sans)}@media(max-width:600px){.lab-archive-row{display:block}.lab-archive-row strong{display:block;margin-top:8px;font-size:22px}}
