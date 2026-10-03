@@ -14,6 +14,7 @@ from product_quality import (category_is_suitable, filter_items, safer_parse_mea
                              safer_parse_count_quantity)
 from pathlib import Path
 from candidate_acquisition import acquire
+from rakuten_request import fetch_json
 from product_display import clean_display_name
 
 ACQUISITION_REPORT = {}
@@ -71,8 +72,7 @@ def fetch_page(category, page):
             "User-Agent": "daily-cost-jp/0.8",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    payload = fetch_json(request)
     return payload.get("Items") or payload.get("items") or []
 
 

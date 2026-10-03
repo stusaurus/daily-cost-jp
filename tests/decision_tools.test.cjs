@@ -2,7 +2,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {execFileSync}=require('node:child_process');
 const {JSDOM}=require('jsdom');
-const markup=execFileSync('python',['-c',`import sys
+const markup=execFileSync('python',['-c',`import sys,os
+os.environ['RAKUTEN_APPLICATION_ID']='offline-test'
+os.environ['RAKUTEN_ACCESS_KEY']='offline-test'
 sys.path.insert(0,'scripts')
 from build_site_decision import decision_markup
 rows=[dict(id=cid,name=cid,emoji='',input_unit='箱' if cid=='tissue' else 'ロール' if cid=='toilet-paper' else 'g',placeholder='',metric_label='1箱' if cid=='tissue' else '1ロール' if cid=='toilet-paper' else '100g',factor=100 if cid=='laundry' else 1,best=40,median=60) for cid in ('tissue','toilet-paper','laundry')]
