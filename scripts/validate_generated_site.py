@@ -80,6 +80,12 @@ def validate(root=Path('site')):
     for kind, mapping in [('title', titles), ('description', descriptions)]:
         for group in mapping.values():
             if len(group) > 1: errors.append(f'duplicate {kind}: {group}')
+    for cid in ('tissue','toilet-paper','laundry'):
+        if f'categories/{cid}/index.html' not in pages: errors.append(f'priority category missing: {cid}')
+    for required in ('today/index.html','categories/index.html','guides/tissue-price-per-box/index.html','guides/toilet-paper-price-per-meter/index.html','guides/laundry-detergent-cost-per-use/index.html'):
+        if required not in pages: errors.append(f'important page missing: {required}')
+    if (root / 'assets/purchase-tools.js').exists() and not (root / 'assets/comparison-catalog.json').exists():
+        errors.append('Purchase tools catalog missing')
     sitemap = ET.parse(root / 'sitemap.xml')
     entries = [n.text for n in sitemap.iter() if n.tag.endswith('}loc')]
     actual = set(entries)

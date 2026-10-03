@@ -7,6 +7,7 @@ import hashlib
 import json
 import math
 import urllib.request
+import urllib.error
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
@@ -35,8 +36,19 @@ def fetch_public(path):
 def prepare():
     previous = {'version':1,'products':{},'selections':[]}
     for path, key in [('price-observations.json','history'), ('data.json','catalog'), ('today/data.json','today')]:
-        try: previous[key] = fetch_public(path)
-        except (OSError, ValueError) as exc: print(f'Previous {key} unavailable ({type(exc).__name__}); no history inferred.')
+        try:
+            value = fetch_public(path)
+            if not isinstance(value, dict): raise ValueError('Expected a public JSON object')
+            if key == 'history' and (value.get('version') != 1 or not isinstance(value.get('products'), dict) or not isinstance(value.get('selections'), list)):
+                raise ValueError('Invalid price history; preserve the previous deployment')
+            previous[key] = value
+        except urllib.error.HTTPError as exc:
+            if key == 'history' and exc.code == 404:
+                print('No previously published history; start recording without invented prices.')
+            else:
+                raise RuntimeError(f'Cannot read previous {key}; preserve the previous deployment') from exc
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f'Cannot read previous {key}; preserve history and the previous deployment') from exc
     CACHE.write_text(json.dumps(previous, ensure_ascii=False), encoding='utf-8')
 
 

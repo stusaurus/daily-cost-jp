@@ -10,7 +10,10 @@ from zoneinfo import ZoneInfo
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from product_quality import category_rejection
 from comparison_units import comparison_unit, quantity_label
-from price_observations import update, stats, identity
+from price_observations import update, stats, identity, prepare
+from unittest.mock import patch
+import urllib.error
+import tempfile
 from monitor_quality import monitor
 from diversify_daily_deals import select_diverse
 from build_site import choose_ranked_items
@@ -20,6 +23,20 @@ class CompletionTests(unittest.TestCase):
         for condition in ['中古','定期便','初回限定','クーポン利用で']:
             self.assertEqual(category_rejection('tissue',f'箱ティッシュ150組60箱 {condition}'),'conditional_or_used_price')
         self.assertIsNone(category_rejection('tissue','箱ティッシュ150組60箱 500円OFFクーポン配布中'))
+
+    def test_failed_history_read_cannot_reset_observations(self):
+        with patch('price_observations.fetch_public', side_effect=OSError('timeout')):
+            with self.assertRaisesRegex(RuntimeError, 'preserve history'):
+                prepare()
+
+    def test_first_history_404_is_allowed_but_other_prior_data_is_required(self):
+        from price_observations import CACHE
+        def first(path):
+            if path == 'price-observations.json': raise urllib.error.HTTPError(path,404,'not found',{},None)
+            return {'categories':{}} if path == 'data.json' else {'items':[]}
+        with tempfile.TemporaryDirectory() as tmp, patch('price_observations.CACHE',Path(tmp)/'cache.json'), patch('price_observations.fetch_public',side_effect=first):
+            prepare()
+            self.assertNotIn('history',json.loads((Path(tmp)/'cache.json').read_text()))
 
     def test_box_rank_can_reverse_at_equal_groups(self):
         a={'name':'箱ティッシュ150組','metric':'box','unit_price':60,'price':3600}
