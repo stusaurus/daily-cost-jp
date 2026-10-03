@@ -37,6 +37,9 @@ jobs:
           npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/?test=1' --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/home-mobile --quiet
           npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/categories/tissue/?test=1' --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/tissue-mobile --quiet
           npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/today/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/today-desktop --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/home-desktop --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/today/?test=1' --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/today-mobile --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'http://127.0.0.1:8765/daily-cost-jp/categories/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=lighthouse-reports/categories-desktop --quiet
       - name: Save reviewable acquisition and quality results
         if: always()
         uses: actions/upload-artifact@v4
