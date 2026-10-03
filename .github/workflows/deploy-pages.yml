@@ -152,6 +152,39 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+  published_design_audit:
+    name: Verify published desktop and mobile design
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit the actual public pages
+        run: |
+          mkdir -p published-design-reports
+          for route in home tissue today categories; do
+            case "$route" in
+              home) page='https://stusaurus.github.io/daily-cost-jp/?test=1' ;;
+              tissue) page='https://stusaurus.github.io/daily-cost-jp/categories/tissue/?test=1' ;;
+              today) page='https://stusaurus.github.io/daily-cost-jp/today/?test=1' ;;
+              categories) page='https://stusaurus.github.io/daily-cost-jp/categories/?test=1' ;;
+            esac
+            npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "$page" --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="published-design-reports/$route-mobile" --quiet
+          done
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'https://stusaurus.github.io/daily-cost-jp/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=published-design-reports/home-desktop --quiet
+      - name: Save public-page visual and accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-design-evidence
+          path: published-design-reports/
+          retention-days: 14
+
   post_x:
     name: Publish daily X post
     if: ${{ github.event_name == 'schedule' || inputs.post_to_x == true }}

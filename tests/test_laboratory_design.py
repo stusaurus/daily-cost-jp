@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from bs4 import BeautifulSoup
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from redesign_laboratory import main, photo_url, sample_pair
+from redesign_laboratory import main, photo_url, sample_pair, price_markup, category_showroom, demo_markup
 
 class LaboratoryDesignTests(unittest.TestCase):
     def setUp(self):
@@ -20,6 +20,19 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertEqual(rows[0][1][0],rows[1][1][0])
         self.assertIn('_ex=420x420',photo_url(self.items[0]['image']))
         self.assertEqual(photo_url('https://example.com/image?a=1'),'https://example.com/image?a=1')
+
+    def test_premium_numbers_photos_and_difference_remain_factual(self):
+        price=BeautifulSoup(price_markup(12345.67,'100ml'),'html.parser')
+        self.assertEqual(price.select_one('.lab-price-value').text,'¥12,345.7')
+        self.assertEqual(price.select_one('.lab-price-unit').text,'／100ml')
+        demo=BeautifulSoup(demo_markup(self.categories),'html.parser')
+        self.assertIn('5.00円の差',demo.text)
+        self.assertEqual(len(demo.select('.lab-choice')),2)
+        self.assertEqual(len(demo.select('.image-placeholder')),1)
+        showroom=BeautifulSoup(category_showroom(self.categories),'html.parser')
+        self.assertEqual(showroom.select_one('a')['href'],'/daily-cost-jp/categories/tissue/')
+        self.assertIn('/a.jpg',showroom.select_one('img')['src'])
+        self.assertIn('100組で比較',showroom.text)
 
     def test_rebuild_preserves_metadata_urls_scripts_tools_and_idempotence(self):
         markup='''<!doctype html><html lang="ja"><head><title>既存SEO</title><meta name="description" content="既存の説明"><link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/"><script type="application/ld+json">{"@type":"WebSite"}</script><style>body{color:red}</style></head><body><header><h1>旧画面</h1><p class="updated">更新日時</p></header><main><section class="purchase-answer" id="buying-answer"><h2>今日の比較</h2><div class="answer-pick"><a href="#tissue-rank-1">商品A</a><p><strong>100組単価</strong></p></div><p class="answer-price">1箱参考</p></section><section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><section id="product-finder-home"><form><input name="q" placeholder="商品名"></form></section><section id="exact-store-compare"><input id="exact-name"></section><section id="buy-judge"><button id="judge-button"></button></section><section class="category-section" id="tissue"><div class="product-list"><article class="product-card" id="tissue-rank-1"></article><article class="product-card" id="tissue-rank-2"></article></div></section><script>window.feature = 'keep';</script></main></body></html>'''

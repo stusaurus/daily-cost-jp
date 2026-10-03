@@ -19,8 +19,15 @@ const catalog=JSON.parse(fs.readFileSync('site/assets/comparison-catalog.json','
   compare[0].click();compare[1].click();d.getElementById('show-comparison').click();
   if(d.getElementById('purchase-tool-panel').hidden)throw Error(file+': comparison did not open');
   if(d.querySelector('#purchase-tool-panel a').dataset.conversionSource!=='comparison')throw Error(file+': comparison attribution lost');
+  const affiliate=d.querySelector('#purchase-tool-panel a');
+  affiliate.addEventListener('click',event=>event.preventDefault());affiliate.click();
+  const sent=Array.from(dom.window.dataLayer||[]).filter(args=>args[0]==='event'&&args[1]==='affiliate_click');
+  if(!sent.length||sent.at(-1)[2].conversion_source!=='comparison')throw Error(file+': affiliate_click attribution was not emitted');
   d.querySelector('[data-product-tool="save"]').click();d.getElementById('show-saved').click();
   if(d.querySelector('#purchase-tool-panel a').dataset.conversionSource!=='saved')throw Error(file+': saved attribution lost');
+  const saved=d.querySelector('#purchase-tool-panel a');saved.addEventListener('click',event=>event.preventDefault());saved.click();
+  const last=Array.from(dom.window.dataLayer||[]).filter(args=>args[0]==='event'&&args[1]==='affiliate_click').at(-1)?.[2];
+  if(!last||last.conversion_source!=='saved'||!last.category_id||!last.product_name||!last.page_path||last.operator_test!=='0')throw Error(file+': saved affiliate parameters incomplete');
   dom.window.close();process.stdout.write('Generated scripts and save/compare passed: '+file+'\n');
  }
 })().catch(e=>{process.stderr.write(e.stack+'\n');process.exitCode=1;});

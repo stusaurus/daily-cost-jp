@@ -4,6 +4,7 @@ This layer changes presentation only: IDs, affiliate URLs, prices, evidence,
 JSON-LD and feature scripts are retained. No live product is hard coded here.
 """
 import html
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -23,6 +24,9 @@ LIFE = (
 
 def esc(value): return html.escape(str(value), quote=True)
 def money(value): return f'¥{value:,.2f}' if value < 100 else f'¥{value:,.1f}'
+def price_markup(value, label):
+    # Keep the actual number and unit together in the accessible text.
+    return f'<span class="lab-price-value"><small>¥</small>{money(value)[1:]}</span><span class="lab-price-unit">／{esc(label)}</span>'
 def fragment(markup): return BeautifulSoup(markup, 'html.parser')
 def clean_emoji(text): return re.sub(r'^[^\w\u3040-\u30ff\u3400-\u9fff]+\s*', '', text)
 
@@ -48,6 +52,24 @@ def category_metric(cid,item):
 def category_links(categories):
     return ''.join(f'<a class="lab-category-link category-page-link" href="{ROOT}categories/{esc(cid)}/" data-conversion-source="category"><span>{esc(c["name"])}</span><small>{esc(category_metric(cid,c["items"][0]))}で比較 ↗</small></a>' for cid,c in categories.items() if c['items'])
 
+def life_markup(categories):
+    sections=[]
+    for n,name,ids in LIFE:
+        available=[cid for cid in ids if cid in categories and categories[cid]['items']]
+        if not available: continue
+        cid=available[0]
+        photo=f'<a class="lab-life-photo" href="{ROOT}categories/{cid}/" aria-label="{esc(categories[cid]["name"])}を比較">{image_markup(categories[cid]["items"][0])}</a>'
+        links=''.join(f'<a class="category-page-link" data-conversion-source="category" href="{ROOT}categories/{c}/">{esc(categories[c]["name"])}</a>' for c in available)
+        sections.append(f'<div class="lab-life">{photo}<div class="lab-life-label"><span>{n}</span><h3>{name}</h3></div>{links}</div>')
+    return ''.join(sections)
+
+def category_showroom(categories):
+    cards=[]
+    for cid,c in categories.items():
+        if not c['items']:continue
+        cards.append(f'<a class="lab-showroom-item category-page-link" href="{ROOT}categories/{cid}/" data-conversion-source="category"><div class="lab-showroom-photo">{image_markup(c["items"][0])}</div><div><h3>{esc(c["name"])}</h3><p>{esc(category_metric(cid,c["items"][0]))}で比較 <span aria-hidden="true">↗</span></p></div></a>')
+    return '<div class="lab-showroom-grid">'+''.join(cards)+'</div>'
+
 def sample_pair(categories):
     """Prefer a genuine total-price/unit-price inversion, same known unit only."""
     for cid in ('tissue','toilet-paper','laundry'):
@@ -70,9 +92,10 @@ def demo_markup(categories):
     cid, rows, inversion = sample_pair(categories)
     if not rows: return '<div class="lab-demo"><p>条件を確認できる商品だけを、同じ単位で比較します。</p></div>'
     best = min(u[1] for _,u in rows)
-    cards = ''.join(f'<div class="lab-sample {"best" if u[1]==best else ""}">{image_markup(p,True)}<p class="lab-sample-name" title="{esc(clean_display_name(p["name"]))}">{esc(clean_display_name(p["name"]))}</p><div class="lab-sample-total">{esc(quantity_label(p))} · 送料込み<br>支払総額 <b>¥{p["price"]:,}</b></div><div class="lab-sample-unit">↓ {esc(u[0])}にそろえる<strong>{money(u[1])}</strong>／{esc(u[0])}</div></div>' for p,u in rows)
+    cards = ''.join(f'<div class="lab-sample {"best" if u[1]==best else ""}"><div class="lab-sample-photo">{image_markup(p,True)}</div><p class="lab-sample-name" title="{esc(clean_display_name(p["name"]))}">{esc(clean_display_name(p["name"]))}</p><div class="lab-sample-total">{esc(quantity_label(p))} · 送料込み<br>支払総額 <b>¥{p["price"]:,}</b></div><div class="lab-sample-unit"><span class="lab-transform">↓ 同じ量にそろえる</span>{price_markup(u[1],u[0])}<span class="lab-choice">{"比較した2商品の低い単価" if u[1]==best else "比較単価"}</span></div></div>' for p,u in rows)
     note = '支払総額が高い方でも、同じ量で比べると単価は低くなる。' if inversion else '内容量が違っても、同じ量までそろえると比べられる。'
-    return f'<div class="lab-demo" aria-label="実商品による単価比較の見本"><div class="lab-demo-caption"><span>COMPARISON STUDY / {esc(categories[cid]["name"])}</span><span>実際の取得データ</span></div><div class="lab-demo-grid">{cards}</div><p class="lab-demo-note">{note}<br>素材・用途も確認して選びましょう。<a href="{ROOT}categories/{cid}/" data-conversion-source="category">この比較を見る ↗</a></p></div>'
+    difference=max(u[1] for _,u in rows)-best
+    return f'<div class="lab-demo" aria-label="実商品による単価比較の見本"><div class="lab-demo-caption"><span>{esc(categories[cid]["name"])} / 同じものさしで比較</span><span>実際の取得データ</span></div><div class="lab-demo-grid">{cards}</div><p class="lab-demo-note"><strong>同じ{esc(rows[0][1][0])}で、{difference:.2f}円の差。</strong>{note}<br>素材・用途も確認して選びましょう。<a href="{ROOT}categories/{cid}/" data-conversion-source="category">この比較を見る ↗</a></p></div>'
 
 def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
     unit = comparison_unit(cid,item)
@@ -82,7 +105,7 @@ def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
         normalized_note = '<p class="lab-base-price">組数・長さ・重ね数は未確認。同じ条件での順位比較対象外。</p>'
     elif cid in ('tissue','toilet-paper'):
         normalized_note = f'<p class="lab-base-price">参考：{money(item["unit_price"])}／{esc(LABELS[item["metric"]])}</p>'
-    return f'''<article id="{esc(anchor)}" class="product-card product-card-anchor"><div class="rank-badge">{rank:02d}</div><div class="product-image">{image_markup(item)}</div><div class="product-body"><div class="lab-reason"><span>{esc(category['name'])}</span><span>{esc(reason)}</span></div><h3 title="{esc(clean_display_name(item['name']))}">{esc(clean_display_name(item['name']))}</h3><div class="unit-price">{money(value)} <span>／{esc(label)}</span></div>{normalized_note}<p class="purchase-summary">{esc(quantity_label(item))}</p><p class="purchase-summary">支払総額 <strong>¥{item['price']:,}</strong> · 送料込み</p><p class="shop">{esc(item.get('shop',''))}</p><a class="buy-button" href="{esc(item['url'])}" target="_blank" rel="nofollow sponsored noopener" data-category-id="{esc(cid)}" data-rank="{rank}" data-shipping-price="{item['price']}" data-product-name="{esc(clean_display_name(item['name']))}">楽天で商品を確認する <span aria-hidden="true">↗</span></a><p class="purchase-note">価格・在庫・地域別送料は楽天で最終確認</p></div></article>'''
+    return f'''<article id="{esc(anchor)}" class="product-card product-card-anchor"><div class="rank-badge">{rank:02d}</div><div class="product-image">{image_markup(item)}</div><div class="product-body"><div class="lab-reason"><span>{esc(category['name'])}</span><span>{esc(reason)}</span></div><h3 title="{esc(clean_display_name(item['name']))}">{esc(clean_display_name(item['name']))}</h3><div class="unit-price">{price_markup(value,label)}</div>{normalized_note}<p class="purchase-summary">{esc(quantity_label(item))}</p><p class="purchase-summary">支払総額 <strong>¥{item['price']:,}</strong> · 送料込み</p><p class="shop">{esc(item.get('shop',''))}</p><a class="buy-button" href="{esc(item['url'])}" target="_blank" rel="nofollow sponsored noopener" data-category-id="{esc(cid)}" data-rank="{rank}" data-shipping-price="{item['price']}" data-product-name="{esc(clean_display_name(item['name']))}">楽天で商品を確認する <span aria-hidden="true">↗</span></a><p class="purchase-note">価格・在庫・地域別送料は楽天で最終確認</p></div></article>'''
 
 def masthead():
     return f'<a class="lab-skip" href="#lab-content">本文へ移動</a><div class="lab-masthead"><div class="lab-masthead-inner"><a class="lab-brand" href="{ROOT}"><span class="lab-mark" aria-hidden="true">日</span><span>日用品コスパ比較<small>DAILY COST / 暮らしの価格研究所</small></span></a><nav class="lab-nav" aria-label="メインナビゲーション"><a href="{ROOT}categories/">カテゴリから探す</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名で探す ↗</a></nav></div></div>'
@@ -96,10 +119,10 @@ def redesign_home(soup,payload,today):
     header=soup.header
     updated=header.select_one('.updated')
     stamp=updated.get_text() if updated else payload['updated_at']
-    header.replace_with(fragment(f'<header class="lab-hero"><div class="container lab-hero-grid"><div><div class="lab-kicker">暮らしの価格研究所 / 21 CATEGORIES</div><h1>サイズが違っても、<br>同じものさしで。</h1><p class="lead">箱数も、容量も、セット数も。<br>日用品の値段を同じ単位までそろえて、<br>納得できる買い物を。</p><div class="lab-actions"><a class="lab-button" href="#lab-categories">日用品を比べる <span aria-hidden="true">↓</span></a><a class="lab-button secondary" href="{ROOT}today/" data-conversion-source="daily_pick">今日の比較候補 ↗</a></div><p class="updated">{esc(stamp)}</p></div>{demo_markup(categories)}</div></header>'))
+    header.replace_with(fragment(f'<header class="lab-hero"><div class="container lab-hero-grid"><div><div class="lab-kicker">暮らしの価格研究所 / 同じものさしで比べる</div><h1>上質な暮らしを、<br>数字で賢く選ぶ。</h1><p class="lead">箱数も、容量も、セット数も。<br>同じ単位にそろえると、本当の価格差が見えてくる。</p><div class="lab-actions"><a class="lab-button" href="#lab-categories">日用品を比べる <span aria-hidden="true">↓</span></a><a class="lab-button secondary" href="{ROOT}today/" data-conversion-source="daily_pick">今日の比較候補 ↗</a></div><p class="updated">{esc(stamp)}</p></div>{demo_markup(categories)}</div></header>'))
     for selector in ['#home-start','.nav-wrap','#priority-categories','#today-deals-entry','.top-picks','.category-pages-block']:
         for el in soup.select(selector): el.decompose()
-    life=''.join(f'<div class="lab-life"><div class="lab-life-label"><span>{n}</span><h3>{name}</h3></div>'+''.join(f'<a class="category-page-link" data-conversion-source="category" href="{ROOT}categories/{cid}/">{esc(categories[cid]["name"])}</a>' for cid in ids if cid in categories)+'</div>' for n,name,ids in LIFE)
+    life=life_markup(categories)
     intro=fragment(f'<section class="lab-section" id="lab-life"><div class="lab-section-head"><div><span class="lab-kicker">01 / FIND YOUR EVERYDAY</span><h2>暮らしから探す</h2></div><p>いつもの日用品に、<br>新しい選び方を。</p></div><div class="lab-life-grid">{life}</div></section><section class="lab-section" id="lab-categories"><div class="lab-section-head"><div><span class="lab-kicker">02 / SAME UNIT, FAIR COMPARISON</span><h2>比べたいものは、何ですか。</h2></div><p>21カテゴリ・送料込みで比較</p></div><div class="lab-category-grid">{category_links(categories)}</div></section>')
     main.insert(0,intro)
     picks=[]
@@ -185,13 +208,27 @@ def main(site=SITE):
         # The old presentation is removed instead of accumulating CSS overrides.
         for style in soup.find_all('style'):style.decompose()
         for el in soup.find_all(style=True):del el['style']
-        css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css')
+        css_version=hashlib.sha256((site/'assets/laboratory.css').read_bytes()).hexdigest()[:12]
+        css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css?v='+css_version)
         css['data-laboratory-design']='v1';soup.head.append(css)
         if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
         soup.main['id']='lab-content'
         ishome=path==site/'index.html'
         if ishome:redesign_home(soup,payload,today)
+        if path==site/'categories/index.html':
+            block=soup.select_one('.category-pages-block')
+            if block:
+                block.clear()
+                block.append(fragment('<div class="lab-section-head"><div><span class="lab-kicker">暮らしの売場</span><h2>いつもの日用品を、賢く選ぶ。</h2></div><p>写真は掲載商品の一例です。<br>カテゴリ内で容量・用途も比べられます。</p></div><div class="lab-life-grid">'+life_markup(payload['categories'])+'</div>'))
+                block.append(fragment('<h2 class="lab-showroom-heading">すべての日用品</h2>'+category_showroom(payload['categories'])))
+        if path==site/'today/index.html':
+            soup.body['class']=['lab-daily']
+            h=soup.select_one('h1')
+            if h:h.string='今日、比べておきたい日用品'
+            k=soup.select_one('.eyebrow')
+            if k:k.string='今日の比較セレクション / 毎朝更新'
+
         for el in list(soup.select('.product-card')):
             anchor=el.get('id','');match=re.fullmatch(r'(.+)-rank-(\d+)',anchor)
             if not match:continue
@@ -222,10 +259,22 @@ def main(site=SITE):
         for image in soup.select('.deal-image img'):
             original=image.get('src','');image['src']=photo_url(original);image['width']='420';image['height']='420'
             image['srcset']=photo_url(original,240)+' 240w, '+photo_url(original,420)+' 420w';image['sizes']='(max-width:600px) 110px, 280px'
+        # Give existing daily units the same number/unit hierarchy, without
+        # changing the displayed value or interpreting product data again.
+        for unit in soup.select('.deal-card .unit-price'):
+            text=unit.get_text(' ',strip=True)
+            match=re.fullmatch(r'¥([\d,.]+)\s*[/／]\s*(.+)',text)
+            if match:
+                unit.clear()
+                unit.append(fragment('<span class="lab-price-value"><small>¥</small>'+esc(match[1])+'</span><span class="lab-price-unit">／'+esc(match[2])+'</span>'))
         for link in soup.select('a.buy-button'):
+
             link.clear();link.append('楽天で商品を確認する ↗')
         for el in soup.select('.deal-topline .category-chip,.eyebrow,h1,.section-heading h2'):
             if not el.find(True):el.string=clean_emoji(el.get_text())
+        for el in soup.select('.related-categories a,.category-page-link,option'):
+            for child in list(el.children):
+                if isinstance(child,str):child.replace_with(clean_emoji(str(child)))
         # Keep the whole normalized table and its anchors; offer it as an explicit
         # detail after the product experience rather than a huge first-screen wall.
         normalized=soup.select_one('#normalized-comparison')
