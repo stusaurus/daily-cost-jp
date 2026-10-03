@@ -17,7 +17,7 @@ if not SITE_DIR.exists():
 urls = []
 for html in sorted(SITE_DIR.rglob("*.html")):
     rel = html.relative_to(SITE_DIR).as_posix()
-    if rel == "404.html":
+    if rel == "404.html" or (rel.startswith("google") and "/" not in rel):
         continue
     if rel == "index.html":
         path = ""

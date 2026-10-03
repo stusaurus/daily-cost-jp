@@ -6,6 +6,12 @@ runs:
     - name: Test product quality and repeated refreshes
       shell: bash
       run: python -m unittest discover -s tests -v
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "20"
+    - name: Test analytics and purchase interactions
+      shell: bash
+      run: npm ci --ignore-scripts && npm test
     - name: Prepare optional social image dependencies
       shell: bash
       continue-on-error: true

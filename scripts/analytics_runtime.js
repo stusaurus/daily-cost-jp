@@ -4,7 +4,7 @@
   const TEST_KEY = 'daily_cost_operator_test_v1';
   const NAV_KEY = 'daily_cost_feature_navigation_v1';
   const TTL = 30 * 60 * 1000;
-  const allowed = new Set(['product_search', 'buy_judge', 'top_pick', 'category', 'trend', 'daily_pick', 'ranking', 'same_product_compare', 'product_guide', 'price_guide', 'other']);
+  const allowed = new Set(['product_search', 'buy_judge', 'top_pick', 'category', 'trend', 'daily_pick', 'ranking', 'same_product_compare', 'product_guide', 'price_guide', 'saved', 'comparison', 'other']);
   const params = new URLSearchParams(location.search);
   let operator = false;
   let persistent = true;
@@ -204,14 +204,14 @@
     const link = target?.closest('a[href]');
     if (!link || !isRakuten(link)) return;
     const card = link.closest('.product-card, .deal-card, .card');
-    const category = link.closest('.category-section')?.id || location.pathname.match(/\/categories\/([^/]+)/)?.[1] || '';
+    const category = link.dataset.categoryId || link.closest('.category-section')?.id || location.pathname.match(/\/categories\/([^/]+)/)?.[1] || '';
     window.gtag('event', 'affiliate_click', {
       ...(window.dailyCostTrafficContext || {}),
       affiliate: 'rakuten', conversion_source: sourceFor(link),
       category_id: category,
-      product_name: readText(card?.querySelector('h3, h2, .name')).slice(0, 100),
+      product_name: (link.dataset.productName || readText(card?.querySelector('h3, h2, .name'))).slice(0, 100),
       product_id: link.dataset.id || '',
-      rank: readText(card?.querySelector('.rank-badge, .deal-rank, .rank b')),
+      rank: link.dataset.rank || readText(card?.querySelector('.rank-badge, .deal-rank, .rank b')),
       unit_price_label: readText(card?.querySelector('.unit-price')).slice(0, 50),
       search_term: link.matches('.product-result-link') ? resultTerm.slice(0, 100) : '',
       shipping_included_price: Number(link.dataset.shippingPrice || 0),

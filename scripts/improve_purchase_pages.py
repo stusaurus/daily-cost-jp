@@ -48,22 +48,8 @@ def money(value):
 
 def unit_details(category_id, item):
     """Supplemental, comparable unit from explicit title evidence only."""
-    name = normalize(item.get('name', ''))
-    if ambiguous_quantity(name):
-        return None
-    price = float(item.get('unit_price') or 0)
-    if price <= 0:
-        return None
-    if category_id == 'tissue' and item.get('metric') == 'box':
-        groups = set(re.findall(r'(\d+)\s*組', name))
-        if len(groups) == 1 and int(next(iter(groups))) > 0:
-            return '100組', price / int(next(iter(groups))) * 100
-    if category_id == 'toilet-paper' and item.get('metric') == 'roll':
-        lengths = set(re.findall(r'(?<![\d.])(\d+(?:\.\d+)?)\s*m(?![a-z])', name, re.I))
-        types = [t for t in ('シングル', 'ダブル') if t in name]
-        if len(lengths) == 1 and len(types) == 1 and float(next(iter(lengths))) > 0:
-            return types[0] + '10m', price / float(next(iter(lengths))) * 10
-    return None
+    from comparison_units import comparison_unit
+    return comparison_unit(category_id, item) if category_id in ('tissue', 'toilet-paper') else None
 
 
 def price_answer(category_id, data):
@@ -80,18 +66,38 @@ def price_answer(category_id, data):
         detail = unit_details(category_id, item)
         if detail:
             label, value = detail
-            supplemental[label] = min(value, supplemental.get(label, float('inf')))
+            supplemental.setdefault(label, []).append(value)
     if supplemental:
-        overview += '<p><strong>条件をそろえた目安：</strong>' + ' ／ '.join(f'{esc(k)}あたり {money(v)}〜' for k, v in supplemental.items()) + '。商品名から条件を確認できた候補だけで計算しています。</p>'
+        overview += '<p><strong>条件をそろえた目安：</strong>' + ' ／ '.join(f'{esc(k)}あたり 最低{money(min(v))}・中央値{money(statistics.median(v))}（{len(v)}候補）' for k, v in supplemental.items()) + '。商品名から条件を確認できた候補だけで計算しています。</p>'
     answers = {
         'laundry': ('洗濯洗剤はどこが安い？今日の比較価格', '同じ銘柄・タイプなら、店頭の税込価格を容量で割り、下の楽天送料込み単価と比べると買い先を選べます。濃縮度が違う洗剤同士は100g単価だけで決めず、1回使用量もそろえてください。'),
         'toilet-paper': ('トイレットペーパーはいくらなら安い？', '1ロールの長さが違うと、ロール単価の安さが逆転します。シングル同士・ダブル同士で「支払総額 ÷ 総メートル数」を比較してください。下のランキングは1ロール単価順で、長さは統一していません。'),
         'tissue': ('ティッシュはどこが安い？今日の値段比較', '同じ組数なら1箱単価で比較できます。200組と250組など組数が違う場合は「支払総額 ÷ 箱数 ÷ 1箱の組数 × 100」で100組単価を比較してください。400枚（200組）は200組として計算します。'),
     }
     heading, answer = answers[category_id]
+    from comparison_units import quantity_label
+    picks = [(unit_details(category_id, p), rank, p) for rank,p in enumerate(items,1)]
+    comparable = [row for row in picks if row[0]]
+    if comparable:
+        best_detail, best_rank, best_item = min(comparable,key=lambda row:row[0][1])
+        # Different toilet paper ply is never mixed in a single winning claim.
+        if category_id == 'toilet-paper':
+            first_type = comparable[0][0][0]
+            best_detail, best_rank, best_item = min((row for row in comparable if row[0][0] == first_type),key=lambda row:row[0][1])
+        best_label, best_value = best_detail
+    elif items:
+        best_rank, best_item = 1, items[0]
+        best_label, best_value = metric, float(best_item['unit_price'])
+    else:
+        best_item = None
+    if best_item:
+        display = clean_display_name(best_item['name'])
+        short = display if len(display) <= 80 else display[:79] + '…'
+        highlight = f'<div class="answer-pick"><p><strong>今日の比較候補：{esc(best_label)}単価が低い商品</strong></p><a href="#{category_id}-rank-{best_rank}" title="{esc(display)}">{esc(short)}</a><p><strong>{money(best_value)}／{esc(best_label)}</strong> ・ {esc(quantity_label(best_item))} ・ 支払総額{money(best_item["price"])}（送料込み）</p></div>'
+        overview = highlight + overview
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
-    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{overview}<p>{answer}</p>
-<p><strong>どこで買う？</strong>店頭価格は自動収集していません。楽天候補と店頭の税込・送料込み総額を同じ内容量で比べ、必要な数量だけ買える方を選びましょう。</p>
+    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
+<p><strong>どこで買う？</strong>店頭価格は自動収集していません。楽天候補と店頭の税込・送料込み総額を同じ内容量で比べ、必要な数量だけ買える方を選びましょう。</p></details>
 <div class="purchase-links"><a href="#{category_id}">今日の商品・支払総額を見る ↓</a><a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div></section>'''
 
 

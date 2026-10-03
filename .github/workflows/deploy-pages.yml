@@ -66,6 +66,14 @@ on:
       - "scripts/analytics_runtime.js"
       - "scripts/offer_validation.js"
       - "scripts/improve_purchase_pages.py"
+      - "scripts/comparison_units.py"
+      - "scripts/price_observations.py"
+      - "scripts/build_observations.py"
+      - "scripts/complete_purchase_flow.py"
+      - "scripts/purchase_tools.js"
+      - "scripts/monitor_quality.py"
+      - "tests/test_purchase_completion.py"
+      - "tests/purchase_tools.test.cjs"
       - "scripts/validate_generated_site.py"
       - "scripts/add_search_landing_pages.py"
       - "scripts/generate_seo_files.py"
@@ -104,14 +112,18 @@ jobs:
       - name: Generate SEO discovery files
         env:
           SITE_URL: https://stusaurus.github.io/daily-cost-jp/
-        run: python scripts/generate_seo_files.py
+        run: |
+          python scripts/generate_seo_files.py
+          python scripts/validate_generated_site.py
 
       - name: Save product quality report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: product-quality-report
-          path: quality-report.json
+          path: |
+            quality-report.json
+            quality-monitor-report.json
           retention-days: 14
 
       - name: Configure Pages

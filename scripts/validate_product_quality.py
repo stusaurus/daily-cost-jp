@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from product_quality import REQUIRED, filter_items, item_rejection
 from sync_trend_search_chips import checked_suggestions
 from product_display import clean_display_name
+from comparison_units import comparison_unit
 from build_freshness import freshness_errors
 from candidate_acquisition import TARGET, MAX_REQUESTS, SUPPLEMENTAL_QUERIES
 
@@ -95,6 +96,10 @@ def validate_recommendations(payload, accepted):
         seen.add(category_id)
         if row.get('product_name') != source.get('name') or row.get('metric') != source.get('metric'):
             errors.append(f'Recommendation title/unit differs from catalog: {category_id}')
+        if 'comparison_unit_price' in row:
+            unit = comparison_unit(category_id, source)
+            if not unit or unit[0] != row.get('comparison_label') or not math.isclose(unit[1], float(row['comparison_unit_price']), rel_tol=.0001):
+                errors.append(f'Recommendation normalized comparison differs from catalog: {category_id}')
         for key in ('unit_price', 'price'):
             try:
                 same = math.isclose(float(row[key]), float(source[key]), rel_tol=.0001)

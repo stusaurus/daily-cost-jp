@@ -29,6 +29,7 @@ STEPS = (
     'polish_home_design',
     'add_exact_store_compare',
     'add_daily_buy_picks',
+    'build_observations',
     'build_daily_deals',
     'diversify_daily_deals',
     'build_daily_og',
@@ -39,10 +40,13 @@ STEPS = (
     'add_trend_conversion_tracking',
     'add_search_landing_pages',
     'improve_purchase_pages',
+    'complete_purchase_flow',
     'add_back_to_top',
     'add_analytics',
+    'generate_seo_files',
     'validate_generated_site',
     'validate_product_quality',
+    'monitor_quality',
 )
 
 
@@ -72,6 +76,9 @@ def write_build_info(root=ROOT):
 
 
 def main():
+    from price_observations import prepare
+    prepare()
+    os.environ.setdefault('SITE_URL', 'https://stusaurus.github.io/daily-cost-jp/')
     # Only the generated directory. Never carry old recommendations/OG images
     # into a second build, and never follow a symlink to another directory.
     site = ROOT / 'site'

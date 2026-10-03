@@ -73,8 +73,8 @@ def build_evening_text(payload: dict) -> str:
         discount = float(item.get("discount") or 0)
     except (TypeError, ValueError):
         discount = 0.0
-    metric = str(item.get("metric_label") or item.get("metric") or "")
-    unit = money(item.get("unit_price"))
+    metric = str(item.get("comparison_label") or item.get("metric_label") or item.get("metric") or "")
+    unit = money(item.get("comparison_unit_price", item.get("unit_price")))
 
     variant = choose_variant("evening", payload_date or str(day_seed), 5)
     headers = [
@@ -85,11 +85,11 @@ def build_evening_text(payload: dict) -> str:
         f"【今日の比較で気になった1品｜{name}】",
     ]
     lead_lines = [
-        f"比較候補の中央値より約{discount:.0f}%安い候補を確認。",
+        f"比較候補の中央値より約{discount:.0f}%単価が低い候補。",
         f"今日の比較では、中央値より約{discount:.0f}%低い候補。",
-        f"送料込み単価で見ると、比較中央値より約{discount:.0f}%安め。",
+        f"送料込み単価で見ると、比較中央値より約{discount:.0f}%低め。",
         f"同じ単位で比べると、中央値より約{discount:.0f}%差がありました。",
-        f"今日取得した候補内で、中央値より約{discount:.0f}%安い水準。",
+        f"今日取得した候補内で、中央値より約{discount:.0f}%単価が低い水準。",
     ]
     ctas = [
         "店頭価格と比べる前の目安に👇",

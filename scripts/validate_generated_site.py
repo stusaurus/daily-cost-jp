@@ -43,6 +43,8 @@ def validate(root=Path('site')):
     for path in root.rglob('*.html'):
         text = path.read_text(encoding='utf-8')
         rel = path.relative_to(root).as_posix()
+        if rel.startswith('google') and '/' not in rel:
+            continue  # Ownership verification file is not an indexable content page.
         page = Page(); page.feed(text); pages[rel] = page
         expected = BASE + rel.removesuffix('index.html')
         if rel == '404.html':
@@ -78,8 +80,18 @@ def validate(root=Path('site')):
     for kind, mapping in [('title', titles), ('description', descriptions)]:
         for group in mapping.values():
             if len(group) > 1: errors.append(f'duplicate {kind}: {group}')
+    for cid in ('tissue','toilet-paper','laundry'):
+        if f'categories/{cid}/index.html' not in pages: errors.append(f'priority category missing: {cid}')
+    for required in ('today/index.html','categories/index.html','guides/tissue-price-per-box/index.html','guides/toilet-paper-price-per-meter/index.html','guides/laundry-detergent-cost-per-use/index.html'):
+        if required not in pages: errors.append(f'important page missing: {required}')
+    if (root / 'assets/purchase-tools.js').exists() and not (root / 'assets/comparison-catalog.json').exists():
+        errors.append('Purchase tools catalog missing')
     sitemap = ET.parse(root / 'sitemap.xml')
-    actual = {n.text for n in sitemap.iter() if n.tag.endswith('}loc')}
+    entries = [n.text for n in sitemap.iter() if n.tag.endswith('}loc')]
+    actual = set(entries)
+    if len(entries) != len(actual): errors.append('sitemap has duplicate URLs')
+    robots = (root / 'robots.txt').read_text() if (root / 'robots.txt').exists() else ''
+    if 'Sitemap: ' + BASE + 'sitemap.xml' not in robots.splitlines(): errors.append('robots sitemap declaration missing')
     expected = {p.canonical[0] for rel, p in pages.items() if rel != '404.html' and len(p.canonical) == 1}
     if actual != expected: errors.append('sitemap does not cover exactly the canonical pages')
     return errors, {'pages': len(pages), 'rakuten_links': rakuten, 'sitemap_urls': len(actual)}

@@ -90,6 +90,8 @@ def category_rejection(category_id, title):
         return 'donation'
     if re.search(r'法人(?:様)?(?:限定|専用)|個人宅(?:配送|配達)?不可', text):
         return 'restricted_purchase'
+    if re.search(r'中古|定期(?:購入|便|コース)|初回(?:限定|価格)|クーポン(?:適用|利用|使用)(?:後|で)|クーポン後(?:価格|の価格)', text):
+        return 'conditional_or_used_price'
     if ACCESSORY.search(text):
         return 'accessory'
     if MIXED.search(text):
