@@ -130,6 +130,9 @@ jobs:
             quality-monitor-report.json
           retention-days: 14
 
+      - name: Add IndexNow verification key
+        run: printf '%s' '7d4f93c2a6814eb5b0d87f216ca9e403' > site/7d4f93c2a6814eb5b0d87f216ca9e403.txt
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
@@ -148,6 +151,39 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  published_design_audit:
+    name: Verify published desktop and mobile design
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Audit the actual public pages
+        run: |
+          mkdir -p published-design-reports
+          for route in home tissue today categories; do
+            case "$route" in
+              home) page='https://stusaurus.github.io/daily-cost-jp/?test=1' ;;
+              tissue) page='https://stusaurus.github.io/daily-cost-jp/categories/tissue/?test=1' ;;
+              today) page='https://stusaurus.github.io/daily-cost-jp/today/?test=1' ;;
+              categories) page='https://stusaurus.github.io/daily-cost-jp/categories/?test=1' ;;
+            esac
+            npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "$page" --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="published-design-reports/$route-mobile" --quiet
+          done
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'https://stusaurus.github.io/daily-cost-jp/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=published-design-reports/home-desktop --quiet
+      - name: Save public-page visual and accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-design-evidence
+          path: published-design-reports/
+          retention-days: 14
 
   post_x:
     name: Publish daily X post
@@ -172,3 +208,23 @@ jobs:
           EXPECTED_BUILD_SHA: ${{ github.sha }}
           EXPECTED_BUILD_RUN_ID: ${{ github.run_id }}
         run: python scripts/post_buffer.py
+
+  indexnow:
+    name: Notify IndexNow
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit sitemap URLs to IndexNow
+        env:
+          SITE_URL: https://stusaurus.github.io/daily-cost-jp/
+          INDEXNOW_KEY: 7d4f93c2a6814eb5b0d87f216ca9e403
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, xml.etree.ElementTree as ET
+          base=os.environ["SITE_URL"]; key=os.environ["INDEXNOW_KEY"]; key_url=base+key+".txt"
+          if urllib.request.urlopen(key_url, timeout=20).read().decode().strip()!=key: raise SystemExit("IndexNow key verification failed")
+          xml=urllib.request.urlopen(base+"sitemap.xml", timeout=20).read()
+          root=ET.fromstring(xml); urls=[e.text.strip() for e in root.iter() if e.tag.endswith("loc") and e.text]
+          req=urllib.request.Request("https://api.indexnow.org/IndexNow", data=json.dumps({"host":"stusaurus.github.io","key":key,"keyLocation":key_url,"urlList":urls}).encode(), headers={"Content-Type":"application/json; charset=utf-8"}, method="POST")
+          with urllib.request.urlopen(req, timeout=30) as r: print("IndexNow", r.status, "URLs", len(urls))
+          PY

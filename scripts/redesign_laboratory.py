@@ -4,6 +4,7 @@ This layer changes presentation only: IDs, affiliate URLs, prices, evidence,
 JSON-LD and feature scripts are retained. No live product is hard coded here.
 """
 import html
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -207,7 +208,8 @@ def main(site=SITE):
         # The old presentation is removed instead of accumulating CSS overrides.
         for style in soup.find_all('style'):style.decompose()
         for el in soup.find_all(style=True):del el['style']
-        css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css')
+        css_version=hashlib.sha256((site/'assets/laboratory.css').read_bytes()).hexdigest()[:12]
+        css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css?v='+css_version)
         css['data-laboratory-design']='v1';soup.head.append(css)
         if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
