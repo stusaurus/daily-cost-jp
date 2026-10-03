@@ -149,9 +149,9 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .art-credit{position:absolute;right:32px;bottom:18px;font-size:10px;letter-spacing:.12em;color:var(--ink)}
 .art-search{max-width:490px;padding:0!important;border:0!important;background:transparent!important;margin:0 0 20px!important}
 .art-search>h2,.art-search>p,.art-search>.eyebrow,.art-search>.pf-kicker,.art-search>a{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%)}
-.art-search form{display:flex;gap:0;border:1px solid var(--ink);background:var(--white);min-height:52px}
+.art-search form{display:flex;flex-direction:row;gap:0;border:1px solid var(--ink);background:var(--white);min-height:52px}
 .art-search form input{min-width:0;flex:1;border:0!important;border-radius:0!important;background:transparent;font-size:15px;padding:12px!important}
-.art-search form button{border:0!important;border-radius:0!important;background:var(--ink)!important;color:var(--white)!important;min-width:72px;font-size:14px}
+.art-search form button{border:0!important;border-radius:0!important;background:var(--ink)!important;color:var(--white)!important;min-width:72px;width:auto;flex:0 0 72px;font-size:14px}
 .art-data{display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:center;padding-top:55px;padding-bottom:55px}
 .art-data h2{font:38px/1.6 var(--serif);font-weight:500;margin:18px 0}
 .art-data>div>p:not(.lab-kicker){font-size:15px;line-height:2}
@@ -171,6 +171,8 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .art-page-header{position:relative;padding-right:max(260px,calc((100vw - 1180px)/2 + 240px))}
 .art-page-visual{position:absolute;right:max(30px,calc((100vw - 1180px)/2));top:30px;bottom:30px;width:180px;margin:0;overflow:hidden}
 .art-page-visual .art-picture{height:100%}
+/* Defer layout/paint work for editorial sections outside the viewport. */
+@supports(content-visibility:auto){.lab-home main>.lab-section:not(#art-data),.lab-home .lab-tools-grid,.lab-home .art-closing{content-visibility:auto;contain-intrinsic-size:auto 800px}}
 @media(max-width:900px){.art-cover-content>h1{font-size:42px}.art-cover-content>.lead{max-width:430px}.art-cover-content>.lab-actions,.art-search{max-width:400px}.art-data{gap:35px}.lab-method{grid-template-columns:1fr 1fr}.art-method{display:none}.art-closing{gap:30px}}
 @media(max-width:600px){
  .art-cover{display:flex;flex-direction:column;min-height:0;background:var(--paper)}
@@ -191,3 +193,4 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
  .art-closing>.art-picture{aspect-ratio:2}.art-disclosure{font-size:11px}
  .art-page-header{padding-right:0}.art-page-visual{display:none}
 }
+@media(prefers-reduced-motion:reduce){.lab-life-photo img,.lab-showroom-photo img{transition:none;transform:none!important}}

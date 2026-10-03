@@ -28,6 +28,7 @@ class LaboratoryDesignTests(unittest.TestCase):
         mobile = css[css.rfind('@media(max-width:600px){\n'):]
         self.assertIn('.art-cover{display:flex;flex-direction:column;', mobile)
         self.assertIn('.art-data{display:block;', mobile)
+        self.assertIn('.art-search form{display:flex;flex-direction:row;', css)
 
     def setUp(self):
         self.items=[{'name':'箱ティッシュ150組60箱','price':3600,'unit_price':60,'metric':'box','url':'https://hb.afl.rakuten.co.jp/a','image':'https://thumbnail.image.rakuten.co.jp/a.jpg?_ex=128x128','shop':'A'}, {'name':'箱ティッシュ200組60箱','price':4200,'unit_price':70,'metric':'box','url':'https://hb.afl.rakuten.co.jp/b','image':'','shop':'B'}]
