@@ -19,6 +19,10 @@ class LaboratoryDesignTests(unittest.TestCase):
             self.assertGreater(int(image['width']),0)
             self.assertGreater(int(image['height']),0)
             self.assertEqual(image['loading'],'eager' if key=='hero' else 'lazy')
+            if key=='hero':
+                self.assertEqual(s.source['media'],'(max-width:600px)')
+                self.assertIn('hero-mobile-480.webp',s.source['srcset'])
+                self.assertIn('hero-mobile-960.webp',s.source['srcset'])
             for filename in Path('scripts/design/art').glob(key+'-*.webp'):
                 self.assertLess(filename.stat().st_size,120000)
         self.assertEqual(CATEGORY_ART['tissue'],'tissue')

@@ -30,7 +30,13 @@ def art_picture(key, hero=False):
     version = hashlib.sha256((SOURCE/f'{key}-{widths[0]}.webp').read_bytes()).hexdigest()[:10]
     urls = [ROOT+f'assets/art/{key}-{width}.webp?v={version}' for width in widths]
     width = widths[-1]; height = round(width*2/3) if hero else width
-    return (f'<picture class="art-picture" data-editorial-art="{key}"><img src="{urls[0]}" '
+    mobile = ''
+    if hero:
+        mobile_version = hashlib.sha256((SOURCE/'hero-mobile-480.webp').read_bytes()).hexdigest()[:10]
+        mobile_urls = [ROOT+f'assets/art/hero-mobile-{w}.webp?v={mobile_version}' for w in (480,960)]
+        mobile = (f'<source media="(max-width:600px)" type="image/webp" '
+                  f'srcset="{mobile_urls[0]} 480w, {mobile_urls[1]} 960w" sizes="100vw" width="960" height="1440">')
+    return (f'<picture class="art-picture" data-editorial-art="{key}">{mobile}<img src="{urls[0]}" '
             f'srcset="{urls[0]} {widths[0]}w, {urls[1]} {widths[1]}w" '
             f'sizes="{"100vw" if hero else "(max-width:600px) 45vw, 320px"}" '
             f'width="{width}" height="{height}" alt="{DESCRIPTIONS[key]}" '

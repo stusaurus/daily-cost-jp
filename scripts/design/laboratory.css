@@ -175,16 +175,16 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 @supports(content-visibility:auto){.lab-home main>.lab-section:not(#art-data),.lab-home .lab-tools-grid,.lab-home .art-closing{content-visibility:auto;contain-intrinsic-size:auto 800px}}
 @media(max-width:900px){.art-cover-content>h1{font-size:42px}.art-cover-content>.lead{max-width:430px}.art-cover-content>.lab-actions,.art-search{max-width:400px}.art-data{gap:35px}.lab-method{grid-template-columns:1fr 1fr}.art-method{display:none}.art-closing{gap:30px}}
 @media(max-width:600px){
- .art-cover{display:flex;flex-direction:column;min-height:0;background:var(--paper)}
- .art-cover-content{order:1;padding-top:20px;padding-bottom:24px}
- .art-cover-content>h1{font-size:34px;line-height:1.4;margin:12px 0 14px}
- .art-cover-content>.lead{font-size:14px;line-height:1.9;margin-bottom:20px}
+ .art-cover{display:flex;flex-direction:column;min-height:clamp(620px,calc(100svh - 64px),760px);background:#e7e0d4}
+ .art-cover-content{display:flex;flex-direction:column;min-height:inherit;width:100%;padding-top:26px;padding-bottom:28px}
+ .art-cover-content>h1{font-size:38px;line-height:1.4;margin:14px 0 14px}
+ .art-cover-content>.lead{font-size:13px;line-height:1.9;margin-bottom:20px;max-width:290px}
  .art-cover-content>.lab-actions{max-width:none;gap:10px}
  .art-cover-content .lab-kicker{font-size:11px}.art-cover-content>.updated{margin:15px 0 0;font-size:11px}
- .art-cover>.art-picture{position:relative;inset:auto;order:0;z-index:0;height:clamp(260px,80vw,340px)}
- .art-cover>.art-picture img{object-position:right center;object-fit:cover}
+ .art-cover>.art-picture{position:absolute;inset:0;z-index:-1;height:100%}
+ .art-cover>.art-picture img{object-position:center;object-fit:cover}
  .art-credit{right:16px;bottom:10px;font-size:9px}
- .art-search{max-width:none;margin-bottom:16px!important}.art-search form{min-height:48px}.art-search form input{font-size:16px}
+ .art-search{max-width:none;margin-top:auto!important;margin-bottom:16px!important}.art-search form{min-height:48px;background:rgba(255,253,248,.92)}.art-search form input{font-size:16px}
  .art-data{display:block;padding-top:32px;padding-bottom:32px}.art-data h2{font-size:28px;margin:10px 0}.art-data>div>p:not(.lab-kicker){font-size:14px;margin:12px 0 22px}
  .art-data .lab-sample-photo{height:130px}.art-data .lab-demo{margin-top:22px}
  .lab-life-photo:has(.art-picture){height:auto;padding:0!important;aspect-ratio:1}
