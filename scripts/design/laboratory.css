@@ -176,7 +176,7 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 @media(max-width:900px){.art-cover-content>h1{font-size:42px}.art-cover-content>.lead{max-width:430px}.art-cover-content>.lab-actions,.art-search{max-width:400px}.art-data{gap:35px}.lab-method{grid-template-columns:1fr 1fr}.art-method{display:none}.art-closing{gap:30px}}
 @media(max-width:600px){
  .art-cover{display:flex;flex-direction:column;min-height:clamp(620px,calc(100svh - 64px),760px);background:#e7e0d4}
- .art-cover-content{display:flex;flex-direction:column;min-height:inherit;width:100%;padding-top:26px;padding-bottom:28px}
+ .art-cover-content{display:flex;flex-direction:column;min-height:inherit;width:calc(100% - 36px);padding-top:26px;padding-bottom:28px}
  .art-cover-content>h1{font-size:38px;line-height:1.4;margin:14px 0 14px}
  .art-cover-content>.lead{font-size:13px;line-height:1.9;margin-bottom:20px;max-width:290px}
  .art-cover-content>.lab-actions{max-width:none;gap:10px}
