@@ -70,6 +70,7 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertEqual(markup.select_one('[data-buy-mode="everyday"] .lab-buy-mode-kicker').text,'普段使い')
         self.assertIn('家族人数を推測せず',markup.select_one('.lab-buy-mode-note').text)
         self.assertTrue(all(card.select_one('.lab-mode-buy')['data-conversion-source']=='category' for card in markup.select('.lab-buy-mode-card')))
+        self.assertTrue(all('100組' in card.select_one('.lab-mode-buy')['data-unit-price-label'] for card in markup.select('.lab-buy-mode-card')))
         long={'name':'A'*100}
         self.assertTrue(display_name(long).endswith('…'))
         self.assertLessEqual(len(display_name(long)),76)
