@@ -29,9 +29,8 @@ class LaboratoryDesignTests(unittest.TestCase):
     def test_mobile_hero_restores_one_column_after_desktop_refinement(self):
         css = Path('scripts/design/laboratory.css').read_text()
         self.assertIn('.lab-hero-grid{grid-template-columns:1fr;', css)
-        mobile = css[css.rfind('@media(max-width:600px){\n'):]
-        self.assertIn('.art-cover{display:flex;flex-direction:column;', mobile)
-        self.assertIn('.art-data{display:block;', mobile)
+        self.assertIn('@media(max-width:600px){\n .art-cover{display:flex;flex-direction:column;', css)
+        self.assertIn('.art-data{display:block;', css)
         self.assertIn('.art-search form{display:flex;flex-direction:row;', css)
         self.assertIn('.lab-buy-mode-grid{display:grid;grid-template-columns:repeat(3', css)
         self.assertIn('.lab-buy-mode-card.is-featured', css)

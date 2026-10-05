@@ -128,6 +128,141 @@ function normalizeItem(raw) {
   };
 }
 
+function canonicalRakutenItemUrl(value) {
+  try {
+    const u = new URL(String(value || ""));
+    if (u.protocol !== "https:" || u.hostname !== "item.rakuten.co.jp") return "";
+    const path = u.pathname.replace(/\/+/g, "/").replace(/\/+$/, "") + "/";
+    return "https://item.rakuten.co.jp" + path;
+  } catch {
+    return "";
+  }
+}
+
+function rakutenItemLocator(value) {
+  const canonical = canonicalRakutenItemUrl(value);
+  if (!canonical) return null;
+  const u = new URL(canonical);
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (parts.length < 2) return null;
+  return { canonical, shopCode: parts[0], slug: parts.slice(1).join("/") };
+}
+
+function extractJsonObject(text, marker) {
+  const markerIndex = text.indexOf(marker);
+  if (markerIndex < 0) return null;
+  const start = text.indexOf("{", markerIndex + marker.length);
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') { inString = true; continue; }
+    if (ch === "{") depth += 1;
+    else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try { return JSON.parse(text.slice(start, i + 1)); } catch { return null; }
+      }
+    }
+  }
+  return null;
+}
+
+async function fetchExactRakutenPageInfo(itemUrl) {
+  const canonical = canonicalRakutenItemUrl(itemUrl);
+  if (!canonical) return null;
+  const response = await fetch(canonical, {
+    redirect: "follow",
+    headers: { "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0", Accept: "text/html,application/xhtml+xml" },
+  });
+  if (!response.ok) return null;
+  const text = await response.text();
+  const info = extractJsonObject(text, '"itemInfoSku":');
+  if (!info || !Number.isInteger(info.itemId)) return null;
+  const purchase = info.purchaseInfo?.purchaseBySellType || {};
+  if (purchase.purchaseCondition && purchase.purchaseCondition !== "enabled") return { itemId: info.itemId, unavailable: true };
+  return { itemId: info.itemId, unavailable: false };
+}
+
+function unwrapItem(raw) {
+  return raw && typeof raw === "object" && raw.Item && typeof raw.Item === "object"
+    ? raw.Item
+    : raw && typeof raw === "object" && raw.item && typeof raw.item === "object"
+      ? raw.item
+      : raw;
+}
+
+function normalizeExactItem(raw) {
+  const item = unwrapItem(raw);
+  if (!item || typeof item !== "object") return null;
+  const price = safeInt(item.itemPrice);
+  const itemUrl = canonicalRakutenItemUrl(item.itemUrl);
+  const affiliateUrl = String(item.affiliateUrl || "");
+  if (price <= 0 || !itemUrl || !affiliateUrl.startsWith("https://hb.afl.rakuten.co.jp/")) return null;
+  return {
+    name: String(item.itemName || ""), price, item_url: itemUrl, affiliate_url: affiliateUrl,
+    image: firstImageUrl(item.mediumImageUrls), shop_code: String(item.shopCode || ""),
+    shop_name: String(item.shopName || ""), item_code: String(item.itemCode || ""),
+    availability: safeInt(item.availability, 1),
+  };
+}
+
+async function fetchItemByCode(itemCode, env) {
+  const params = new URLSearchParams({
+    applicationId: env.RAKUTEN_APPLICATION_ID, itemCode, hits: "1", format: "json", formatVersion: "2", availability: "1",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+  });
+  if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
+  const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
+    headers: { accessKey: env.RAKUTEN_ACCESS_KEY, Origin: ALLOWED_ORIGIN, Referer: SITE_URL, "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0" },
+  });
+  if (!response.ok) throw new Error("item_api_" + response.status);
+  const payload = await response.json();
+  const source = Array.isArray(payload.Items) ? payload.Items : Array.isArray(payload.items) ? payload.items : [];
+  return source.map(normalizeExactItem).filter(Boolean);
+}
+
+async function fetchShopItems(q, shopCode, env) {
+  const params = new URLSearchParams({
+    applicationId: env.RAKUTEN_APPLICATION_ID, shopCode, keyword: q, hits: "30", format: "json", formatVersion: "2", availability: "1",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+  });
+  if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
+  const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
+    headers: { accessKey: env.RAKUTEN_ACCESS_KEY, Origin: ALLOWED_ORIGIN, Referer: SITE_URL, "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0" },
+  });
+  if (!response.ok) throw new Error("item_api_" + response.status);
+  const payload = await response.json();
+  const source = Array.isArray(payload.Items) ? payload.Items : Array.isArray(payload.items) ? payload.items : [];
+  return source.map(normalizeExactItem).filter(Boolean);
+}
+
+async function exactItemLookup(itemUrl, q, env) {
+  const locator = rakutenItemLocator(itemUrl);
+  if (!locator) return null;
+  const pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  if (pageInfo?.unavailable) return { found: false, reason: "unavailable" };
+  if (pageInfo?.itemId) {
+    const byCode = await fetchItemByCode(locator.shopCode + ":" + pageInfo.itemId, env);
+    const exact = byCode.find((item) => item.item_url === locator.canonical);
+    if (exact) return { found: true, lookup_method: "item_url_item_code", ...exact };
+  }
+  const query = String(q || "").trim();
+  if (query.length >= 2) {
+    const items = await fetchShopItems(query, locator.shopCode, env);
+    const exact = items.find((item) => item.item_url === locator.canonical);
+    if (exact) return { found: true, lookup_method: "item_url_shop_search", ...exact };
+  }
+  return { found: false, reason: "exact_item_not_found" };
+}
 function relevanceScore(product, query) {
   const q = compact(query);
   const name = compact(product.name);
@@ -410,6 +545,18 @@ export default {
       return json({ error: "server_not_configured" }, 503, origin);
     }
 
+    if (url.pathname === "/api/item-lookup") {
+      const itemUrl = String(url.searchParams.get("url") || "").trim();
+      const q = String(url.searchParams.get("q") || "").trim();
+      if (!canonicalRakutenItemUrl(itemUrl)) return json({ error: "invalid_rakuten_item_url" }, 400, origin);
+      try {
+        const result = await exactItemLookup(itemUrl, q, env);
+        return json(result || { found: false, reason: "exact_item_not_found" }, 200, origin);
+      } catch (error) {
+        console.error("item-lookup failed", error);
+        return json({ found: false, error: "rakuten_api_error" }, 502, origin);
+      }
+    }
     if (url.pathname === "/api/shipping-lookup") {
       const code = String(url.searchParams.get("code") || "").trim();
       const name = String(url.searchParams.get("name") || "").trim();
