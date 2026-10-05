@@ -174,7 +174,8 @@ def buying_modes_markup(cid, category):
             f'<p class="lab-buy-mode-meta">{esc(quantity_label(item))} ・ 支払総額 ¥{int(round(row["price"])):,}</p>'
             f'<a class="lab-mode-buy" href="{esc(item["url"])}" target="_blank" rel="nofollow sponsored noopener" '
             f'data-conversion-source="category" data-category-id="{esc(cid)}" data-rank="{row["rank"]}" '
-            f'data-shipping-price="{int(round(row["price"]))}" data-product-name="{esc(full)}">楽天で確認する ↗</a>'
+            f'data-shipping-price="{int(round(row["price"]))}" data-unit-price-label="{esc(money(row["value"]) + "／" + label)}" '
+            f'data-product-name="{esc(full)}">楽天で確認する ↗</a>'
             '</article>'
         )
     return (
