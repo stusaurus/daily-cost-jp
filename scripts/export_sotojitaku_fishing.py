@@ -125,6 +125,27 @@ def fetch_json(url: str, headers: dict[str, str]) -> dict:
     return {}
 
 
+
+def fetch_text(url: str) -> str:
+    req = urllib.request.Request(
+        url,
+        headers={**HEADERS, "Accept": "text/html,application/xhtml+xml"},
+    )
+    last = None
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=12) as response:
+                raw = response.read()
+            match = re.search(br'charset\s*=\s*["\']?([\w-]+)', raw[:10000], re.I)
+            encoding = match.group(1).decode() if match else "utf-8"
+            return raw.decode(encoding, errors="replace")
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError) as exc:
+            last = exc
+            if attempt == 0:
+                time.sleep(0.8)
+    raise last
+
+
 def exact_page_info(item_url: str) -> dict | None:
     """Resolve live Rakuten itemId/price from the manually audited exact URL.
 
