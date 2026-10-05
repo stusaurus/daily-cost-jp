@@ -132,7 +132,7 @@ function canonicalRakutenItemUrl(value) {
   try {
     const u = new URL(String(value || ""));
     if (u.protocol !== "https:" || u.hostname !== "item.rakuten.co.jp") return "";
-    const path = u.pathname.replace(/\/+\/g, "/").replace(/\/+$/, "") + "/";
+    const path = u.pathname.replace(/\/+/g, "/").replace(/\/+$/, "") + "/";
     return "https://item.rakuten.co.jp" + path;
   } catch {
     return "";
