@@ -125,6 +125,35 @@ def fetch_json(url: str, headers: dict[str, str]) -> dict:
     return {}
 
 
+def exact_page_info(item_url: str) -> dict | None:
+    """Resolve live Rakuten itemId/price from the manually audited exact URL.
+
+    This avoids relying on keyword search for listings that are live but poorly
+    indexed inside a shop. Failure is non-fatal; caller falls back to shop search.
+    """
+    canonical = canonical_item_url(item_url)
+    if not canonical:
+        return None
+    page = fetch_text(canonical)
+    marker = '"itemInfoSku":'
+    if marker not in page:
+        return None
+    try:
+        info, _ = json.JSONDecoder().raw_decode(page.split(marker, 1)[1])
+    except Exception:
+        return None
+    if info.get("sellType") not in (None, "NORMAL"):
+        return None
+    purchase = info.get("purchaseInfo", {}).get("purchaseBySellType", {})
+    if purchase.get("purchaseCondition") not in (None, "enabled"):
+        return None
+    item_id = info.get("itemId")
+    if not isinstance(item_id, int):
+        return None
+    price = purchase.get("normalPurchase", {}).get("price", {}).get("minPrice")
+    return {"itemId": item_id, "price": int(price) if isinstance(price, (int, float)) else None}
+
+
 def safe_affiliate(affiliate_url: str, item_url: str) -> bool:
     try:
         parsed = urllib.parse.urlparse(str(affiliate_url or ""))
@@ -161,6 +190,47 @@ def normalize_item(raw: dict) -> dict | None:
         "itemCode": str(item.get("itemCode") or ""),
         "shopCode": str(item.get("shopCode") or ""),
     }
+
+
+def fetch_exact_seed_item(seed: dict, env: dict[str, str]) -> dict | None:
+    expected = canonical_item_url(seed.get("itemUrl", ""))
+    expected_shop = rakuten_shop(expected)
+    if not expected or not expected_shop:
+        return None
+
+    try:
+        page_info = exact_page_info(expected)
+    except Exception:
+        return None
+    if not page_info:
+        return None
+
+    params = {
+        "applicationId": env["RAKUTEN_APPLICATION_ID"],
+        "affiliateId": env["RAKUTEN_AFFILIATE_ID"],
+        "itemCode": f"{expected_shop}:{page_info['itemId']}",
+        "hits": 1,
+        "format": "json",
+        "formatVersion": 2,
+        "availability": 1,
+        "elements": (
+            "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,"
+            "mediumImageUrls,availability,shopCode"
+        ),
+    }
+    headers = {**HEADERS, "accessKey": env["RAKUTEN_ACCESS_KEY"]}
+    payload = fetch_json(RAKUTEN_API + "?" + urllib.parse.urlencode(params), headers)
+    source = payload.get("items") or payload.get("Items") or []
+    for raw in source:
+        candidate = normalize_item(raw)
+        if not candidate:
+            continue
+        if candidate["itemUrl"] != expected:
+            continue
+        if not identity_ok(candidate["name"], seed):
+            continue
+        return candidate
+    return None
 
 
 def search_shop(seed: dict, env: dict[str, str]) -> dict | None:
@@ -234,7 +304,11 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
     for seed in load_seeds(seed_dir):
         pid = seed.get("productId", "unknown")
         try:
-            candidate = search_shop(seed, env)
+            candidate = fetch_exact_seed_item(seed, env)
+            audit_mode = "rakuten_api_exact_item_code"
+            if candidate is None:
+                candidate = search_shop(seed, env)
+                audit_mode = "rakuten_api_same_shop_identity"
             if candidate is None:
                 raise ValueError("same_shop_identity_listing_not_found")
             products.append({
@@ -258,7 +332,7 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
                 "specVerifiedAt": seed.get("specCheckedAt"),
                 "audit": {
                     "status": "verified_live",
-                    "mode": "rakuten_api_same_shop_identity",
+                    "mode": audit_mode,
                     "salesSource": "daily-cost-jp_github_actions",
                     "specEvidence": seed.get("specEvidenceUrl", ""),
                     "seedItemUrl": canonical_item_url(seed["itemUrl"]),
