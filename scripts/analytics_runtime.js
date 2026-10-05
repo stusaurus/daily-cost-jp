@@ -203,7 +203,7 @@
     const target = event.target.closest ? event.target : event.target.parentElement;
     const link = target?.closest('a[href]');
     if (!link || !isRakuten(link)) return;
-    const card = link.closest('.product-card, .deal-card, .card');
+    const card = link.closest('.product-card, .deal-card, .card, .lab-buy-mode-card');
     const category = link.dataset.categoryId || link.closest('.category-section')?.id || location.pathname.match(/\/categories\/([^/]+)/)?.[1] || '';
     window.gtag('event', 'affiliate_click', {
       ...(window.dailyCostTrafficContext || {}),
@@ -212,7 +212,7 @@
       product_name: (link.dataset.productName || readText(card?.querySelector('h3, h2, .name'))).slice(0, 100),
       product_id: link.dataset.id || '',
       rank: link.dataset.rank || readText(card?.querySelector('.rank-badge, .deal-rank, .rank b')),
-      unit_price_label: readText(card?.querySelector('.unit-price')).slice(0, 50),
+      unit_price_label: (link.dataset.unitPriceLabel || readText(card?.querySelector('.unit-price, .lab-buy-mode-price'))).slice(0, 50),
       search_term: link.matches('.product-result-link') ? resultTerm.slice(0, 100) : '',
       shipping_included_price: Number(link.dataset.shippingPrice || 0),
       link_url: link.href, page_path: location.pathname,
