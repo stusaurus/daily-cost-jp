@@ -1,0 +1,70 @@
+name: Deploy Cloudflare product API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-api/src/**"
+      - "cloudflare-api/wrangler.jsonc"
+      - "cloudflare-api/deploy.mjs"
+      - ".github/workflows/deploy-cloudflare-worker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-cost-cloudflare-worker
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify deployment secrets are configured
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: |
+          missing=0
+          for key in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID RAKUTEN_APPLICATION_ID RAKUTEN_ACCESS_KEY RAKUTEN_AFFILIATE_ID; do
+            if [ -z "${!key}" ]; then
+              echo "::error::${key} is not configured for this repository."
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Validate Worker source
+        run: |
+          node --check cloudflare-api/src/safe-index.js
+          node --test tests/worker-exact-item.test.cjs
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: |
+          cd cloudflare-api
+          node deploy.mjs
+
+      - name: Smoke test live exact-item endpoint
+        run: |
+          set -euo pipefail
+          base="https://daily-cost-api.kiyo0625puma.workers.dev"
+          curl --fail --silent --show-error "$base/health" > /tmp/health.json
+          code="$(curl --silent --output /tmp/exact-invalid.json --write-out '%{http_code}' "$base/api/item-by-url?url=https%3A%2F%2Fexample.com%2Fnot-rakuten")"
+          test "$code" = "400"
+          grep -q 'invalid_rakuten_item_url' /tmp/exact-invalid.json
