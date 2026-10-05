@@ -69,14 +69,15 @@ def rakuten_shop(value: str) -> str:
 
 
 def term_matches(name: str, term: str) -> bool:
-    normalized = compact(name)
-    needle = compact(term)
-    if not needle:
+    raw_name = unicodedata.normalize("NFKC", str(name or "")).lower()
+    raw_term = unicodedata.normalize("NFKC", str(term or "")).lower().strip()
+    if not raw_term:
         return False
-    if not any(ch.isdigit() for ch in needle):
-        return needle in normalized
-    pattern = r"(?<![0-9a-z])" + re.escape(needle) + r"(?![0-9a-z])"
-    return re.search(pattern, normalized) is not None
+    if not any(ch.isdigit() for ch in raw_term):
+        return compact(raw_term) in compact(raw_name)
+    needle = re.sub(r"\s+", r"\\s+", re.escape(raw_term))
+    pattern = r"(?<![0-9a-z])" + needle + r"(?![0-9a-z])"
+    return re.search(pattern, raw_name) is not None
 
 
 def identity_ok(name: str, seed: dict) -> bool:
