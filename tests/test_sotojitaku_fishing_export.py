@@ -39,5 +39,19 @@ class FishingExportTest(unittest.TestCase):
     def test_shop_parser(self):
         self.assertEqual(mod.rakuten_shop("https://item.rakuten.co.jp/shop-a/item/"),"shop-a")
 
+    def test_extract_item_info_json(self):
+        html='<script>window.x={"itemInfoSku":{"itemId":12345,"purchaseInfo":{"purchaseBySellType":{"purchaseCondition":"enabled"}}}}</script>'
+        info=mod.extract_json_object(html,'"itemInfoSku":')
+        self.assertEqual(info["itemId"],12345)
+
+    def test_exact_item_id_reads_enabled_listing(self):
+        original=mod.fetch_text
+        try:
+            mod.fetch_text=lambda _url: '<script>{"itemInfoSku":{"itemId":98765,"purchaseInfo":{"purchaseBySellType":{"purchaseCondition":"enabled"}}}}</script>'
+            seed={"itemUrl":"https://item.rakuten.co.jp/shop-a/item/"}
+            self.assertEqual(mod.exact_item_id(seed),98765)
+        finally:
+            mod.fetch_text=original
+
 if __name__=="__main__":
     unittest.main()
