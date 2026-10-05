@@ -39,5 +39,14 @@ class FishingExportTest(unittest.TestCase):
     def test_shop_parser(self):
         self.assertEqual(mod.rakuten_shop("https://item.rakuten.co.jp/shop-a/item/"),"shop-a")
 
+    def test_numeric_term_does_not_match_larger_number(self):
+        self.assertTrue(mod.term_matches("ホリデークール 60 6L","6L"))
+        self.assertFalse(mod.term_matches("ホリデークール 260 26L","6L"))
+        self.assertFalse(mod.term_matches("ホリデークール 260 26L","60"))
+
+    def test_model_token_requires_ascii_boundary(self):
+        self.assertTrue(mod.term_matches("BSJ-201ARS トカラウ","BSJ-201ARS"))
+        self.assertFalse(mod.term_matches("XBSJ-201ARS2","BSJ-201ARS"))
+
 if __name__=="__main__":
     unittest.main()
