@@ -245,6 +245,24 @@ async function fetchShopItems(q, shopCode, env) {
   return source.map(normalizeExactItem).filter(Boolean);
 }
 
+async function fishingItemLookup(itemUrl, q, env) {
+  const locator = rakutenItemLocator(itemUrl);
+  if (!locator) return { found: false, reason: "invalid_item_url", candidates: [] };
+  const query = String(q || "").trim();
+  if (query.length < 2) return { found: false, reason: "query_too_short", candidates: [] };
+
+  const items = await fetchShopItems(query, locator.shopCode, env);
+  const exact = items.find((item) => item.item_url === locator.canonical) || null;
+  return {
+    found: Boolean(exact),
+    lookup_method: exact ? "shop_search_exact_url" : "shop_search_candidates",
+    requested_item_url: locator.canonical,
+    shop_code: locator.shopCode,
+    exact: exact || null,
+    candidates: items.slice(0, 30),
+  };
+}
+
 async function exactItemLookup(itemUrl, q, env) {
   const locator = rakutenItemLocator(itemUrl);
   if (!locator) return null;
@@ -543,6 +561,20 @@ export default {
 
     if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
       return json({ error: "server_not_configured" }, 503, origin);
+    }
+
+    if (url.pathname === "/api/fishing-item-lookup") {
+      const itemUrl = String(url.searchParams.get("url") || "").trim();
+      const q = String(url.searchParams.get("q") || "").trim();
+      if (!canonicalRakutenItemUrl(itemUrl)) return json({ error: "invalid_rakuten_item_url" }, 400, origin);
+      if (q.length < 2) return json({ error: "query_too_short" }, 400, origin);
+      try {
+        const result = await fishingItemLookup(itemUrl, q, env);
+        return json(result, 200, origin);
+      } catch (error) {
+        console.error("fishing-item-lookup failed", error);
+        return json({ found: false, candidates: [], error: "rakuten_api_error" }, 502, origin);
+      }
     }
 
     if (url.pathname === "/api/item-lookup") {
