@@ -42,6 +42,8 @@ HEADERS = {
     "Referer": "https://stusaurus.github.io/sotojitaku/fishing/",
     "User-Agent": "daily-cost-jp-sotojitaku-fishing-export/1.0",
 }
+_LAST_API_CALL = 0.0
+MIN_API_INTERVAL_SECONDS = 1.05
 
 
 def compact(value: str) -> str:
@@ -97,18 +99,29 @@ def first_image(value) -> str:
 
 
 def fetch_json(url: str, headers: dict[str, str]) -> dict:
+    global _LAST_API_CALL
     req = urllib.request.Request(url, headers=headers)
-    for attempt in range(3):
+    for attempt in range(4):
+        elapsed = time.monotonic() - _LAST_API_CALL
+        if elapsed < MIN_API_INTERVAL_SECONDS:
+            time.sleep(MIN_API_INTERVAL_SECONDS - elapsed)
         try:
+            _LAST_API_CALL = time.monotonic()
             with urllib.request.urlopen(req, timeout=15) as response:
                 return json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == 3:
                 raise
+            retry_after = exc.headers.get("Retry-After") if exc.headers else None
+            try:
+                delay = max(2.0, float(retry_after))
+            except (TypeError, ValueError):
+                delay = 2.5 + attempt * 2.5
+            time.sleep(delay)
         except (urllib.error.URLError, TimeoutError):
-            if attempt == 2:
+            if attempt == 3:
                 raise
-        time.sleep(1.2 + attempt * 1.8)
+            time.sleep(2.0 + attempt * 2.0)
     return {}
 
 
@@ -192,7 +205,6 @@ def search_shop(seed: dict, env: dict[str, str]) -> dict | None:
 
         if any(level == 2 for level, _ in matches):
             break
-        time.sleep(0.22)
 
     if not matches:
         return None
@@ -254,7 +266,7 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
             })
         except Exception as exc:
             failures[pid] = str(exc) if isinstance(exc, ValueError) else type(exc).__name__
-        time.sleep(0.28)
+        time.sleep(0.15)
 
     products.sort(key=lambda p: p["productId"])
     return {
