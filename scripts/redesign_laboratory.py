@@ -7,6 +7,7 @@ import html
 import hashlib
 import json
 import re
+import statistics
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from bs4 import BeautifulSoup
@@ -30,6 +31,13 @@ def price_markup(value, label):
     return f'<span class="lab-price-value"><small>¥</small>{money(value)[1:]}</span><span class="lab-price-unit">／{esc(label)}</span>'
 def fragment(markup): return BeautifulSoup(markup, 'html.parser')
 def clean_emoji(text): return re.sub(r'^[^\w\u3040-\u30ff\u3400-\u9fff]+\s*', '', text)
+
+def display_name(item, limit=76):
+    """Compact card copy while preserving the full cleaned title in title/data attributes."""
+    text = re.sub(r'\s+', ' ', clean_display_name(item.get('name', ''))).strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit - 1].rstrip(' /｜|・-') + '…'
 
 def photo_url(url, size=420):
     """Only request a larger rendering from Rakuten's existing thumbnail host."""
@@ -98,6 +106,88 @@ def demo_markup(categories):
     difference=max(u[1] for _,u in rows)-best
     return f'<div class="lab-demo" aria-label="実商品による単価比較の見本"><div class="lab-demo-caption"><span>{esc(categories[cid]["name"])} / 同じものさしで比較</span><span>実際の取得データ</span></div><div class="lab-demo-grid">{cards}</div><p class="lab-demo-note"><strong>同じ{esc(rows[0][1][0])}で、{difference:.2f}円の差。</strong>{note}<br>素材・用途も確認して選びましょう。<a href="{ROOT}categories/{cid}/" data-conversion-source="category">この比較を見る ↗</a></p></div>'
 
+def recommendation_picks(cid, category):
+    """Return transparent picks for three buying intents from one comparable-unit group."""
+    groups = {}
+    for rank, item in enumerate(category.get('items', []), 1):
+        unit = comparison_unit(cid, item)
+        if not unit:
+            continue
+        label, value = unit
+        try:
+            value = float(value)
+            price = float(item.get('price') or 0)
+        except (TypeError, ValueError):
+            continue
+        if value <= 0 or price <= 0:
+            continue
+        groups.setdefault(label, []).append({
+            'rank': rank,
+            'item': item,
+            'value': value,
+            'price': price,
+            'equivalent': price / value,
+        })
+    if not groups:
+        return None, []
+
+    # Prefer the unit that lets the visitor compare the greatest number of real offers.
+    label, rows = max(
+        groups.items(),
+        key=lambda pair: (len(pair[1]), -min(row['rank'] for row in pair[1])),
+    )
+    rows = sorted(rows, key=lambda row: (row['value'], row['price'], row['rank']))
+    cheapest = rows[0]
+    near = [row for row in rows if row['value'] <= cheapest['value'] * 1.15] or rows
+    quantities = [row['equivalent'] for row in near]
+    midpoint = statistics.median(quantities)
+    stock = max(near, key=lambda row: (row['equivalent'], -row['value'], -row['price']))
+    everyday_pool = [row for row in near if row is not cheapest and row is not stock] or near
+    everyday = min(
+        everyday_pool,
+        key=lambda row: (abs(row['equivalent'] - midpoint), row['value'], row['price']),
+    )
+
+    return label, [
+        ('unit', '単価最安', cheapest,
+         f'同じ{label}で、比較できる候補の単価が最も低い'),
+        ('everyday', '普段使い', everyday,
+         '単価最安+15%以内から、購入量が中間に近い候補'),
+        ('stock', 'まとめ買い', stock,
+         '単価最安+15%以内から、同じ単位換算の購入量が大きい候補'),
+    ]
+
+def buying_modes_markup(cid, category):
+    label, picks = recommendation_picks(cid, category)
+    if not picks:
+        return ''
+    cards = []
+    for mode, title, row, reason in picks:
+        item = row['item']
+        full = clean_display_name(item['name'])
+        cards.append(
+            f'<article class="lab-buy-mode-card {"is-featured" if mode == "everyday" else ""}" data-buy-mode="{mode}">'
+            f'<div class="lab-buy-mode-kicker">{esc(title)}</div>'
+            f'<h3 title="{esc(full)}">{esc(display_name(item, 58))}</h3>'
+            f'<div class="lab-buy-mode-price">{price_markup(row["value"], label)}</div>'
+            f'<p class="lab-buy-mode-reason">{esc(reason)}</p>'
+            f'<p class="lab-buy-mode-meta">{esc(quantity_label(item))} ・ 支払総額 ¥{int(round(row["price"])):,}</p>'
+            f'<a class="lab-mode-buy" href="{esc(item["url"])}" target="_blank" rel="nofollow sponsored noopener" '
+            f'data-conversion-source="category" data-category-id="{esc(cid)}" data-rank="{row["rank"]}" '
+            f'data-shipping-price="{int(round(row["price"]))}" data-product-name="{esc(full)}">楽天で確認する ↗</a>'
+            '</article>'
+        )
+    return (
+        '<section class="lab-buy-modes" aria-labelledby="lab-buy-modes-title">'
+        '<div class="lab-buy-modes-head"><div>'
+        '<span class="lab-kicker">CHOOSE BY HOW YOU BUY</span>'
+        '<h2 id="lab-buy-modes-title">安さだけでなく、買い方で選ぶ。</h2>'
+        '</div><p>同じ比較単位で条件をそろえた商品だけから選定。</p></div>'
+        '<div class="lab-buy-mode-grid">' + ''.join(cards) + '</div>'
+        '<p class="lab-buy-mode-note">「普段使い」は家族人数を推測せず、単価と一度に買う量のバランスだけで判定しています。用途・保管場所・必要量は商品詳細で確認してください。</p>'
+        '</section>'
+    )
+
 def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
     unit = comparison_unit(cid,item)
     label, value = unit if unit else (LABELS.get(item['metric'],item['metric']),item['unit_price'])
@@ -106,7 +196,8 @@ def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
         normalized_note = '<p class="lab-base-price">組数・長さ・重ね数は未確認。同じ条件での順位比較対象外。</p>'
     elif cid in ('tissue','toilet-paper'):
         normalized_note = f'<p class="lab-base-price">参考：{money(item["unit_price"])}／{esc(LABELS[item["metric"]])}</p>'
-    return f'''<article id="{esc(anchor)}" class="product-card product-card-anchor"><div class="rank-badge">{rank:02d}</div><div class="product-image">{image_markup(item)}</div><div class="product-body"><div class="lab-reason"><span>{esc(category['name'])}</span><span>{esc(reason)}</span></div><h3 title="{esc(clean_display_name(item['name']))}">{esc(clean_display_name(item['name']))}</h3><div class="unit-price">{price_markup(value,label)}</div>{normalized_note}<p class="purchase-summary">{esc(quantity_label(item))}</p><p class="purchase-summary">支払総額 <strong>¥{item['price']:,}</strong> · 送料込み</p><p class="shop">{esc(item.get('shop',''))}</p><a class="buy-button" href="{esc(item['url'])}" target="_blank" rel="nofollow sponsored noopener" data-category-id="{esc(cid)}" data-rank="{rank}" data-shipping-price="{item['price']}" data-product-name="{esc(clean_display_name(item['name']))}">楽天で商品を確認する <span aria-hidden="true">↗</span></a><p class="purchase-note">価格・在庫・地域別送料は楽天で最終確認</p></div></article>'''
+    full_name = clean_display_name(item['name'])
+    return f'''<article id="{esc(anchor)}" class="product-card product-card-anchor"><div class="rank-badge">{rank:02d}</div><div class="product-image">{image_markup(item)}</div><div class="product-body"><div class="lab-reason"><span>{esc(category['name'])}</span><span>{esc(reason)}</span></div><h3 title="{esc(full_name)}">{esc(display_name(item))}</h3><div class="unit-price">{price_markup(value,label)}</div>{normalized_note}<p class="purchase-summary">{esc(quantity_label(item))}</p><p class="purchase-summary">支払総額 <strong>¥{item['price']:,}</strong> · 送料込み</p><p class="shop">{esc(item.get('shop',''))}</p><a class="buy-button" href="{esc(item['url'])}" target="_blank" rel="nofollow sponsored noopener" data-category-id="{esc(cid)}" data-rank="{rank}" data-shipping-price="{item['price']}" data-product-name="{esc(full_name)}">楽天で商品を確認する <span aria-hidden="true">↗</span></a><p class="purchase-note">価格・在庫・地域別送料は楽天で最終確認</p></div></article>'''
 
 def masthead():
     return f'<a class="lab-skip" href="#lab-content">本文へ移動</a><div class="lab-masthead"><div class="lab-masthead-inner"><a class="lab-brand" href="{ROOT}"><span class="lab-mark" aria-hidden="true">日</span><span>日用品コスパ比較<small>DAILY COST / 暮らしの価格研究所</small></span></a><nav class="lab-nav" aria-label="メインナビゲーション"><a href="{ROOT}categories/">カテゴリから探す</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名で探す ↗</a></nav></div></div>'
@@ -134,6 +225,10 @@ def redesign_home(soup,payload,today):
             rank,p=found;markup=card_markup(cid,c,p,rank,f'lab-today-{cid}','同じ単位の候補と比較')
             el=fragment(markup).article
             el.select_one('.buy-button')['data-conversion-source']='daily_pick'
+            badge=el.select_one('.rank-badge')
+            if badge:
+                badge.string=f'{index:02d}'
+                badge['title']='今日の比較候補の表示順'
             picks.append(str(el))
     block=fragment('<section class="lab-section" id="today-deals-entry"><div class="lab-section-head"><div><span class="lab-kicker">03 / TODAY’S OBSERVATIONS</span><h2>今日、比べてみたい日用品。</h2></div><a href="'+ROOT+'today/" data-conversion-source="daily_pick">5つの候補を詳しく ↗</a></div><p class="lab-demo-note">今日取得した同じ単位の候補を比較して選定。価格の安さだけでなく、用途・置き場所も合わせて確認してください。</p><div class="lab-today-grid">'+''.join(picks)+'</div></section>')
     main.select_one('#lab-categories').insert_after(block)
@@ -187,7 +282,12 @@ def group_normalized_cards(soup,categories):
             group=soup.new_tag('div',attrs={'class':'lab-unit-group'})
             heading=soup.new_tag('h3');heading.string=label+'で比較' if label!='条件が未確認の商品' else label
             group.append(heading);grid=soup.new_tag('div',attrs={'class':'product-list'})
-            for _,card in sorted(rows,key=lambda x:x[0]):grid.append(card.extract())
+            for position,(_,card) in enumerate(sorted(rows,key=lambda x:x[0]),1):
+                badge=card.select_one('.rank-badge')
+                if badge:
+                    badge.string=f'{position:02d}'
+                    badge['title']='この比較条件内の表示順'
+                grid.append(card.extract())
             group.append(grid);wrapper.append(group)
         old.replace_with(wrapper)
         heading=section.select_one('.section-heading h2')
@@ -257,6 +357,16 @@ def main(site=SITE):
                     picked_block=content.select_one('.answer-pick')
                     if picked_block:picked_block.insert_after(context)
                     answer.append(photo);answer.append(content)
+        page_cid = path.parent.name if path.parent.parent.name == 'categories' else ''
+        if page_cid in payload['categories'] and not soup.select_one('.lab-buy-modes'):
+            modes = buying_modes_markup(page_cid, payload['categories'][page_cid])
+            if modes:
+                mode_section = fragment(modes).section
+                category_section = soup.select_one(f'section.category-section#{page_cid}')
+                if answer:
+                    answer.insert_after(mode_section)
+                elif category_section:
+                    category_section.insert_before(mode_section)
         # Secondary units become the main number; the actual catalog remains intact.
         for image in soup.select('.deal-image img'):
             original=image.get('src','');image['src']=photo_url(original);image['width']='420';image['height']='420'
