@@ -68,12 +68,24 @@ def rakuten_shop(value: str) -> str:
     return parts[0] if parts else ""
 
 
+def term_matches(name: str, term: str) -> bool:
+    raw_name = unicodedata.normalize("NFKC", str(name or "")).lower()
+    raw_term = unicodedata.normalize("NFKC", str(term or "")).lower().strip()
+    if not raw_term:
+        return False
+    if not any(ch.isdigit() for ch in raw_term):
+        return compact(raw_term) in compact(raw_name)
+    escaped = re.escape(raw_term)
+    escaped = escaped.replace(r"\ ", r"\s+")
+    pattern = r"(?<![0-9a-z])" + escaped + r"(?![0-9a-z])"
+    return re.search(pattern, raw_name) is not None
+
+
 def identity_ok(name: str, seed: dict) -> bool:
-    normalized = compact(name)
-    if any(compact(term) in normalized for term in seed.get("forbiddenTerms", [])):
+    if any(term_matches(name, term) for term in seed.get("forbiddenTerms", [])):
         return False
     groups = seed.get("identityGroups", [])
-    return all(any(compact(term) in normalized for term in group) for group in groups)
+    return all(any(term_matches(name, term) for term in group) for group in groups)
 
 
 def seed_queries(seed: dict) -> list[str]:
@@ -268,53 +280,72 @@ def normalize_item(raw: dict) -> dict | None:
     }
 
 
-def search_shop(seed: dict, env: dict[str, str]) -> dict | None:
+def search_identity(seed: dict, env: dict[str, str]) -> tuple[dict | None, str]:
     expected = canonical_item_url(seed["itemUrl"])
     expected_shop = rakuten_shop(expected)
-    if not expected or not expected_shop:
-        return None
+    if not expected:
+        return None, "none"
 
     headers = {**HEADERS, "accessKey": env["RAKUTEN_ACCESS_KEY"]}
     matches: list[tuple[int, dict]] = []
 
-    for query in seed_queries(seed):
-        params = {
-            "applicationId": env["RAKUTEN_APPLICATION_ID"],
-            "affiliateId": env["RAKUTEN_AFFILIATE_ID"],
-            "shopCode": expected_shop,
-            "keyword": query,
-            "hits": 30,
-            "format": "json",
-            "formatVersion": 2,
-            "availability": 1,
-            "field": 0,
-            "elements": (
-                "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,"
-                "mediumImageUrls,availability,shopCode"
-            ),
-        }
-        payload = fetch_json(RAKUTEN_API + "?" + urllib.parse.urlencode(params), headers)
-        source = payload.get("items") or payload.get("Items") or []
-        for raw in source:
-            candidate = normalize_item(raw)
-            if not candidate:
-                continue
-            if candidate["shopCode"] and candidate["shopCode"] != expected_shop:
-                continue
-            if rakuten_shop(candidate["itemUrl"]) != expected_shop:
-                continue
-            if not identity_ok(candidate["name"], seed):
-                continue
-            level = 2 if candidate["itemUrl"] == expected else 1
-            matches.append((level, candidate))
+    for shop_scope in (expected_shop, ""):
+        for query in seed_queries(seed):
+            params = {
+                "applicationId": env["RAKUTEN_APPLICATION_ID"],
+                "affiliateId": env["RAKUTEN_AFFILIATE_ID"],
+                "keyword": query,
+                "hits": 30,
+                "format": "json",
+                "formatVersion": 2,
+                "availability": 1,
+                "field": 0,
+                "elements": (
+                    "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,"
+                    "mediumImageUrls,availability,shopCode"
+                ),
+            }
+            if shop_scope:
+                params["shopCode"] = shop_scope
 
-        if any(level == 2 for level, _ in matches):
+            payload = fetch_json(RAKUTEN_API + "?" + urllib.parse.urlencode(params), headers)
+            source = payload.get("items") or payload.get("Items") or []
+            for raw in source:
+                candidate = normalize_item(raw)
+                if not candidate or not identity_ok(candidate["name"], seed):
+                    continue
+                candidate_shop = candidate["shopCode"] or rakuten_shop(candidate["itemUrl"])
+                if candidate["itemUrl"] == expected:
+                    level = 3
+                elif expected_shop and candidate_shop == expected_shop:
+                    level = 2
+                else:
+                    level = 1
+                matches.append((level, candidate))
+
+            if any(level == 3 for level, _ in matches):
+                break
+        if any(level >= 2 for level, _ in matches):
             break
 
     if not matches:
-        return None
-    matches.sort(key=lambda pair: (-pair[0], pair[1]["price"]))
-    return matches[0][1]
+        return None, "none"
+
+    unique: dict[str, tuple[int, dict]] = {}
+    for level, candidate in matches:
+        current = unique.get(candidate["itemUrl"])
+        if current is None or level > current[0]:
+            unique[candidate["itemUrl"]] = (level, candidate)
+
+    ranked = list(unique.values())
+    ranked.sort(key=lambda pair: (-pair[0], pair[1]["price"]))
+    level, candidate = ranked[0]
+    mode = {
+        3: "rakuten_api_exact_url_search",
+        2: "rakuten_api_same_shop_identity",
+        1: "rakuten_api_cross_shop_identity",
+    }[level]
+    return candidate, mode
 
 
 def load_seeds(seed_dir: Path) -> list[dict]:
@@ -342,8 +373,7 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
             candidate = exact_item_candidate(seed, env)
             lookup_mode = "rakuten_api_exact_item_code"
             if candidate is None:
-                candidate = search_shop(seed, env)
-                lookup_mode = "rakuten_api_same_shop_identity"
+                candidate, lookup_mode = search_identity(seed, env)
             if candidate is None:
                 raise ValueError("live_identity_listing_not_found")
             products.append({
