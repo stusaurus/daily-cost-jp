@@ -1,3 +1,4 @@
+import {parseRakutenItemUrl,affiliateTargetsItem} from "./item-lookup-core.mjs";
 const PRODUCT_API_URL = "https://openapi.rakuten.co.jp/ichibaproduct/api/Product/Search/20250801";
 const ITEM_API_URL = "https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701";
 const ALLOWED_ORIGIN = "https://stusaurus.github.io";
@@ -371,6 +372,70 @@ async function exactShippingLookup(code, name, brand, env) {
   };
 }
 
+async function fetchExactItemByUrl(itemUrl, env) {
+  const identity = parseRakutenItemUrl(itemUrl);
+  if (!identity) return null;
+
+  const params = new URLSearchParams({
+    applicationId: env.RAKUTEN_APPLICATION_ID,
+    itemCode: identity.itemCode,
+    hits: "1",
+    format: "json",
+    formatVersion: "2",
+    availability: "1",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,mediumImageUrls,availability,shopName,shopCode",
+  });
+  if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
+
+  const response = await fetch(`${ITEM_API_URL}?${params.toString()}`, {
+    headers: {
+      accessKey: env.RAKUTEN_ACCESS_KEY,
+      Origin: ALLOWED_ORIGIN,
+      Referer: SITE_URL,
+      "User-Agent": "daily-cost-jp-cloudflare-exact-item/1.0",
+    },
+  });
+  if (!response.ok) throw new Error(`item_api_${response.status}`);
+
+  const payload = await response.json();
+  const source = Array.isArray(payload.Items)
+    ? payload.Items
+    : Array.isArray(payload.items)
+      ? payload.items
+      : [];
+  if (source.length !== 1) return null;
+
+  const raw = source[0] && typeof source[0] === "object" && source[0].Item
+    ? source[0].Item
+    : source[0] && typeof source[0] === "object" && source[0].item
+      ? source[0].item
+      : source[0];
+  if (!raw || typeof raw !== "object") return null;
+
+  const returnedIdentity = parseRakutenItemUrl(raw.itemUrl);
+  const itemCode = String(raw.itemCode || "");
+  const price = safeInt(raw.itemPrice);
+  const availability = safeInt(raw.availability, 0);
+  const affiliateUrl = String(raw.affiliateUrl || "");
+  const image = firstImageUrl(raw.mediumImageUrls);
+
+  if (!returnedIdentity || returnedIdentity.canonicalUrl !== identity.canonicalUrl) return null;
+  if (itemCode && itemCode !== identity.itemCode) return null;
+  if (price <= 0 || availability !== 1 || !image) return null;
+  if (!affiliateTargetsItem(affiliateUrl, identity.canonicalUrl)) return null;
+
+  return {
+    name: String(raw.itemName || ""),
+    price,
+    itemUrl: identity.canonicalUrl,
+    affiliateUrl,
+    image,
+    itemCode: itemCode || identity.itemCode,
+    shop: String(raw.shopName || ""),
+    shopCode: String(raw.shopCode || identity.shopCode),
+  };
+}
+
 function json(data, status = 200, origin = "") {
   const headers = new Headers({
     "Content-Type": "application/json; charset=utf-8",
@@ -408,6 +473,18 @@ export default {
 
     if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
       return json({ error: "server_not_configured" }, 503, origin);
+    }
+
+    if (url.pathname === "/api/item-by-url") {
+      const itemUrl = String(url.searchParams.get("url") || "").trim();
+      if (!parseRakutenItemUrl(itemUrl)) return json({ found: false, error: "invalid_rakuten_item_url" }, 400, origin);
+      try {
+        const result = await fetchExactItemByUrl(itemUrl, env);
+        return json({ found: Boolean(result), ...(result || {}) }, 200, origin);
+      } catch (error) {
+        console.error("item-by-url failed", error);
+        return json({ found: false, error: "rakuten_api_error" }, 502, origin);
+      }
     }
 
     if (url.pathname === "/api/shipping-lookup") {
