@@ -99,3 +99,67 @@ test("item lookup never substitutes a different same-shop item",async()=>{
     assert.equal(body.reason,"exact_item_not_found");
   }finally{global.fetch=original;}
 });
+
+
+test("fast fishing lookup skips Rakuten item-page HTML and returns same-shop candidates",async()=>{
+  const original=global.fetch;
+  const requested="https://item.rakuten.co.jp/fto-r/old-slug/";
+  const current="https://item.rakuten.co.jp/fto-r/current-slug/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(current);
+  const calls=[];
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      calls.push(url);
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        assert.equal(parsed.searchParams.get("shopCode"),"fto-r");
+        assert.equal(parsed.searchParams.get("keyword"),"フィッシュホルダー 240C");
+        return new Response(JSON.stringify({items:[{
+          itemName:"ダイワ フィッシュホルダー 240C",
+          itemCode:"fto-r:456",
+          itemPrice:1880,
+          itemUrl:current,
+          affiliateUrl:affiliate,
+          shopName:"釣具のFTO",
+          shopCode:"fto-r",
+          availability:1,
+          mediumImageUrls:["https://example.com/fish.jpg"]
+        }]}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=fishing-fast")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/fishing-item-lookup?url="+encodeURIComponent(requested)+"&q="+encodeURIComponent("フィッシュホルダー 240C"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.found,true);
+    assert.equal(body.lookup_method,"shop_search_no_page_fetch");
+    assert.equal(body.shop_code,"fto-r");
+    assert.equal(body.candidates.length,1);
+    assert.equal(body.candidates[0].item_url,current);
+    assert.equal(body.candidates[0].affiliate_url,affiliate);
+    assert.equal(calls.some(url=>url===requested),false);
+    assert.equal(calls.length,1);
+  }finally{global.fetch=original;}
+});
+
+test("fast fishing lookup rejects invalid Rakuten URL without upstream fetch",async()=>{
+  const original=global.fetch;
+  let called=false;
+  try{
+    global.fetch=async()=>{called=true;throw new Error("should not fetch");};
+    const worker=(await import(workerUrl+"?t=fishing-invalid")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/fishing-item-lookup?url="+encodeURIComponent("https://example.com/item")+"&q=test",
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,400);
+    assert.equal(called,false);
+  }finally{global.fetch=original;}
+});
