@@ -1,0 +1,77 @@
+name: Export SOTOJITAKU FISHING catalog
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '10 22 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/export_sotojitaku_fishing.py'
+      - '.github/workflows/export-sotojitaku-fishing.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: export-sotojitaku-fishing
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch current SOTOJITAKU product seeds
+        run: |
+          rm -rf /tmp/sotojitaku
+          git clone --depth 1 https://github.com/stusaurus/sotojitaku.git /tmp/sotojitaku
+
+      - name: Export verified FISHING catalog with Rakuten API
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          FISHING_SEED_DIR: /tmp/sotojitaku/fishing/data/product-seeds
+          FISHING_EXPORT_OUT: shared-data/sotojitaku-fishing-products.json
+        run: python scripts/export_sotojitaku_fishing.py
+
+      - name: Show export summary
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('shared-data/sotojitaku-fishing-products.json'))
+          print('verified',len(p.get('products',[])))
+          print('failed',len(p.get('failures',{})))
+          for k,v in p.get('failures',{}).items():
+              print('FAIL',k,v)
+          PY
+
+      - name: Publish shared catalog
+        run: |
+          cp shared-data/sotojitaku-fishing-products.json /tmp/fishing-products.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p shared-data
+            cp /tmp/fishing-products.json shared-data/sotojitaku-fishing-products.json
+            git add shared-data/sotojitaku-fishing-products.json
+            if git diff --cached --quiet; then
+              echo 'Shared FISHING catalog already current.'
+              exit 0
+            fi
+            git commit -m 'Refresh shared SOTOJITAKU FISHING catalog'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
