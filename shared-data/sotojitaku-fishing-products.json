@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-05T22:13:12.028679+00:00",
+  "updatedAt": "2026-10-05T22:17:03.026687+00:00",
   "status": "partial",
   "products": [
     {
@@ -31,11 +31,11 @@
       "itemUrl": "https://item.rakuten.co.jp/aquabeach/bsj201arsca/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00sag4o.7cx6mea6.g00sag4o.7cx6n2d4/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Faquabeach%2Fbsj201arsca%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Faquabeach%2Fi%2F10004266%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/aquabeach/cabinet/04770684/05608218/bsj201arsca-01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/aquabeach/bsj201arsca/",
         "seedItemUrl": "https://item.rakuten.co.jp/aquabeach/bsj201arsca/"
@@ -69,11 +69,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fishing-you/4550133302862-a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00py79o.7cx6me43.g00py79o.7cx6n88f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffishing-you%2F4550133302862-a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffishing-you%2Fi%2F10164090%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fishing-you/cabinet/item496/4550133302862-a_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fishing-you/4550133302862-a/",
         "seedItemUrl": "https://item.rakuten.co.jp/fishing-you/4550133302862-a/"
@@ -107,11 +107,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fto-r/4960652728225/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00snbso.7cx6m99d.g00snbso.7cx6nfcc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffto-r%2F4960652728225%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffto-r%2Fi%2F10180524%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fto-r/cabinet/image389/4960652728225_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fto-r/4960652728225/",
         "seedItemUrl": "https://item.rakuten.co.jp/fto-r/4960652728225/"
@@ -146,11 +146,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fto-r/4960652332378/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00snbso.7cx6m99d.g00snbso.7cx6nfcc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffto-r%2F4960652332378%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffto-r%2Fi%2F10087409%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fto-r/cabinet/image182/4960652332378_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fto-r/4960652332378/",
         "seedItemUrl": "https://item.rakuten.co.jp/fto-r/4960652332378/"
@@ -185,11 +185,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fishing-you/4550133153884-a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00py79o.7cx6me43.g00py79o.7cx6n88f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffishing-you%2F4550133153884-a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffishing-you%2Fi%2F10158387%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fishing-you/cabinet/item479/4550133153884-a_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fishing-you/4550133153884-a/",
         "seedItemUrl": "https://item.rakuten.co.jp/fishing-you/4550133153884-a/"
@@ -223,11 +223,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fishing-you/4550133223082-a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00py79o.7cx6me43.g00py79o.7cx6n88f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffishing-you%2F4550133223082-a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffishing-you%2Fi%2F10143149%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fishing-you/cabinet/item421/4550133223082-a_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fishing-you/4550133223082-a/",
         "seedItemUrl": "https://item.rakuten.co.jp/fishing-you/4550133223082-a/"
@@ -261,7 +261,7 @@
       "itemUrl": "https://item.rakuten.co.jp/fto-r/4550133354991/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00snbso.7cx6m99d.g00snbso.7cx6nfcc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffto-r%2F4550133354991%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffto-r%2Fi%2F10241061%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fto-r/cabinet/image519/4550133354991_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
@@ -299,11 +299,11 @@
       "itemUrl": "https://item.rakuten.co.jp/fishing-you/4993722988939-a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00py79o.7cx6me43.g00py79o.7cx6n88f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffishing-you%2F4993722988939-a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffishing-you%2Fi%2F10138720%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fishing-you/cabinet/item406/4993722988939-a_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fishing-you/4993722988939-a/",
         "seedItemUrl": "https://item.rakuten.co.jp/fishing-you/4993722988939-a/"
@@ -336,11 +336,11 @@
       "itemUrl": "https://item.rakuten.co.jp/aquabeach/g09224/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00sag4o.7cx6mea6.g00sag4o.7cx6n2d4/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Faquabeach%2Fg09224%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Faquabeach%2Fi%2F10006000%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/aquabeach/cabinet/04770698/06017751/g09224-01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/aquabeach/g09224/",
         "seedItemUrl": "https://item.rakuten.co.jp/aquabeach/g09224/"
@@ -377,19 +377,60 @@
       "itemUrl": "https://item.rakuten.co.jp/fishing-you/4905789005597-a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00py79o.7cx6me43.g00py79o.7cx6n88f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffishing-you%2F4905789005597-a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffishing-you%2Fi%2F10183525%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fishing-you/cabinet/item407/4905789005597-a_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_same_shop_identity",
+        "mode": "rakuten_api_exact_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "specEvidence": "https://item.rakuten.co.jp/fishing-you/4905789005597-a/",
         "seedItemUrl": "https://item.rakuten.co.jp/fishing-you/4905789005597-a/"
       }
     },
     {
+      "productId": "sabiki-shimano-complete-500528",
+      "name": "シマノで揃える　サビキ釣り完全釣り入門セット（竿・リール／サビキ／カゴ／アミ姫／バケツ他 全10点セット）",
+      "brand": "SHIMANO / つり具TEN",
+      "categoryId": "rod_reel",
+      "methodIds": [
+        "sabiki"
+      ],
+      "budgetTiers": [
+        "balanced",
+        "long_term"
+      ],
+      "audiences": [
+        "adult",
+        "family"
+      ],
+      "preferenceTags": [],
+      "coverCategoryIds": [
+        "rod_reel",
+        "rig",
+        "bait",
+        "bucket",
+        "fish_grip"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 96,
+      "price": 15000,
+      "itemCode": "tsurigu-ten:10013255",
+      "itemUrl": "https://item.rakuten.co.jp/tsurigu-ten/500528/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00u6huo.7cx6m2d3.g00u6huo.7cx6ne85/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ftsurigu-ten%2F500528%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ftsurigu-ten%2Fi%2F10013255%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/tsurigu-ten/cabinet/a50/500528.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
+      "specVerifiedAt": "2026-10-05",
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_item_code",
+        "salesSource": "daily-cost-jp_github_actions",
+        "specEvidence": "https://item.rakuten.co.jp/tsurigu-ten/500528/",
+        "seedItemUrl": "https://item.rakuten.co.jp/tsurigu-ten/500528/"
+      }
+    },
+    {
       "productId": "shimano-holiday-cool-60-6l",
-      "name": "シマノ　LZ-326Q ホリデー クール 260 ピュアホワイト　26L",
+      "name": "シマノ　LZ-326Q ホリデー クール 260 ホワイトブルー　26L",
       "brand": "SHIMANO",
       "categoryId": "cooler",
       "methodIds": [
@@ -410,11 +451,11 @@
       "recommendationRole": "budget",
       "score": 88,
       "price": 9625,
-      "itemCode": "fto-r:10322480",
-      "itemUrl": "https://item.rakuten.co.jp/fto-r/4969363538338/",
-      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00snbso.7cx6m99d.g00snbso.7cx6nfcc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffto-r%2F4969363538338%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffto-r%2Fi%2F10322480%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
-      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fto-r/cabinet/image326/4969363538338_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-05T22:13:12.028679+00:00",
+      "itemCode": "fto-r:10322481",
+      "itemUrl": "https://item.rakuten.co.jp/fto-r/4969363538345/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00snbso.7cx6m99d.g00snbso.7cx6nfcc/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Ffto-r%2F4969363538345%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Ffto-r%2Fi%2F10322481%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/fto-r/cabinet/image326/4969363538345_1.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
       "specVerifiedAt": "2026-10-05",
       "audit": {
         "status": "verified_live",
@@ -423,15 +464,51 @@
         "specEvidence": "https://item.rakuten.co.jp/fto-r/4969363520005/",
         "seedItemUrl": "https://item.rakuten.co.jp/fto-r/4969363520005/"
       }
+    },
+    {
+      "productId": "shimano-vf098v-kids-m",
+      "name": "シマノ(SHIMANO) VF-098V キッズフロートベスト M グレー 811257",
+      "brand": "SHIMANO",
+      "categoryId": "life_jacket_child",
+      "methodIds": [
+        "sabiki",
+        "choi_nage"
+      ],
+      "budgetTiers": [
+        "low",
+        "balanced",
+        "long_term"
+      ],
+      "audiences": [
+        "child"
+      ],
+      "preferenceTags": [],
+      "coverCategoryIds": [
+        "life_jacket_child"
+      ],
+      "recommendationRole": "child_safety",
+      "score": 99,
+      "price": 8476,
+      "itemCode": "naturum:18533413",
+      "itemUrl": "https://item.rakuten.co.jp/naturum/3277862/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00pn5fo.7cx6m0ea.g00pn5fo.7cx6n596/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fnaturum%2F3277862%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fnaturum%2Fi%2F18533413%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/naturum/cabinet/goods/032778/62_1.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-05T22:17:03.026687+00:00",
+      "specVerifiedAt": "2026-10-05",
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_item_code",
+        "salesSource": "daily-cost-jp_github_actions",
+        "specEvidence": "https://fish.shimano.com/ja-JP/product/wear_footwear/lifevest_vest/floatingvestsolidtype/a155f00000cb4xzqar.html",
+        "seedItemUrl": "https://item.rakuten.co.jp/naturum/3277862/"
+      }
     }
   ],
   "failures": {
-    "choi-good-270-daiwa-joinus": "same_shop_identity_listing_not_found",
-    "daiwa-go-fishing-ss-type3": "same_shop_identity_listing_not_found",
-    "hayabusa-choi-ha178": "same_shop_identity_listing_not_found",
-    "marukyu-amihime-kirara-600": "same_shop_identity_listing_not_found",
-    "promarine-wakuwaku-sabiki-dx270": "same_shop_identity_listing_not_found",
-    "sabiki-shimano-complete-500528": "same_shop_identity_listing_not_found",
-    "shimano-vf098v-kids-m": "HTTPError"
+    "choi-good-270-daiwa-joinus": "live_identity_listing_not_found",
+    "daiwa-go-fishing-ss-type3": "live_identity_listing_not_found",
+    "hayabusa-choi-ha178": "live_identity_listing_not_found",
+    "marukyu-amihime-kirara-600": "live_identity_listing_not_found",
+    "promarine-wakuwaku-sabiki-dx270": "live_identity_listing_not_found"
   }
 }
