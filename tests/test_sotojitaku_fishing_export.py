@@ -39,5 +39,39 @@ class FishingExportTest(unittest.TestCase):
     def test_shop_parser(self):
         self.assertEqual(mod.rakuten_shop("https://item.rakuten.co.jp/shop-a/item/"),"shop-a")
 
+    def test_exact_page_info_extracts_item_id_and_price(self):
+        original=mod.fetch_text
+        try:
+            mod.fetch_text=lambda _url: 'x "itemInfoSku":{"itemId":12345,"sellType":"NORMAL","purchaseInfo":{"purchaseBySellType":{"purchaseCondition":"enabled","normalPurchase":{"price":{"minPrice":6789}}}}} y'
+            info=mod.exact_page_info("https://item.rakuten.co.jp/shop-a/item/")
+            self.assertEqual(info,{"itemId":12345,"price":6789})
+        finally:
+            mod.fetch_text=original
+
+    def test_exact_seed_item_uses_item_code_and_identity_gate(self):
+        seed={**self.seed,"itemUrl":"https://item.rakuten.co.jp/shop-a/old-item/"}
+        original_page=mod.exact_page_info
+        original_json=mod.fetch_json
+        try:
+            mod.exact_page_info=lambda _url: {"itemId":2468,"price":3000}
+            def fake_json(url,headers):
+                self.assertIn("itemCode=shop-a%3A2468",url)
+                return {"items":[{
+                    "itemName":"DAIWA フィッシュホルダー 240C",
+                    "itemPrice":3000,
+                    "itemUrl":"https://item.rakuten.co.jp/shop-a/old-item/",
+                    "affiliateUrl":"https://hb.afl.rakuten.co.jp/hgc/x/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fshop-a%2Fold-item%2F",
+                    "mediumImageUrls":["https://example.com/a.jpg"],
+                    "itemCode":"shop-a:2468",
+                    "shopCode":"shop-a"
+                }]}
+            mod.fetch_json=fake_json
+            env={"RAKUTEN_APPLICATION_ID":"a","RAKUTEN_ACCESS_KEY":"b","RAKUTEN_AFFILIATE_ID":"c"}
+            item=mod.fetch_exact_seed_item(seed,env)
+            self.assertEqual(item["itemCode"],"shop-a:2468")
+        finally:
+            mod.exact_page_info=original_page
+            mod.fetch_json=original_json
+
 if __name__=="__main__":
     unittest.main()
