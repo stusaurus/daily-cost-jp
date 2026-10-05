@@ -125,6 +125,111 @@ def fetch_json(url: str, headers: dict[str, str]) -> dict:
     return {}
 
 
+def fetch_text(url: str) -> str:
+    req = urllib.request.Request(
+        url,
+        headers={**HEADERS, "Accept": "text/html,application/xhtml+xml"},
+    )
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=12) as response:
+                raw = response.read()
+            match = re.search(br'charset\s*=\s*["\']?([\w-]+)', raw[:10000], re.I)
+            encoding = match.group(1).decode() if match else "utf-8"
+            return raw.decode(encoding, errors="replace")
+        except Exception:
+            if attempt == 1:
+                return ""
+            time.sleep(1.0)
+    return ""
+
+
+def extract_json_object(text: str, marker: str) -> dict | None:
+    marker_index = text.find(marker)
+    if marker_index < 0:
+        return None
+    start = text.find("{", marker_index + len(marker))
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escaped = False
+    for index in range(start, len(text)):
+        ch = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start:index + 1])
+                except Exception:
+                    return None
+    return None
+
+
+def exact_item_id(seed: dict) -> int | None:
+    expected = canonical_item_url(seed.get("itemUrl", ""))
+    if not expected:
+        return None
+    page = fetch_text(expected)
+    if not page:
+        return None
+    info = extract_json_object(page, '"itemInfoSku":')
+    if not isinstance(info, dict):
+        return None
+    purchase = info.get("purchaseInfo", {}).get("purchaseBySellType", {})
+    if purchase.get("purchaseCondition") not in (None, "enabled"):
+        return None
+    item_id = info.get("itemId")
+    return item_id if isinstance(item_id, int) else None
+
+
+def exact_item_candidate(seed: dict, env: dict[str, str]) -> dict | None:
+    expected = canonical_item_url(seed["itemUrl"])
+    shop = rakuten_shop(expected)
+    item_id = exact_item_id(seed)
+    if not expected or not shop or not item_id:
+        return None
+
+    params = {
+        "applicationId": env["RAKUTEN_APPLICATION_ID"],
+        "affiliateId": env["RAKUTEN_AFFILIATE_ID"],
+        "itemCode": f"{shop}:{item_id}",
+        "hits": 1,
+        "format": "json",
+        "formatVersion": 2,
+        "availability": 1,
+        "elements": (
+            "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,"
+            "mediumImageUrls,availability,shopCode"
+        ),
+    }
+    headers = {**HEADERS, "accessKey": env["RAKUTEN_ACCESS_KEY"]}
+    payload = fetch_json(RAKUTEN_API + "?" + urllib.parse.urlencode(params), headers)
+    source = payload.get("items") or payload.get("Items") or []
+    for raw in source:
+        candidate = normalize_item(raw)
+        if not candidate:
+            continue
+        if candidate["itemUrl"] != expected:
+            continue
+        if not identity_ok(candidate["name"], seed):
+            continue
+        return candidate
+    return None
+
+
 def safe_affiliate(affiliate_url: str, item_url: str) -> bool:
     try:
         parsed = urllib.parse.urlparse(str(affiliate_url or ""))
@@ -234,9 +339,13 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
     for seed in load_seeds(seed_dir):
         pid = seed.get("productId", "unknown")
         try:
-            candidate = search_shop(seed, env)
+            candidate = exact_item_candidate(seed, env)
+            lookup_mode = "rakuten_api_exact_item_code"
             if candidate is None:
-                raise ValueError("same_shop_identity_listing_not_found")
+                candidate = search_shop(seed, env)
+                lookup_mode = "rakuten_api_same_shop_identity"
+            if candidate is None:
+                raise ValueError("live_identity_listing_not_found")
             products.append({
                 "productId": seed["productId"],
                 "name": candidate["name"],
@@ -258,7 +367,7 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
                 "specVerifiedAt": seed.get("specCheckedAt"),
                 "audit": {
                     "status": "verified_live",
-                    "mode": "rakuten_api_same_shop_identity",
+                    "mode": lookup_mode,
                     "salesSource": "daily-cost-jp_github_actions",
                     "specEvidence": seed.get("specEvidenceUrl", ""),
                     "seedItemUrl": canonical_item_url(seed["itemUrl"]),
