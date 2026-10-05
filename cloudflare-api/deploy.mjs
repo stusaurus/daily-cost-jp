@@ -21,7 +21,7 @@ try {
 
   const child = spawn(
     "npx",
-    ["wrangler", "deploy", "--secrets-file", secretsPath],
+    ["--yes", "wrangler@4", "deploy", "--secrets-file", secretsPath],
     { stdio: "inherit", shell: process.platform === "win32" }
   );
 

@@ -218,6 +218,8 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .lab-buy-mode-note{font-size:11px;line-height:1.8;color:var(--muted);margin:18px 0 0}
 @media(max-width:900px){.lab-buy-mode-grid{grid-template-columns:1fr 1fr}.lab-buy-mode-card.is-featured{grid-column:span 2}}
 @media(max-width:600px){
+ .art-cover{display:flex;flex-direction:column;}
+ .art-data{display:block;}
  .product-body h3{-webkit-line-clamp:3;min-height:0}
  .lab-buy-modes{margin:26px 0 34px;padding:24px 0 28px}
  .lab-buy-modes-head{display:block;margin-bottom:16px}.lab-buy-modes-head h2{font-size:26px}.lab-buy-modes-head>p{text-align:left;margin-top:8px;font-size:12px}
