@@ -2,6 +2,11 @@ name: Export SOTOJITAKU FISHING catalog
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/export_sotojitaku_fishing.py'
+      - 'tests/test_sotojitaku_fishing_export.py'
+      - '.github/workflows/export-sotojitaku-fishing.yml'
   schedule:
     - cron: '10 22 * * *'
   push:
@@ -54,6 +59,7 @@ jobs:
           PY
 
       - name: Publish shared catalog
+        if: github.event_name != 'pull_request'
         run: |
           cp shared-data/sotojitaku-fishing-products.json /tmp/fishing-products.json
           git config user.name 'github-actions[bot]'
