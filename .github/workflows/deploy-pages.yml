@@ -37,7 +37,6 @@ on:
       - "scripts/build_site_products.py"
       - "scripts/build_site_products_v2.py"
       - "scripts/build_realtime_products.py"
-      - "scripts/build_fishing_catalog.py"
       - "scripts/enable_realtime_search.py"
       - "scripts/improve_realtime_search_ux.py"
       - "scripts/improve_seo.py"
@@ -84,6 +83,7 @@ on:
       - "scripts/add_search_landing_pages.py"
       - "scripts/generate_seo_files.py"
       - "googlef35e71acece62b67.html"
+      - "shared-data/sotojitaku-fishing-products.json"
       - ".github/workflows/deploy-pages.yml"
 
 permissions:
@@ -122,13 +122,6 @@ jobs:
           python scripts/generate_seo_files.py
           python scripts/validate_generated_site.py
 
-      - name: Build shared SOTOJITAKU FISHING catalog
-        env:
-          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
-          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
-        run: python scripts/build_fishing_catalog.py
-
       - name: Save product quality report
         if: always()
         uses: actions/upload-artifact@v4
@@ -138,6 +131,11 @@ jobs:
             quality-report.json
             quality-monitor-report.json
           retention-days: 14
+
+      - name: Publish shared SOTOJITAKU FISHING catalog into Pages artifact
+        run: |
+          mkdir -p site/shared
+          cp shared-data/sotojitaku-fishing-products.json site/shared/fishing-products.json
 
       - name: Add IndexNow verification key
         run: printf '%s' '7d4f93c2a6814eb5b0d87f216ca9e403' > site/7d4f93c2a6814eb5b0d87f216ca9e403.txt
