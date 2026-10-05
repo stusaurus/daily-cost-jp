@@ -43,3 +43,8 @@ GA4 Property: `552907444` / Measurement: `G-GFVSZ8YDQ5`。イベントスコー�
 同一リポジトリのPRでは `audit_product_candidates.py` が楽天から実取得し、公開せずに品質を検証します。`candidate-quality-preview` アーティファクトで結果を確認後にマージできます。既存のPages公開直前の品質ゲートも引き続き動作します。
 
 Windsor.ai / GA4では既存イベントだけで「Google自然検索 → 入り口ページ → 楽天クリック」を集計できます。使用項目は `landing_page_plus_query_string`、`session_source_medium`、`event_name`、`event_count`、`customevent_conversion_source`、`customevent_operator_test`。`session_source_medium = google / organic` と上記のクリック・テスト条件を使い、ランディングページとクリック発生元別に集計します。Search Consoleの検索語を個別ユーザーのクリックへ結び付けるものではありません。検索語はページ単位の流入改善に使い、楽天クリックを購入成果とみなしません。
+
+
+### Cloudflare Worker exact item lookup
+
+`GET /api/item-lookup?url=<Rakuten item URL>&q=<optional keyword>` resolves only the exact `item.rakuten.co.jp` listing supplied by the caller. It first tries the item page's numeric Rakuten item ID and the official Ichiba Item Search API, then falls back to same-shop search. A related listing is never substituted when the canonical item URL differs. The endpoint returns the current price, image, direct item URL and Rakuten affiliate URL and is shared by SOTOJITAKU CAR STAY product auditing.
