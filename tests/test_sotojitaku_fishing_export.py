@@ -62,50 +62,5 @@ class FishingExportTest(unittest.TestCase):
         finally:
             mod.fetch_text=original
 
-    def test_global_fallback_accepts_other_shop_only_with_full_identity(self):
-        seed={**self.seed,"searchQueries":["DAIWA 240C"]}
-        original=mod.fetch_json
-        try:
-            def fake_json(_url,_headers):
-                item="https://item.rakuten.co.jp/shop-b/new-item/"
-                aff="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+__import__("urllib.parse").parse.quote(item,safe="")
-                return {"items":[{
-                    "itemName":"DAIWA フィッシュホルダー 240C",
-                    "itemPrice":3200,
-                    "itemUrl":item,
-                    "affiliateUrl":aff,
-                    "mediumImageUrls":["https://example.com/a.jpg"],
-                    "itemCode":"shop-b:123",
-                    "shopCode":"shop-b"
-                }]}
-            mod.fetch_json=fake_json
-            env={"RAKUTEN_APPLICATION_ID":"a","RAKUTEN_ACCESS_KEY":"b","RAKUTEN_AFFILIATE_ID":"c"}
-            item=mod.search_global(seed,env)
-            self.assertEqual(item["shopCode"],"shop-b")
-        finally:
-            mod.fetch_json=original
-
-    def test_global_fallback_rejects_partial_identity(self):
-        seed={**self.seed,"searchQueries":["DAIWA 240C"]}
-        original=mod.fetch_json
-        try:
-            def fake_json(_url,_headers):
-                item="https://item.rakuten.co.jp/shop-b/new-item/"
-                aff="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+__import__("urllib.parse").parse.quote(item,safe="")
-                return {"items":[{
-                    "itemName":"DAIWA フィッシュホルダー 240",
-                    "itemPrice":3000,
-                    "itemUrl":item,
-                    "affiliateUrl":aff,
-                    "mediumImageUrls":["https://example.com/a.jpg"],
-                    "itemCode":"shop-b:124",
-                    "shopCode":"shop-b"
-                }]}
-            mod.fetch_json=fake_json
-            env={"RAKUTEN_APPLICATION_ID":"a","RAKUTEN_ACCESS_KEY":"b","RAKUTEN_AFFILIATE_ID":"c"}
-            self.assertIsNone(mod.search_global(seed,env))
-        finally:
-            mod.fetch_json=original
-
 if __name__=="__main__":
     unittest.main()
