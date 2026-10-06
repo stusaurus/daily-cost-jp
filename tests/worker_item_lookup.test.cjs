@@ -99,3 +99,67 @@ test("item lookup never substitutes a different same-shop item",async()=>{
     assert.equal(body.reason,"exact_item_not_found");
   }finally{global.fetch=original;}
 });
+
+
+test("explicit itemCode resolves the exact URL without scraping the Rakuten page",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/hobbyman/n-van-kurumat/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(direct);
+  const explicit="hobbyman:02k-a005-ca";
+  let pageFetched=false;
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct){pageFetched=true;throw new Error("page should not be needed");}
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        assert.equal(parsed.searchParams.get("itemCode"),explicit);
+        return new Response(JSON.stringify({items:[{
+          itemName:"N-VAN JJ1/2系 車中泊ベッド マット",
+          itemCode:explicit,
+          itemPrice:19800,
+          itemUrl:direct,
+          affiliateUrl:affiliate,
+          shopName:"趣味職人",
+          shopCode:"hobbyman",
+          availability:1,
+          mediumImageUrls:["https://example.com/nvan.jpg"]
+        }]}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=explicit-code")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&itemCode="+encodeURIComponent(explicit)+"&q="+encodeURIComponent("N-VAN JJ1/2"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.found,true);
+    assert.equal(body.lookup_method,"item_url_explicit_item_code");
+    assert.equal(body.item_url,direct);
+    assert.equal(body.affiliate_url,affiliate);
+    assert.equal(pageFetched,false);
+  }finally{global.fetch=original;}
+});
+
+test("explicit itemCode from another shop is rejected before upstream fetch",async()=>{
+  const original=global.fetch;
+  let called=false;
+  try{
+    global.fetch=async()=>{called=true;throw new Error("should not fetch");};
+    const worker=(await import(workerUrl+"?t=wrong-shop-code")).default;
+    const direct="https://item.rakuten.co.jp/hobbyman/exact/";
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&itemCode="+encodeURIComponent("other-shop:123"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.equal(body.found,false);
+    assert.equal(body.reason,"item_code_shop_mismatch");
+    assert.equal(called,false);
+  }finally{global.fetch=original;}
+});
