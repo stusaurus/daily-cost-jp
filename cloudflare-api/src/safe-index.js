@@ -176,20 +176,74 @@ function extractJsonObject(text, marker) {
   return null;
 }
 
+function decodeHtmlText(value) {
+  return String(value || "")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractMetaContent(text, key) {
+  const patterns = [
+    new RegExp("<meta[^>]+(?:property|name)=[\\\"']" + key + "[\\\"'][^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]*>", "i"),
+    new RegExp("<meta[^>]+content=[\\\"']([^\\\"']+)[\\\"'][^>]+(?:property|name)=[\\\"']" + key + "[\\\"'][^>]*>", "i"),
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return decodeHtmlText(match[1]);
+  }
+  return "";
+}
+
+function extractHtmlTitle(text) {
+  const metaTitle = extractMetaContent(text, "og:title") || extractMetaContent(text, "twitter:title");
+  if (metaTitle) return metaTitle;
+  const match = text.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  return match?.[1] ? decodeHtmlText(match[1].replace(/<[^>]+>/g, " ")) : "";
+}
+
+function exactPageSearchQueries(pageInfo, suppliedQuery, locator) {
+  const out = [];
+  const add = (value) => {
+    const clean = String(value || "").replace(/\s+/g, " ").trim();
+    if (clean.length >= 2 && !out.includes(clean)) out.push(clean.slice(0, 110));
+  };
+  add(suppliedQuery);
+  add(pageInfo?.title);
+  if (pageInfo?.title) {
+    add(pageInfo.title
+      .replace(/【[^】]{0,40}】/g, " ")
+      .replace(/＼[^＼]{0,50}＼/g, " ")
+      .replace(/楽天市場/gi, " ")
+      .replace(/[｜|].*$/, " "));
+  }
+  add(locator?.slug?.replace(/[-_/]+/g, " "));
+  return out;
+}
+
 async function fetchExactRakutenPageInfo(itemUrl) {
   const canonical = canonicalRakutenItemUrl(itemUrl);
   if (!canonical) return null;
   const response = await fetch(canonical, {
     redirect: "follow",
-    headers: { "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0", Accept: "text/html,application/xhtml+xml" },
+    headers: { "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.1", Accept: "text/html,application/xhtml+xml" },
   });
   if (!response.ok) return null;
   const text = await response.text();
   const info = extractJsonObject(text, '"itemInfoSku":');
   if (!info || !Number.isInteger(info.itemId)) return null;
   const purchase = info.purchaseInfo?.purchaseBySellType || {};
-  if (purchase.purchaseCondition && purchase.purchaseCondition !== "enabled") return { itemId: info.itemId, unavailable: true };
-  return { itemId: info.itemId, unavailable: false };
+  return {
+    itemId: info.itemId,
+    unavailable: Boolean(purchase.purchaseCondition && purchase.purchaseCondition !== "enabled"),
+    title: extractHtmlTitle(text),
+  };
 }
 
 function unwrapItem(raw) {
@@ -270,11 +324,16 @@ async function exactItemLookup(itemUrl, q, itemCode, env) {
     const exact = byCode.find((item) => item.item_url === locator.canonical);
     if (exact) return { found: true, lookup_method: "item_url_item_code", ...exact };
   }
-  const query = String(q || "").trim();
-  if (query.length >= 2) {
+  const queries = exactPageSearchQueries(pageInfo, q, locator);
+  for (const query of queries) {
     const items = await fetchShopItems(query, locator.shopCode, env);
     const exact = items.find((item) => item.item_url === locator.canonical);
-    if (exact) return { found: true, lookup_method: "item_url_shop_search", ...exact };
+    if (exact) {
+      const method = pageInfo?.title && query !== String(q || "").trim()
+        ? "item_url_page_title_search"
+        : "item_url_shop_search";
+      return { found: true, lookup_method: method, ...exact };
+    }
   }
   return { found: false, reason: "exact_item_not_found" };
 }
