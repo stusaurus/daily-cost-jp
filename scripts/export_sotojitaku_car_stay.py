@@ -74,6 +74,37 @@ def explicit_item_code_candidate(seed:dict,env:dict[str,str])->dict|None:
         return candidate
     return None
 
+def resolve_candidate(seed:dict,env:dict[str,str])->tuple[dict|None,str,list[str]]:
+    """Try each live-listing resolver independently.
+
+    A stale/manual seller code may legitimately return a Rakuten HTTP error even when
+    the exact audited product page is still live. One resolver failure must therefore
+    not suppress the safer exact-page itemId or identity-search fallbacks.
+    """
+    errors=[]
+    try:
+        candidate=explicit_item_code_candidate(seed,env)
+        if candidate is not None:
+            return candidate,"rakuten_api_seed_item_code",errors
+    except Exception as exc:
+        errors.append("seed_item_code:"+type(exc).__name__)
+
+    try:
+        candidate=exact_item_candidate(seed,env)
+        if candidate is not None:
+            return candidate,"rakuten_api_exact_page_item",errors
+    except Exception as exc:
+        errors.append("exact_page_item:"+type(exc).__name__)
+
+    try:
+        candidate,mode=search_identity(seed,env)
+        if candidate is not None:
+            return candidate,mode,errors
+    except Exception as exc:
+        errors.append("identity_search:"+type(exc).__name__)
+
+    return None,"none",errors
+
 def load_seeds(seed_dir:Path)->list[dict]:
     return [json.loads(path.read_text()) for path in sorted(seed_dir.glob("*.json"))]
 
@@ -101,15 +132,10 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
             if not expected or not expected_shop:
                 raise ValueError("seed_item_url_invalid")
 
-            candidate=explicit_item_code_candidate(seed,env)
-            lookup_mode="rakuten_api_seed_item_code"
+            candidate,lookup_mode,source_errors=resolve_candidate(seed,env)
             if candidate is None:
-                candidate=exact_item_candidate(seed,env)
-                lookup_mode="rakuten_api_exact_page_item"
-            if candidate is None:
-                candidate,lookup_mode=search_identity(seed,env)
-            if candidate is None:
-                raise ValueError("live_identity_listing_not_found")
+                suffix=(" ["+",".join(source_errors)+"]") if source_errors else ""
+                raise ValueError("live_identity_listing_not_found"+suffix)
             if not identity_ok(candidate.get("name",""),seed):
                 raise ValueError("identity_mismatch")
 
@@ -156,7 +182,7 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
     return {
         "version":1,
         "updatedAt":now,
-        "auditPolicyVersion":"carstay-daily-cost-rakuten-api-v1",
+        "auditPolicyVersion":"carstay-daily-cost-rakuten-api-v2",
         "status":"ok" if not failures else "partial",
         "seedCount":len(seeds),
         "verifiedCount":len(products),
