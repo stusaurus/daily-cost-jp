@@ -208,13 +208,18 @@ function extractHtmlTitle(text) {
   return match?.[1] ? decodeHtmlText(match[1].replace(/<[^>]+>/g, " ")) : "";
 }
 
-function exactPageSearchQueries(pageInfo, suppliedQuery, locator) {
+function exactPageSearchQueries(pageInfo, suppliedQuery, locator, itemCode = "") {
   const out = [];
   const add = (value) => {
     const clean = String(value || "").replace(/\s+/g, " ").trim();
     if (clean.length >= 2 && !out.includes(clean)) out.push(clean.slice(0, 110));
   };
   add(suppliedQuery);
+  const explicit = String(itemCode || "").trim();
+  if (explicit) {
+    const separator = explicit.indexOf(":");
+    add(separator >= 0 ? explicit.slice(separator + 1) : explicit);
+  }
   add(pageInfo?.title);
   if (pageInfo?.title) {
     add(pageInfo.title
@@ -317,14 +322,19 @@ async function exactItemLookup(itemUrl, q, itemCode, env) {
     }
   }
 
-  const pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  let pageInfo = null;
+  try {
+    pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  } catch (error) {
+    console.warn("item-lookup exact page unavailable; continuing with shop search", error?.message || error);
+  }
   if (pageInfo?.unavailable) return { found: false, reason: "unavailable" };
   if (pageInfo?.itemId) {
     const byCode = await fetchItemByCode(locator.shopCode + ":" + pageInfo.itemId, env);
     const exact = byCode.find((item) => item.item_url === locator.canonical);
     if (exact) return { found: true, lookup_method: "item_url_item_code", ...exact };
   }
-  const queries = exactPageSearchQueries(pageInfo, q, locator);
+  const queries = exactPageSearchQueries(pageInfo, q, locator, explicitCode);
   for (const query of queries) {
     const items = await fetchShopItems(query, locator.shopCode, env);
     const exact = items.find((item) => item.item_url === locator.canonical);
