@@ -348,6 +348,52 @@ def search_identity(seed: dict, env: dict[str, str]) -> tuple[dict | None, str]:
     return candidate, mode
 
 
+
+def search_global(seed: dict, env: dict[str, str]) -> dict | None:
+    """Final recovery path for the same product sold by another Rakuten shop.
+
+    Every identity group must still match and forbidden terms remain hard rejects.
+    Exact URL and the originally audited shop receive ranking priority.
+    """
+    expected = canonical_item_url(seed["itemUrl"])
+    expected_shop = rakuten_shop(expected)
+    headers = {**HEADERS, "accessKey": env["RAKUTEN_ACCESS_KEY"]}
+    matches: list[tuple[int, dict]] = []
+
+    for query in seed_queries(seed):
+        params = {
+            "applicationId": env["RAKUTEN_APPLICATION_ID"],
+            "affiliateId": env["RAKUTEN_AFFILIATE_ID"],
+            "keyword": query,
+            "hits": 30,
+            "format": "json",
+            "formatVersion": 2,
+            "availability": 1,
+            "field": 0,
+            "elements": (
+                "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,"
+                "mediumImageUrls,availability,shopCode"
+            ),
+        }
+        payload = fetch_json(RAKUTEN_API + "?" + urllib.parse.urlencode(params), headers)
+        source = payload.get("items") or payload.get("Items") or []
+        for raw in source:
+            candidate = normalize_item(raw)
+            if not candidate or not identity_ok(candidate["name"], seed):
+                continue
+            candidate_shop = candidate.get("shopCode") or rakuten_shop(candidate["itemUrl"])
+            level = 3 if candidate["itemUrl"] == expected else 2 if candidate_shop == expected_shop else 1
+            matches.append((level, candidate))
+
+        if any(level >= 2 for level, _ in matches):
+            break
+
+    if not matches:
+        return None
+    matches.sort(key=lambda pair: (-pair[0], pair[1]["price"]))
+    return matches[0][1]
+
+
 def load_seeds(seed_dir: Path) -> list[dict]:
     return [json.loads(path.read_text()) for path in sorted(seed_dir.glob("*.json"))]
 
@@ -374,6 +420,9 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
             lookup_mode = "rakuten_api_exact_item_code"
             if candidate is None:
                 candidate, lookup_mode = search_identity(seed, env)
+            if candidate is None:
+                candidate = search_global(seed, env)
+                lookup_mode = "rakuten_api_global_identity"
             if candidate is None:
                 raise ValueError("live_identity_listing_not_found")
             products.append({
