@@ -18,11 +18,13 @@ class CarStayExportTest(unittest.TestCase):
         self.old_env={k:os.environ.get(k) for k in ("RAKUTEN_APPLICATION_ID","RAKUTEN_ACCESS_KEY","RAKUTEN_AFFILIATE_ID")}
         for k in self.old_env:
             os.environ[k]="test"
+        self.original_explicit=mod.explicit_item_code_candidate
         self.original_exact=mod.exact_item_candidate
         self.original_search=mod.search_identity
         self.original_fetch=mod.fetch_json
 
     def tearDown(self):
+        mod.explicit_item_code_candidate=self.original_explicit
         mod.exact_item_candidate=self.original_exact
         mod.search_identity=self.original_search
         mod.fetch_json=self.original_fetch
@@ -114,6 +116,34 @@ class CarStayExportTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             with self.assertRaisesRegex(RuntimeError,"missing Rakuten credentials"):
                 mod.export_catalog(Path(td))
+
+    def test_explicit_item_code_error_falls_through_to_exact_page_item(self):
+        seed=self.seed()
+        seed["rakutenItemCode"]="auc-sovie-store:bad-code"
+        expected=self.candidate()
+        mod.explicit_item_code_candidate=lambda seed,env:(_ for _ in ()).throw(__import__("urllib.error").error.HTTPError("https://example.com",400,"bad",None,None))
+        mod.exact_item_candidate=lambda seed,env:expected
+        mod.search_identity=lambda seed,env:(None,"none")
+        with tempfile.TemporaryDirectory() as td:
+            Path(td,"seed.json").write_text(json.dumps(seed,ensure_ascii=False))
+            out=mod.export_catalog(Path(td))
+        self.assertEqual(out["verifiedCount"],1)
+        self.assertEqual(out["products"][0]["audit"]["mode"],"rakuten_api_exact_page_item")
+
+    def test_all_resolver_errors_are_reported_only_after_every_fallback(self):
+        seed=self.seed()
+        seed["rakutenItemCode"]="auc-sovie-store:bad-code"
+        mod.explicit_item_code_candidate=lambda seed,env:(_ for _ in ()).throw(RuntimeError("first"))
+        mod.exact_item_candidate=lambda seed,env:(_ for _ in ()).throw(RuntimeError("second"))
+        mod.search_identity=lambda seed,env:(_ for _ in ()).throw(RuntimeError("third"))
+        with tempfile.TemporaryDirectory() as td:
+            Path(td,"seed.json").write_text(json.dumps(seed,ensure_ascii=False))
+            out=mod.export_catalog(Path(td))
+        self.assertEqual(out["verifiedCount"],0)
+        reason=out["failures"]["nvan-mat"]
+        self.assertIn("seed_item_code:RuntimeError",reason)
+        self.assertIn("exact_page_item:RuntimeError",reason)
+        self.assertIn("identity_search:RuntimeError",reason)
 
 if __name__=="__main__":
     unittest.main()
