@@ -254,3 +254,89 @@ test("page-title recovery still refuses a related URL from the same shop",async(
     assert.equal(body.reason,"exact_item_not_found");
   }finally{global.fetch=original;}
 });
+
+
+test("item lookup continues to shop search when explicit code and page fetch both fail",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/suwariba/o023/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(direct);
+  let shopSearches=0;
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct)throw new TypeError("page timeout");
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        if(parsed.searchParams.get("itemCode"))throw new TypeError("bad explicit item code");
+        assert.equal(parsed.searchParams.get("shopCode"),"suwariba");
+        shopSearches+=1;
+        return new Response(JSON.stringify({items:[{
+          itemName:"N-VAN JJ1 JJ2 全席用 車中泊マット",
+          itemCode:"suwariba:12345678",
+          itemPrice:19800,
+          itemUrl:direct,
+          affiliateUrl:affiliate,
+          shopName:"NOMAD BASE",
+          shopCode:"suwariba",
+          availability:1,
+          mediumImageUrls:["https://example.com/nvan.jpg"]
+        }]}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=page-code-fallback")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&itemCode="+encodeURIComponent("suwariba:o023")+"&q="+encodeURIComponent("N-VAN JJ1 JJ2"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.found,true);
+    assert.equal(body.lookup_method,"item_url_shop_search");
+    assert.equal(body.item_url,direct);
+    assert.ok(shopSearches>=1);
+  }finally{global.fetch=original;}
+});
+
+test("item lookup continues across one failed shop query",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/hobbyman/n-box-jf56-set/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(direct);
+  let searches=0;
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct)throw new TypeError("page blocked");
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        if(parsed.searchParams.get("itemCode"))return new Response(JSON.stringify({items:[]}),{status:200});
+        searches+=1;
+        if(searches===1)throw new TypeError("transient search failure");
+        return new Response(JSON.stringify({items:[{
+          itemName:"N-BOX JF5 JF6 JOY サンシェード フルセット",
+          itemCode:"hobbyman:actual",
+          itemPrice:15900,
+          itemUrl:direct,
+          affiliateUrl:affiliate,
+          shopName:"趣味職人",
+          shopCode:"hobbyman",
+          availability:1,
+          mediumImageUrls:["https://example.com/nbox.jpg"]
+        }]}),{status:200});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=shop-query-fallback")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&q="+encodeURIComponent("02s-c034-sa"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.equal(body.found,true);
+    assert.equal(body.item_url,direct);
+    assert.ok(searches>=2);
+  }finally{global.fetch=original;}
+});
