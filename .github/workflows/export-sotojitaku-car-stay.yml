@@ -1,0 +1,83 @@
+name: Export SOTOJITAKU CAR STAY catalog
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/export_sotojitaku_car_stay.py'
+      - 'tests/test_sotojitaku_car_stay_export.py'
+      - '.github/workflows/export-sotojitaku-car-stay.yml'
+  schedule:
+    - cron: '40 22 * * *'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/export_sotojitaku_car_stay.py'
+      - '.github/workflows/export-sotojitaku-car-stay.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: export-sotojitaku-car-stay
+  cancel-in-progress: true
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch current SOTOJITAKU product seeds
+        run: |
+          rm -rf /tmp/sotojitaku
+          git clone --depth 1 https://github.com/stusaurus/sotojitaku.git /tmp/sotojitaku
+
+      - name: Export verified CAR STAY catalog with Rakuten API
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          CAR_STAY_SEED_DIR: /tmp/sotojitaku/car-stay/data/product-seeds
+          CAR_STAY_EXPORT_OUT: shared-data/sotojitaku-car-stay-products.json
+        run: python scripts/export_sotojitaku_car_stay.py
+
+      - name: Show export summary
+        run: |
+          python - <<'PY'
+          import json
+          p=json.load(open('shared-data/sotojitaku-car-stay-products.json'))
+          print('verified',len(p.get('products',[])))
+          print('failed',len(p.get('failures',{})))
+          for k,v in p.get('failures',{}).items():
+              print('FAIL',k,v)
+          PY
+
+      - name: Publish shared catalog
+        if: github.event_name != 'pull_request'
+        run: |
+          cp shared-data/sotojitaku-car-stay-products.json /tmp/car-stay-products.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p shared-data
+            cp /tmp/car-stay-products.json shared-data/sotojitaku-car-stay-products.json
+            git add shared-data/sotojitaku-car-stay-products.json
+            if git diff --cached --quiet; then
+              echo 'Shared CAR STAY catalog already current.'
+              exit 0
+            fi
+            git commit -m 'Refresh shared SOTOJITAKU CAR STAY catalog'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            sleep $((attempt * 2))
+          done
+          exit 1
