@@ -78,7 +78,7 @@ class CarStayExportTest(unittest.TestCase):
     def test_cross_shop_candidate_is_rejected(self):
         out=self.run_one(self.candidate("https://item.rakuten.co.jp/other-shop/mr-11/"))
         self.assertEqual(out["verifiedCount"],0)
-        self.assertEqual(out["failures"]["nvan-mat"],"cross_shop_rejected")
+        self.assertEqual(out["failures"]["nvan-mat"],"candidate_shop_url_mismatch")
 
 
     def test_explicit_seed_item_code_resolves_exact_listing(self):
