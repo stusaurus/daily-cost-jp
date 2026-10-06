@@ -145,5 +145,46 @@ class CarStayExportTest(unittest.TestCase):
         self.assertIn("exact_page_item:RuntimeError",reason)
         self.assertIn("identity_search:RuntimeError",reason)
 
+    def test_measurement_fit_metadata_is_exported(self):
+        seed=self.seed()
+        seed.update({
+            "productId":"universal-mat",
+            "fitStrategy":"measurement",
+            "measurementFit":{"unitLengthMm":1900,"unitWidthMm":620,"maxUnits":2},
+            "vehicleFit":[],
+            "candidateIdentityGroups":[["車中泊"],["マット"],["10cm"]],
+            "identityGroups":[["車中泊"],["マット"],["10cm"],["190"],["62"]],
+            "itemUrl":"https://item.rakuten.co.jp/atmys/im10cm-maker/",
+        })
+        candidate={
+            "name":"車中泊 マット 10cm 自動膨張式",
+            "price":7980,
+            "itemUrl":seed["itemUrl"],
+            "affiliateUrl":"https://hb.afl.rakuten.co.jp/hgc/x/?pc="+__import__("urllib.parse").parse.quote(seed["itemUrl"],safe=""),
+            "image":"https://example.com/mat.jpg",
+            "itemCode":"atmys:12345",
+            "shopCode":"atmys",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            Path(td,"seed.json").write_text(json.dumps(seed,ensure_ascii=False))
+            mod.explicit_item_code_candidate=lambda seed,env:None
+            mod.exact_item_candidate=lambda seed,env:candidate
+            mod.search_identity=lambda seed,env:(None,"none")
+            out=mod.export_catalog(Path(td))
+        self.assertEqual(out["verifiedCount"],1)
+        p=out["products"][0]
+        self.assertEqual(p["fitStrategy"],"measurement")
+        self.assertEqual(p["measurementFit"]["unitLengthMm"],1900)
+        self.assertEqual(p["vehicleFit"],[])
+
+    def test_candidate_identity_groups_relax_title_only(self):
+        seed={
+            "identityGroups":[["車中泊"],["マット"],["10cm"],["190"],["62"]],
+            "candidateIdentityGroups":[["車中泊"],["マット"],["10cm"]],
+        }
+        adjusted=mod.candidate_seed(seed)
+        self.assertEqual(adjusted["identityGroups"],seed["candidateIdentityGroups"])
+        self.assertEqual(seed["identityGroups"][-2:],[["190"],["62"]])
+
 if __name__=="__main__":
     unittest.main()
