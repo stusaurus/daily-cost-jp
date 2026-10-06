@@ -245,9 +245,24 @@ async function fetchShopItems(q, shopCode, env) {
   return source.map(normalizeExactItem).filter(Boolean);
 }
 
-async function exactItemLookup(itemUrl, q, env) {
+async function exactItemLookup(itemUrl, q, itemCode, env) {
   const locator = rakutenItemLocator(itemUrl);
   if (!locator) return null;
+
+  const explicitCode = String(itemCode || "").trim();
+  if (explicitCode) {
+    const separator = explicitCode.indexOf(":");
+    const explicitShop = separator > 0 ? explicitCode.slice(0, separator) : "";
+    if (explicitShop !== locator.shopCode) {
+      return { found: false, reason: "item_code_shop_mismatch" };
+    }
+    const byExplicitCode = await fetchItemByCode(explicitCode, env);
+    const exactByExplicitCode = byExplicitCode.find((item) => item.item_url === locator.canonical);
+    if (exactByExplicitCode) {
+      return { found: true, lookup_method: "item_url_explicit_item_code", ...exactByExplicitCode };
+    }
+  }
+
   const pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
   if (pageInfo?.unavailable) return { found: false, reason: "unavailable" };
   if (pageInfo?.itemId) {
@@ -548,9 +563,10 @@ export default {
     if (url.pathname === "/api/item-lookup") {
       const itemUrl = String(url.searchParams.get("url") || "").trim();
       const q = String(url.searchParams.get("q") || "").trim();
+      const itemCode = String(url.searchParams.get("itemCode") || "").trim();
       if (!canonicalRakutenItemUrl(itemUrl)) return json({ error: "invalid_rakuten_item_url" }, 400, origin);
       try {
-        const result = await exactItemLookup(itemUrl, q, env);
+        const result = await exactItemLookup(itemUrl, q, itemCode, env);
         return json(result || { found: false, reason: "exact_item_not_found" }, 200, origin);
       } catch (error) {
         console.error("item-lookup failed", error);
