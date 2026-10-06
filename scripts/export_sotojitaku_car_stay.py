@@ -44,6 +44,19 @@ OUT=Path(os.environ.get(
 ))
 
 
+def candidate_seed(seed:dict)->dict:
+    """Use relaxed title identity only when a seed explicitly defines it.
+
+    Fit dimensions remain authoritative in SOTOJITAKU and are exported unchanged.
+    This only avoids requiring audited dimensions to appear in Rakuten's item title.
+    """
+    groups=seed.get("candidateIdentityGroups")
+    if not groups:
+        return seed
+    adjusted=dict(seed)
+    adjusted["identityGroups"]=groups
+    return adjusted
+
 def explicit_item_code_candidate(seed:dict,env:dict[str,str])->dict|None:
     """Resolve the manually curated Rakuten itemCode without scraping the sales page."""
     item_code=str(seed.get("rakutenItemCode") or "").strip()
@@ -69,7 +82,7 @@ def explicit_item_code_candidate(seed:dict,env:dict[str,str])->dict|None:
             continue
         if candidate["itemUrl"]!=expected:
             continue
-        if not identity_ok(candidate["name"],seed):
+        if not identity_ok(candidate["name"],candidate_seed(seed)):
             continue
         return candidate
     return None
@@ -90,14 +103,14 @@ def resolve_candidate(seed:dict,env:dict[str,str])->tuple[dict|None,str,list[str
         errors.append("seed_item_code:"+type(exc).__name__)
 
     try:
-        candidate=exact_item_candidate(seed,env)
+        candidate=exact_item_candidate(candidate_seed(seed),env)
         if candidate is not None:
             return candidate,"rakuten_api_exact_page_item",errors
     except Exception as exc:
         errors.append("exact_page_item:"+type(exc).__name__)
 
     try:
-        candidate,mode=search_identity(seed,env)
+        candidate,mode=search_identity(candidate_seed(seed),env)
         if candidate is not None:
             return candidate,mode,errors
     except Exception as exc:
@@ -136,7 +149,7 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
             if candidate is None:
                 suffix=(" ["+",".join(source_errors)+"]") if source_errors else ""
                 raise ValueError("live_identity_listing_not_found"+suffix)
-            if not identity_ok(candidate.get("name",""),seed):
+            if not identity_ok(candidate.get("name",""),candidate_seed(seed)):
                 raise ValueError("identity_mismatch")
 
             resolved=canonical_item_url(candidate.get("itemUrl",""))
@@ -165,6 +178,8 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
                 "image":candidate["image"],
                 "verifiedAt":now,
                 "fitVerifiedAt":fit_checked,
+                "fitStrategy":seed.get("fitStrategy","vehicle"),
+                "measurementFit":seed.get("measurementFit"),
                 "vehicleFit":seed.get("vehicleFit",[]),
                 "audit":{
                     "status":"verified_live",
