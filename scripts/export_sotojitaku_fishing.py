@@ -366,8 +366,9 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     products: list[dict] = []
     failures: dict[str, str] = {}
+    seeds = load_seeds(seed_dir)
 
-    for seed in load_seeds(seed_dir):
+    for seed in seeds:
         pid = seed.get("productId", "unknown")
         try:
             candidate = exact_item_candidate(seed, env)
@@ -412,6 +413,8 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
         "version": 1,
         "updatedAt": now,
         "status": "ok" if not failures else "partial",
+        "seedCount": len(seeds),
+        "verifiedCount": len(products),
         "products": products,
         "failures": dict(sorted(failures.items())),
     }
