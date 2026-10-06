@@ -114,7 +114,10 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
                 raise ValueError("identity_mismatch")
 
             resolved=canonical_item_url(candidate.get("itemUrl",""))
-            resolved_shop=candidate.get("shopCode") or rakuten_shop(resolved)
+            resolved_shop=rakuten_shop(resolved)
+            candidate_shop=str(candidate.get("shopCode") or "").strip()
+            if candidate_shop and candidate_shop!=resolved_shop:
+                raise ValueError("candidate_shop_url_mismatch")
             if not resolved or resolved_shop!=expected_shop:
                 raise ValueError("cross_shop_rejected")
 
