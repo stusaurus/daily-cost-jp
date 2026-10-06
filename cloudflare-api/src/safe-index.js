@@ -310,29 +310,49 @@ async function exactItemLookup(itemUrl, q, itemCode, env) {
     if (explicitShop !== locator.shopCode) {
       return { found: false, reason: "item_code_shop_mismatch" };
     }
-    const byExplicitCode = await fetchItemByCode(explicitCode, env);
-    const exactByExplicitCode = byExplicitCode.find((item) => item.item_url === locator.canonical);
-    if (exactByExplicitCode) {
-      return { found: true, lookup_method: "item_url_explicit_item_code", ...exactByExplicitCode };
+    try {
+      const byExplicitCode = await fetchItemByCode(explicitCode, env);
+      const exactByExplicitCode = byExplicitCode.find((item) => item.item_url === locator.canonical);
+      if (exactByExplicitCode) {
+        return { found: true, lookup_method: "item_url_explicit_item_code", ...exactByExplicitCode };
+      }
+    } catch (error) {
+      console.error("explicit itemCode lookup failed; continuing", error);
     }
   }
 
-  const pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  let pageInfo = null;
+  try {
+    pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  } catch (error) {
+    // The exact product page can be slow or blocked from some runtimes. Do not let
+    // that prevent the Rakuten API's shop-scoped exact URL search from running.
+    console.error("exact Rakuten page lookup failed; continuing with shop search", error);
+  }
   if (pageInfo?.unavailable) return { found: false, reason: "unavailable" };
   if (pageInfo?.itemId) {
-    const byCode = await fetchItemByCode(locator.shopCode + ":" + pageInfo.itemId, env);
-    const exact = byCode.find((item) => item.item_url === locator.canonical);
-    if (exact) return { found: true, lookup_method: "item_url_item_code", ...exact };
+    try {
+      const byCode = await fetchItemByCode(locator.shopCode + ":" + pageInfo.itemId, env);
+      const exact = byCode.find((item) => item.item_url === locator.canonical);
+      if (exact) return { found: true, lookup_method: "item_url_item_code", ...exact };
+    } catch (error) {
+      console.error("page-derived itemCode lookup failed; continuing", error);
+    }
   }
+
   const queries = exactPageSearchQueries(pageInfo, q, locator);
   for (const query of queries) {
-    const items = await fetchShopItems(query, locator.shopCode, env);
-    const exact = items.find((item) => item.item_url === locator.canonical);
-    if (exact) {
-      const method = pageInfo?.title && query !== String(q || "").trim()
-        ? "item_url_page_title_search"
-        : "item_url_shop_search";
-      return { found: true, lookup_method: method, ...exact };
+    try {
+      const items = await fetchShopItems(query, locator.shopCode, env);
+      const exact = items.find((item) => item.item_url === locator.canonical);
+      if (exact) {
+        const method = pageInfo?.title && query !== String(q || "").trim()
+          ? "item_url_page_title_search"
+          : "item_url_shop_search";
+        return { found: true, lookup_method: method, ...exact };
+      }
+    } catch (error) {
+      console.error("shop-scoped item lookup failed; continuing", error);
     }
   }
   return { found: false, reason: "exact_item_not_found" };
