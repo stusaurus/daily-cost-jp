@@ -17,13 +17,18 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
 from export_sotojitaku_fishing import (
+    HEADERS,
+    RAKUTEN_API,
     canonical_item_url,
     exact_item_candidate,
+    fetch_json,
     identity_ok,
+    normalize_item,
     rakuten_shop,
     search_identity,
 )
@@ -37,6 +42,37 @@ OUT=Path(os.environ.get(
     "CAR_STAY_EXPORT_OUT",
     str(ROOT/"shared-data"/"sotojitaku-car-stay-products.json"),
 ))
+
+
+def explicit_item_code_candidate(seed:dict,env:dict[str,str])->dict|None:
+    """Resolve the manually curated Rakuten itemCode without scraping the sales page."""
+    item_code=str(seed.get("rakutenItemCode") or "").strip()
+    expected=canonical_item_url(seed.get("itemUrl",""))
+    if not item_code or not expected:
+        return None
+    params={
+        "applicationId":env["RAKUTEN_APPLICATION_ID"],
+        "affiliateId":env["RAKUTEN_AFFILIATE_ID"],
+        "itemCode":item_code,
+        "hits":1,
+        "format":"json",
+        "formatVersion":2,
+        "availability":1,
+        "elements":"itemName,itemCode,itemPrice,itemUrl,affiliateUrl,mediumImageUrls,availability,shopCode",
+    }
+    headers={**HEADERS,"accessKey":env["RAKUTEN_ACCESS_KEY"]}
+    payload=fetch_json(RAKUTEN_API+"?"+urllib.parse.urlencode(params),headers)
+    source=payload.get("items") or payload.get("Items") or []
+    for raw in source:
+        candidate=normalize_item(raw)
+        if not candidate:
+            continue
+        if candidate["itemUrl"]!=expected:
+            continue
+        if not identity_ok(candidate["name"],seed):
+            continue
+        return candidate
+    return None
 
 def load_seeds(seed_dir:Path)->list[dict]:
     return [json.loads(path.read_text()) for path in sorted(seed_dir.glob("*.json"))]
@@ -65,8 +101,11 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
             if not expected or not expected_shop:
                 raise ValueError("seed_item_url_invalid")
 
-            candidate=exact_item_candidate(seed,env)
-            lookup_mode="rakuten_api_exact_item_code"
+            candidate=explicit_item_code_candidate(seed,env)
+            lookup_mode="rakuten_api_seed_item_code"
+            if candidate is None:
+                candidate=exact_item_candidate(seed,env)
+                lookup_mode="rakuten_api_exact_page_item"
             if candidate is None:
                 candidate,lookup_mode=search_identity(seed,env)
             if candidate is None:
