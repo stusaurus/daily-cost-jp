@@ -108,6 +108,40 @@ class CarStayExportTest(unittest.TestCase):
         self.assertEqual(candidate["itemUrl"],url)
         self.assertTrue(any("itemCode=auc-sovie-store%3Amr-11" in x for x in seen))
 
+
+    def test_merchant_item_code_tail_recovers_exact_listing_when_direct_lookup_misses(self):
+        seed=self.seed()
+        seed["itemUrl"]="https://item.rakuten.co.jp/hobbyman/n-van-kurumat-9/"
+        seed["rakutenItemCode"]="hobbyman:02k-a005-ca"
+        seed["identityGroups"]=[["N-VAN"],["JJ1","JJ2"],["車中泊"]]
+        url=seed["itemUrl"]
+        affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+__import__("urllib.parse").parse.quote(url,safe="")
+        seen=[]
+        def fake_fetch(request_url,headers):
+            seen.append(request_url)
+            parsed=__import__("urllib.parse").parse.urlparse(request_url)
+            q=__import__("urllib.parse").parse.parse_qs(parsed.query)
+            self.assertEqual(q.get("shopCode"),["hobbyman"])
+            self.assertEqual(q.get("keyword"),["02k-a005-ca"])
+            return {"items":[{
+                "itemName":"N-VAN JJ1 JJ2 車中泊ベッド くるマット",
+                "itemPrice":19800,
+                "itemUrl":url,
+                "affiliateUrl":affiliate,
+                "mediumImageUrls":["https://example.com/a.jpg"],
+                "itemCode":"hobbyman:actual",
+                "shopCode":"hobbyman"
+            }]}
+        mod.fetch_json=fake_fetch
+        candidate=mod.merchant_item_code_search_candidate(seed,{
+            "RAKUTEN_APPLICATION_ID":"app",
+            "RAKUTEN_ACCESS_KEY":"key",
+            "RAKUTEN_AFFILIATE_ID":"aff",
+        })
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate["itemUrl"],url)
+        self.assertTrue(seen)
+
     def test_missing_credentials_fail_before_export(self):
         for k in ("RAKUTEN_APPLICATION_ID","RAKUTEN_ACCESS_KEY","RAKUTEN_AFFILIATE_ID"):
             os.environ.pop(k,None)
