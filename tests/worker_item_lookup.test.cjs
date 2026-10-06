@@ -254,3 +254,53 @@ test("page-title recovery still refuses a related URL from the same shop",async(
     assert.equal(body.reason,"exact_item_not_found");
   }finally{global.fetch=original;}
 });
+
+
+test("explicit itemCode falls back to same-shop keyword search using the merchant code tail",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/hobbyman/n-van-kurumat-9/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(direct);
+  const explicit="hobbyman:02k-a005-ca";
+  const seen=[];
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct)throw new Error("Rakuten page blocked");
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        const itemCode=parsed.searchParams.get("itemCode")||"";
+        const keyword=parsed.searchParams.get("keyword")||"";
+        seen.push({itemCode,keyword});
+        if(itemCode)return new Response(JSON.stringify({items:[]}),{status:200,headers:{"content-type":"application/json"}});
+        if(keyword==="02k-a005-ca"){
+          return new Response(JSON.stringify({items:[{
+            itemName:"N-VAN JJ1/2系 車中泊ベッド くるマット",
+            itemCode:"hobbyman:actual",
+            itemPrice:19800,
+            itemUrl:direct,
+            affiliateUrl:affiliate,
+            shopName:"趣味職人",
+            shopCode:"hobbyman",
+            availability:1,
+            mediumImageUrls:["https://example.com/nvan.jpg"]
+          }]}),{status:200,headers:{"content-type":"application/json"}});
+        }
+        return new Response(JSON.stringify({items:[]}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=code-tail-search")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&itemCode="+encodeURIComponent(explicit)+"&q="+encodeURIComponent("N-VAN JJ1/2 車中泊ベッド"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.found,true);
+    assert.equal(body.item_url,direct);
+    assert.equal(body.affiliate_url,affiliate);
+    assert.equal(body.lookup_method,"item_url_shop_search");
+    assert.ok(seen.some(entry=>entry.keyword==="02k-a005-ca"));
+  }finally{global.fetch=original;}
+});
