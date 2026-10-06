@@ -74,6 +74,45 @@ def explicit_item_code_candidate(seed:dict,env:dict[str,str])->dict|None:
         return candidate
     return None
 
+
+def merchant_item_code_search_candidate(seed:dict,env:dict[str,str])->dict|None:
+    """Search the audited shop by the merchant-code tail when direct itemCode lookup misses."""
+    item_code=str(seed.get("rakutenItemCode") or "").strip()
+    expected=canonical_item_url(seed.get("itemUrl",""))
+    expected_shop=rakuten_shop(expected)
+    if not item_code or not expected or not expected_shop:
+        return None
+    separator=item_code.find(":")
+    code_tail=item_code[separator+1:] if separator>=0 else item_code
+    code_tail=code_tail.strip()
+    if len(code_tail)<2:
+        return None
+    params={
+        "applicationId":env["RAKUTEN_APPLICATION_ID"],
+        "affiliateId":env["RAKUTEN_AFFILIATE_ID"],
+        "shopCode":expected_shop,
+        "keyword":code_tail,
+        "hits":30,
+        "format":"json",
+        "formatVersion":2,
+        "availability":1,
+        "elements":"itemName,itemCode,itemPrice,itemUrl,affiliateUrl,mediumImageUrls,availability,shopCode",
+    }
+    headers={**HEADERS,"accessKey":env["RAKUTEN_ACCESS_KEY"]}
+    payload=fetch_json(RAKUTEN_API+"?"+urllib.parse.urlencode(params),headers)
+    source=payload.get("items") or payload.get("Items") or []
+    for raw in source:
+        candidate=normalize_item(raw)
+        if not candidate:
+            continue
+        if candidate["itemUrl"]!=expected:
+            continue
+        if not identity_ok(candidate["name"],seed):
+            continue
+        return candidate
+    return None
+
+
 def load_seeds(seed_dir:Path)->list[dict]:
     return [json.loads(path.read_text()) for path in sorted(seed_dir.glob("*.json"))]
 
@@ -103,6 +142,9 @@ def export_catalog(seed_dir:Path=DEFAULT_SEED_DIR)->dict:
 
             candidate=explicit_item_code_candidate(seed,env)
             lookup_mode="rakuten_api_seed_item_code"
+            if candidate is None:
+                candidate=merchant_item_code_search_candidate(seed,env)
+                lookup_mode="rakuten_api_seed_code_keyword"
             if candidate is None:
                 candidate=exact_item_candidate(seed,env)
                 lookup_mode="rakuten_api_exact_page_item"
