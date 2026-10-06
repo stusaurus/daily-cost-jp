@@ -386,6 +386,7 @@ def export_catalog(seed_dir: Path = DEFAULT_SEED_DIR) -> dict:
                 "budgetTiers": seed.get("budgetTiers", []),
                 "audiences": seed.get("audiences", []),
                 "preferenceTags": seed.get("preferenceTags", []),
+                "fit": seed.get("fit"),
                 "coverCategoryIds": seed.get("coverCategoryIds", [seed["categoryId"]]),
                 "recommendationRole": seed.get("recommendationRole", "beginner_default"),
                 "score": seed.get("score", 80),
