@@ -163,3 +163,94 @@ test("explicit itemCode from another shop is rejected before upstream fetch",asy
     assert.equal(called,false);
   }finally{global.fetch=original;}
 });
+
+
+test("exact item lookup uses the requested page title to recover the exact listing",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/hobbyman/n-van-kurumat/";
+  const affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(direct);
+  const pageInfo={itemId:321,purchaseInfo:{purchaseBySellType:{purchaseCondition:"enabled"}}};
+  const html='<html><head><meta property="og:title" content="N-VAN JJ1/2系 車中泊ベッド くるマット"></head><script>"itemInfoSku":'+JSON.stringify(pageInfo)+'</script></html>';
+  const seenKeywords=[];
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct)return new Response(html,{status:200,headers:{"content-type":"text/html"}});
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        const keyword=parsed.searchParams.get("keyword")||"";
+        const itemCode=parsed.searchParams.get("itemCode")||"";
+        if(keyword)seenKeywords.push(keyword);
+        if(itemCode)return new Response(JSON.stringify({items:[]}),{status:200,headers:{"content-type":"application/json"}});
+        if(keyword.includes("N-VAN JJ1/2系")){
+          return new Response(JSON.stringify({items:[{
+            itemName:"N-VAN JJ1/2系 車中泊ベッド くるマット",
+            itemCode:"hobbyman:actual",
+            itemPrice:19800,
+            itemUrl:direct,
+            affiliateUrl:affiliate,
+            shopName:"趣味職人",
+            shopCode:"hobbyman",
+            availability:1,
+            mediumImageUrls:["https://example.com/nvan.jpg"]
+          }]}),{status:200,headers:{"content-type":"application/json"}});
+        }
+        return new Response(JSON.stringify({items:[]}),{status:200,headers:{"content-type":"application/json"}});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=page-title-recovery")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&q="+encodeURIComponent("02k-a005-ca"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.found,true);
+    assert.equal(body.item_url,direct);
+    assert.equal(body.affiliate_url,affiliate);
+    assert.equal(body.lookup_method,"item_url_page_title_search");
+    assert.ok(seenKeywords.some(q=>q.includes("N-VAN JJ1/2系")));
+  }finally{global.fetch=original;}
+});
+
+test("page-title recovery still refuses a related URL from the same shop",async()=>{
+  const original=global.fetch;
+  const direct="https://item.rakuten.co.jp/hobbyman/exact/";
+  const related="https://item.rakuten.co.jp/hobbyman/related/";
+  const pageInfo={itemId:654,purchaseInfo:{purchaseBySellType:{purchaseCondition:"enabled"}}};
+  const html='<html><head><meta property="og:title" content="ハスラー MR52S MR92S 車中泊マット"></head><script>"itemInfoSku":'+JSON.stringify(pageInfo)+'</script></html>';
+  try{
+    global.fetch=async(input)=>{
+      const url=String(input);
+      if(url===direct)return new Response(html,{status:200});
+      if(url.startsWith("https://openapi.rakuten.co.jp/")){
+        const parsed=new URL(url);
+        if(parsed.searchParams.get("itemCode"))return new Response(JSON.stringify({items:[]}),{status:200});
+        return new Response(JSON.stringify({items:[{
+          itemName:"ハスラー MR52S MR92S 車中泊マット",
+          itemCode:"hobbyman:related",
+          itemPrice:9800,
+          itemUrl:related,
+          affiliateUrl:"https://hb.afl.rakuten.co.jp/hgc/x/?pc="+encodeURIComponent(related),
+          shopName:"趣味職人",
+          shopCode:"hobbyman",
+          availability:1,
+          mediumImageUrls:["https://example.com/related.jpg"]
+        }]}),{status:200});
+      }
+      throw new Error("unexpected fetch "+url);
+    };
+    const worker=(await import(workerUrl+"?t=page-title-related")).default;
+    const request=new Request(
+      "https://example.workers.dev/api/item-lookup?url="+encodeURIComponent(direct)+"&q="+encodeURIComponent("MR52S"),
+      {headers:{Origin:allowedOrigin}}
+    );
+    const response=await worker.fetch(request,env);
+    const body=await response.json();
+    assert.equal(response.status,200);
+    assert.equal(body.found,false);
+    assert.equal(body.reason,"exact_item_not_found");
+  }finally{global.fetch=original;}
+});
