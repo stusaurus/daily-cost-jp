@@ -1,0 +1,740 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-06T11:15:47.459124+00:00",
+  "auditPolicyVersion": "carstay-daily-cost-rakuten-api-v1",
+  "status": "partial",
+  "seedCount": 34,
+  "verifiedCount": 19,
+  "products": [
+    {
+      "productId": "every-da17-da18-cartist-jr14971498",
+      "name": "＼9日迄・限定5％OFF＋P2倍／【楽天1位】【DA18にも対応】 Cartist スズキ エブリイ バン DA17V DA18V 車中泊 マット キャンプ マット 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水 車載 カスタム",
+      "brand": "Cartist",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 9580,
+      "itemCode": "jroad:10000437",
+      "itemUrl": "https://item.rakuten.co.jp/jroad/jr-car14971498/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr-car14971498%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000437%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12594710/car14971498_01.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "suzuki-every-da17v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        },
+        {
+          "vehicleId": "suzuki-every-da18v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/jroad/jr-car14971498/",
+        "seedItemUrl": "https://item.rakuten.co.jp/jroad/jr-car14971498/"
+      }
+    },
+    {
+      "productId": "every-da17-da18-hobbyman-shade",
+      "name": "【日本売上No.1】最大全額3,000円引 新型 エブリイ DA18 系 DA17 系 対応 サンシェード カーテン 車中泊 防災 グッズ フルセット 車用カーテン カーシェード サイド カーテン セット シェード セット【日本製】Lot No.02",
+      "brand": "趣味職人",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 94,
+      "price": 6980,
+      "itemCode": "hobbyman:10046485",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/every-17-cradp/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fevery-17-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046485%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-g004-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "suzuki-every-da17v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        },
+        {
+          "vehicleId": "suzuki-every-da18v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/every-17-cradp/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/every-17-cradp/"
+      }
+    },
+    {
+      "productId": "every-da17-da18-levolva-mr09",
+      "name": "Levolva DA17V DA18V エブリイ バン 専用マットレス 車中泊マット 日本製DR17V NV100クリッパー/DG17Vスクラムバン/DS17Vミニキャブバンも対応【スズキ EVERY アクセサリー カスタムパーツ 車中泊グッズ 車中泊ベッドキット 車内泊 防災グッズ 純正社外】【SOVIE】",
+      "brand": "Levolva",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 94,
+      "price": 38000,
+      "itemCode": "auc-sovie-store:10000425",
+      "itemUrl": "https://item.rakuten.co.jp/auc-sovie-store/mr-09_1/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qwu4o.7cx6mcba.g00qwu4o.7cx6n76d/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fauc-sovie-store%2Fmr-09_1%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fauc-sovie-store%2Fi%2F10000425%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/auc-sovie-store/cabinet/cool/sgv01_lvmr-9.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "suzuki-every-da17v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        },
+        {
+          "vehicleId": "suzuki-every-da18v",
+          "status": "verified",
+          "trims": [
+            "JOIN / JOIN Turbo",
+            "PC",
+            "PA"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/auc-sovie-store/mr-09_1/",
+        "seedItemUrl": "https://item.rakuten.co.jp/auc-sovie-store/mr-09_1/"
+      }
+    },
+    {
+      "productId": "freed-gt-autorder-au1175",
+      "name": "＼マラソン限定！5%OFF&P2UP／＼楽天1位／ autorder ホンダ 新型 フリード GT サンシェード フルセット 1台分 車 日よけ 日除け 目隠し カーテン シェード 車中泊サンシェード 夏 遮光 断熱 保冷 冬 保温 UVカット アクセサリー カスタム 内装 パーツ",
+      "brand": "autorder",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 91,
+      "price": 8800,
+      "itemCode": "autorder:10001966",
+      "itemUrl": "https://item.rakuten.co.jp/autorder/au1175/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00u1rfo.7cx6m2b8.g00u1rfo.7cx6n238/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fautorder%2Fau1175%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fautorder%2Fi%2F10001966%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/autorder/cabinet/au1175/au1175_01.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5,
+            6,
+            7
+          ],
+          "trims": [
+            "AIR",
+            "AIR EX",
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/autorder/au1175/",
+        "seedItemUrl": "https://item.rakuten.co.jp/autorder/au1175/"
+      }
+    },
+    {
+      "productId": "freed-gt-crosstar-5-cellutane-premo-a1609",
+      "name": "A1609a-5-602BK CELLUTANE [車中泊マット フリードクロスタGT6/8/2/4 5人乗り用] メーカー直送",
+      "brand": "CELLUTANE",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 94,
+      "price": 20990,
+      "itemCode": "premoa:11249364",
+      "itemUrl": "https://item.rakuten.co.jp/premoa/4982323269905/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00r8gxo.7cx6mee7.g00r8gxo.7cx6nc63/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fpremoa%2F4982323269905%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fpremoa%2Fi%2F11249364%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/premoa/cabinet/pics/1035/4982323269905.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5
+          ],
+          "trims": [
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/premoa/4982323269905/",
+        "seedItemUrl": "https://item.rakuten.co.jp/premoa/4982323269905/"
+      }
+    },
+    {
+      "productId": "freed-gt-crosstar-5-presidente-xy0723202",
+      "name": "【まとめ買いで最大500円OFFクーポン!】【送料無料】フリード クロスター GT系 車中泊 マット 折りたたみ式 5人乗り GT2 GT4 GT6 GT8 ベッドキット フリード+ GB系 GB5 GB6 GB7 GB8 専用 FREED CROSSTAR マットレス 段差解消 快適睡眠 仮眠 緊急 災害 防災 キャンプ アウトド",
+      "brand": "CARVANTA",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 88,
+      "price": 13083,
+      "itemCode": "shoppresidente:10011426",
+      "itemUrl": "https://item.rakuten.co.jp/shoppresidente/xy0723202/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usf4o.7cx6m8db.g00usf4o.7cx6necd/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fshoppresidente%2Fxy0723202%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fshoppresidente%2Fi%2F10011426%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/shoppresidente/cabinet/xy072/xy0723202_1.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5
+          ],
+          "trims": [
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/shoppresidente/xy0723202/",
+        "seedItemUrl": "https://item.rakuten.co.jp/shoppresidente/xy0723202/"
+      }
+    },
+    {
+      "productId": "freed-gt-crosstar-5-suwariba-o010",
+      "name": "[10%OFFクーポン　10/12 23:59迄]HONDA フリードクロスター GT GB 5人乗り 車中泊フラットマットレス 【日本製】【送料無料（沖縄・離島への配送不可）】【安心の1年保証】ホンダ　FREED CROSSTAR　ふりーど",
+      "brand": "NOMAD BASE / CELLUTANE",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 90,
+      "price": 20990,
+      "itemCode": "suwariba:10000258",
+      "itemUrl": "https://item.rakuten.co.jp/suwariba/o010/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qtwxo.7cx6mf8e.g00qtwxo.7cx6n3fb/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fsuwariba%2Fo010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fsuwariba%2Fi%2F10000258%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/suwariba/cabinet/11820742/11820743/12119123/202510.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5
+          ],
+          "trims": [
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/suwariba/o010/",
+        "seedItemUrl": "https://item.rakuten.co.jp/suwariba/o010/"
+      }
+    },
+    {
+      "productId": "freed-gt-hobbyman-lit6",
+      "name": "【日本売上No.1】最大全額3,000円引【吸盤＋6個】 新型 フリード GT1/8系 対応 サンシェード カーテン 車中泊 グッズ シームレス ライト フルセット 1台分 GT GT1 GT2 GT3 GT4 GT5 GT6 GT7 GT8 車用 カーテン サイド フロント セット 日除け 【日本製】",
+      "brand": "趣味職人",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 94,
+      "price": 10600,
+      "itemCode": "hobbyman:10047160",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/freed-gt18-lit-6/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Ffreed-gt18-lit-6%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10047160%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/05s-sam1/05s-c036-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5,
+            6,
+            7
+          ],
+          "trims": [
+            "AIR",
+            "AIR EX",
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/freed-gt18-lit-6/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/freed-gt18-lit-6/"
+      }
+    },
+    {
+      "productId": "freed-gt5-cartist-jr00280029",
+      "name": "＼9日迄・限定5％OFF＋P2倍／【楽天1位】Cartist ホンダ 新型 フリード GT系 GB系 5人乗り 専用 フリード+ 車中泊 マット キャンプ マット 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水",
+      "brand": "Cartist",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 9580,
+      "itemCode": "jroad:10000843",
+      "itemUrl": "https://item.rakuten.co.jp/jroad/jr00280029/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr00280029%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000843%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12640901/jr00280029_01.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            5
+          ],
+          "trims": [
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/jroad/jr00280029/",
+        "seedItemUrl": "https://item.rakuten.co.jp/jroad/jr00280029/"
+      }
+    },
+    {
+      "productId": "freed-gt6-atmys-kurumat",
+      "name": "【楽天1位】最大全額3,000円引 車マット 新型 フリード GT 1/8 系 AIR CROSSTAR 対応 シートフラットクッション 段差解消 車中泊 マット ( 評価A) 車中泊 グッズ 防災 エアーマット ベッド キャンピングマット キャンプマット 【日本製】Lot No.03",
+      "brand": "アトマイズ",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 89,
+      "price": 9900,
+      "itemCode": "atmys:10043074",
+      "itemUrl": "https://item.rakuten.co.jp/atmys/kurumat-black-freed-gt18-2/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fkurumat-black-freed-gt18-2%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10043074%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/01k-sam/01k-c029-ca.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            6
+          ],
+          "trims": [
+            "AIR",
+            "AIR EX",
+            "CROSSTAR"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/atmys/kurumat-black-freed-gt18-2/",
+        "seedItemUrl": "https://item.rakuten.co.jp/atmys/kurumat-black-freed-gt18-2/"
+      }
+    },
+    {
+      "productId": "hustler-mr52-92-atmys-shade",
+      "name": "【日本売上No.1】最大全額3,000円引 新型 ハスラー MR52S/92S系 対応 サンシェード カーテン 車中泊 グッズ フルセット MR52S 型 MR92S 型 Jスタイル 車用カーテン サイド カーテン セット フロント カーテン セット 日除け 専用 【日本製】Lot No.01",
+      "brand": "アトマイズ",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 94,
+      "price": 27000,
+      "itemCode": "atmys:10016126",
+      "itemUrl": "https://item.rakuten.co.jp/atmys/hustler-mr52s-set/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fhustler-mr52s-set%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10016126%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/02s-sam/02s-g022-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "suzuki-hustler-mr52s-mr92s",
+          "status": "verified"
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/atmys/hustler-mr52s-set/",
+        "seedItemUrl": "https://item.rakuten.co.jp/atmys/hustler-mr52s-set/"
+      }
+    },
+    {
+      "productId": "hustler-mr52-92-hobbyman-full",
+      "name": "【日本売上No.1】最大全額3,000円引 新型 ハスラー MR52S MR92S Jスタイル 対応 サンシェード カーテン 車中泊 防災 グッズ フルセット 車用カーテン カーシェード サイド カーテン セット シェード セット【日本製】Lot No.02",
+      "brand": "趣味職人",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 5980,
+      "itemCode": "hobbyman:10046461",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/hustler-mr52s-cradp/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fhustler-mr52s-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046461%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-g022-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "suzuki-hustler-mr52s-mr92s",
+          "status": "verified"
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/hustler-mr52s-cradp/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/hustler-mr52s-cradp/"
+      }
+    },
+    {
+      "productId": "nbox-jf56-aurauto-at-tx878",
+      "name": "「車種専用 1台分」予約 新型 N-BOX NBOX カスタム JF5 JF6 車中泊 サンシェード 全窓 フルセット サンシェード 車 フロント サイド 断熱 遮光 紫外線 UV カット 日除け 日よけ カーシェード NBOX カスタムパーツ アクセサリー",
+      "brand": "Aurauto",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 92,
+      "price": 8800,
+      "itemCode": "aurauto:10000184",
+      "itemUrl": "https://item.rakuten.co.jp/aurauto/at-tx878/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00utb7o.7cx6m149.g00utb7o.7cx6nfb1/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Faurauto%2Fat-tx878%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Faurauto%2Fi%2F10000184%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/aurauto/cabinet/12740132/tx878_02.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-nbox-jf5-jf6",
+          "status": "verified",
+          "trims": [
+            "N-BOX",
+            "N-BOX Custom"
+          ],
+          "exclusions": [
+            "N-BOX JOY",
+            "N-BOX Slope"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/aurauto/at-tx878/",
+        "seedItemUrl": "https://item.rakuten.co.jp/aurauto/at-tx878/"
+      }
+    },
+    {
+      "productId": "nbox-jf56-di-flat4",
+      "name": "【イチオシ商品】ホンダ 新型 NBOX N-BOX Nボックス JF5 JF6 車中泊用 シートフラットクッション 4個セット 段差解消 クッション 社外新品 レザークッション 安眠クッション 合皮レザー シートクッション 仮眠 社外品 diplannning製品 DIプランニング製 ベッド マットレス",
+      "brand": "D.I Planning",
+      "gapIds": [
+        "floor_step"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 96,
+      "price": 20300,
+      "itemCode": "hs-carshop:10000609",
+      "itemUrl": "https://item.rakuten.co.jp/hs-carshop/nboxjf5-flatc/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00ugjbo.7cx6m69d.g00ugjbo.7cx6na30/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhs-carshop%2Fnboxjf5-flatc%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhs-carshop%2Fi%2F10000609%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hs-carshop/cabinet/09982089/r-nboxjf56-flatc.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-nbox-jf5-jf6",
+          "status": "verified",
+          "trims": [
+            "N-BOX",
+            "N-BOX Custom"
+          ],
+          "exclusions": [
+            "N-BOX JOY",
+            "N-BOX Slope"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hs-carshop/nboxjf5-flatc/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hs-carshop/nboxjf5-flatc/"
+      }
+    },
+    {
+      "productId": "nbox-jf56-hobbyman-kurumat",
+      "name": "【楽天1位】最大全額3,000円引 車マット 新型 N-BOX JF5 型 JF6 型 対応 シートフラットクッション 段差解消 車中泊 マット (評価A) 車中泊 グッズ 防災 エアーマット ベッド キャンピングマット キャンプマット 【日本製】Lot No.01",
+      "brand": "趣味職人",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 86,
+      "price": 9900,
+      "itemCode": "hobbyman:10035501",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/kurumat-black-n-box-jf56/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fkurumat-black-n-box-jf56%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10035501%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/01k-sam/01k-c027-ca.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-nbox-jf5-jf6",
+          "status": "verified",
+          "trims": [
+            "N-BOX",
+            "N-BOX Custom",
+            "N-BOX JOY"
+          ],
+          "exclusions": [
+            "N-BOX Slope"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/kurumat-black-n-box-jf56/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/kurumat-black-n-box-jf56/"
+      }
+    },
+    {
+      "productId": "nbox-jf56-zenpo-shade",
+      "name": "車用サンシェードライト1台分 フロント リア サイドのフルセット ホンダ NBOX N-BOX カスタム Custom JF5 JF6 専用 日よけ 車中泊 n-box 日よけ グッズ カーシェード 日除け 目隠しパーツ 専用 車 車用 車用品 車内 カー用品 盗難防止 キャンプ 黒 ブラック 仮眠",
+      "brand": "ゼンポー",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 7980,
+      "itemCode": "zenpou22:10044619",
+      "itemUrl": "https://item.rakuten.co.jp/zenpou22/za-syzp-lsb-40/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00q9r1o.7cx6m14e.g00q9r1o.7cx6nf71/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fzenpou22%2Fza-syzp-lsb-40%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fzenpou22%2Fi%2F10044619%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/zenpou22/cabinet/07142215/lsb-40.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-nbox-jf5-jf6",
+          "status": "verified",
+          "trims": [
+            "N-BOX",
+            "N-BOX Custom"
+          ],
+          "exclusions": [
+            "N-BOX Slope"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/zenpou22/za-syzp-lsb-40/",
+        "seedItemUrl": "https://item.rakuten.co.jp/zenpou22/za-syzp-lsb-40/"
+      }
+    },
+    {
+      "productId": "nvan-jj1-jj2-hobbyman-lit",
+      "name": "【日本売上No.1】最大全額3,000円引 N-VAN JJ1/2系 対応 サンシェード カーテン 車中泊 グッズ シームレス ライト フルセット 1台分 JJ1 型 JJ2 型 エヌバン 車用 カーテン サイド フロント セット 日除け 【日本製】Lot No.01",
+      "brand": "趣味職人",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 9300,
+      "itemCode": "hobbyman:10031996",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/n-van-lit/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fn-van-lit%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10031996%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/05s-sam/05s-c025-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-nvan-jj1-jj2",
+          "status": "verified"
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/n-van-lit/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/n-van-lit/"
+      }
+    },
+    {
+      "productId": "sienta10-5-cartist-jr00310032",
+      "name": "＼9日迄・限定5％OFF＋P2倍／【楽天1位】【今だけ2年保証付き】Cartist トヨタ 新型 シエンタ 10系 5人乗り 専用 車中泊 マット キャンプ 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水 アクセサリー",
+      "brand": "Cartist",
+      "gapIds": [
+        "floor_step",
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 93,
+      "price": 9580,
+      "itemCode": "jroad:10000845",
+      "itemUrl": "https://item.rakuten.co.jp/jroad/jr00310032/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr00310032%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000845%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12640914/jr00310032_01.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-05",
+      "vehicleFit": [
+        {
+          "vehicleId": "toyota-sienta-10-15",
+          "status": "verified",
+          "seatCounts": [
+            5
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/jroad/jr00310032/",
+        "seedItemUrl": "https://item.rakuten.co.jp/jroad/jr00310032/"
+      }
+    },
+    {
+      "productId": "sienta10-hobbyman-cradp",
+      "name": "【日本売上No.1】最大全額3,000円引 新型 シエンタ 10 系 15 系 MXPL MXPC 対応 サンシェード カーテン 車中泊 防災 グッズ フルセット 車用カーテン カーシェード サイド カーテン セット シェード セット【日本製】Lot No.02",
+      "brand": "趣味職人",
+      "gapIds": [
+        "privacy_full"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 97,
+      "price": 6980,
+      "itemCode": "hobbyman:10046584",
+      "itemUrl": "https://item.rakuten.co.jp/hobbyman/sienta-mxpl-cradp/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fsienta-mxpl-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046584%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-a070-sa.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-06T11:15:47.459124+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "vehicleFit": [
+        {
+          "vehicleId": "toyota-sienta-10-15",
+          "status": "verified",
+          "seatCounts": [
+            5,
+            7
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/sienta-mxpl-cradp/",
+        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/sienta-mxpl-cradp/"
+      }
+    }
+  ],
+  "failures": {
+    "freed-gt-crosstar-6-cellutane-a1612": "HTTPError",
+    "freed-gt-sunvic-shade": "cross_shop_rejected",
+    "freed-gt6-hobbyman-kurumat": "HTTPError",
+    "hustler-mr52-92-atmys-kurumat3": "HTTPError",
+    "hustler-mr52-92-hobbyman-kurumat": "HTTPError",
+    "hustler-mr52-92-levolva-lvmr13": "HTTPError",
+    "nbox-jf56-atmys-joy-shade": "HTTPError",
+    "nbox-jf56-hobbyman-joy-shade": "HTTPError",
+    "nvan-jj1-jj2-hobbyman-kurumat": "HTTPError",
+    "nvan-jj1-jj2-levolva-mr11": "HTTPError",
+    "nvan-jj1-jj2-mgr-mbk4646": "HTTPError",
+    "nvan-jj1-jj2-suwariba-o023": "HTTPError",
+    "sienta10-7-suwariba-o017": "HTTPError",
+    "sienta10-hobbyman-shade": "HTTPError",
+    "sienta10-partsmax-hn03t135a": "HTTPError"
+  },
+  "deferred": {},
+  "runtimeBudgetSeconds": 0
+}
