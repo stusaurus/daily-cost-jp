@@ -18,21 +18,30 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
+      - name: Cloudflare token not configured
+        if: env.CLOUDFLARE_API_TOKEN == ''
+        run: echo "::notice::CLOUDFLARE_API_TOKEN is not configured. Worker deployment is skipped until the repository secret is added."
+
       - uses: actions/checkout@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
 
       - uses: actions/setup-node@v4
+        if: env.CLOUDFLARE_API_TOKEN != ''
         with:
           node-version: '22'
 
       - name: Install Wrangler
+        if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: cloudflare-api
         run: npm install --no-save wrangler@4
 
       - name: Deploy daily-cost-api
+        if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: cloudflare-api
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
