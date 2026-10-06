@@ -20,10 +20,12 @@ class CarStayExportTest(unittest.TestCase):
             os.environ[k]="test"
         self.original_exact=mod.exact_item_candidate
         self.original_search=mod.search_identity
+        self.original_fetch=mod.fetch_json
 
     def tearDown(self):
         mod.exact_item_candidate=self.original_exact
         mod.search_identity=self.original_search
+        mod.fetch_json=self.original_fetch
         for k,v in self.old_env.items():
             if v is None:
                 os.environ.pop(k,None)
@@ -77,6 +79,34 @@ class CarStayExportTest(unittest.TestCase):
         out=self.run_one(self.candidate("https://item.rakuten.co.jp/other-shop/mr-11/"))
         self.assertEqual(out["verifiedCount"],0)
         self.assertEqual(out["failures"]["nvan-mat"],"cross_shop_rejected")
+
+
+    def test_explicit_seed_item_code_resolves_exact_listing(self):
+        seed=self.seed()
+        seed["rakutenItemCode"]="auc-sovie-store:mr-11"
+        url=seed["itemUrl"]
+        affiliate="https://hb.afl.rakuten.co.jp/hgc/x/?pc="+__import__("urllib.parse").parse.quote(url,safe="")
+        seen=[]
+        def fake_fetch(request_url,headers):
+            seen.append(request_url)
+            return {"items":[{
+                "itemName":"Levolva N-VAN JJ1 JJ2 車中泊マット",
+                "itemPrice":19800,
+                "itemUrl":url,
+                "affiliateUrl":affiliate,
+                "mediumImageUrls":["https://example.com/a.jpg"],
+                "itemCode":"auc-sovie-store:mr-11",
+                "shopCode":"auc-sovie-store"
+            }]}
+        mod.fetch_json=fake_fetch
+        candidate=mod.explicit_item_code_candidate(seed,{
+            "RAKUTEN_APPLICATION_ID":"app",
+            "RAKUTEN_ACCESS_KEY":"key",
+            "RAKUTEN_AFFILIATE_ID":"aff",
+        })
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate["itemUrl"],url)
+        self.assertTrue(any("itemCode=auc-sovie-store%3Amr-11" in x for x in seen))
 
     def test_missing_credentials_fail_before_export(self):
         for k in ("RAKUTEN_APPLICATION_ID","RAKUTEN_ACCESS_KEY","RAKUTEN_AFFILIATE_ID"):
