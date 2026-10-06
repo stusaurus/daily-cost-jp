@@ -322,7 +322,12 @@ async function exactItemLookup(itemUrl, q, itemCode, env) {
     }
   }
 
-  const pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  let pageInfo = null;
+  try {
+    pageInfo = await fetchExactRakutenPageInfo(locator.canonical);
+  } catch (error) {
+    console.warn("item-lookup exact page unavailable; continuing with shop search", error?.message || error);
+  }
   if (pageInfo?.unavailable) return { found: false, reason: "unavailable" };
   if (pageInfo?.itemId) {
     const byCode = await fetchItemByCode(locator.shopCode + ":" + pageInfo.itemId, env);
