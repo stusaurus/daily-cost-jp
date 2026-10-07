@@ -85,7 +85,7 @@ function wordTokens(name, brand) {
 
 function specTokens(name) {
   const text = normalize(name).replace(/[＊*×✕]/g, "x");
-  const found = text.match(/\d+(?:\.\d+)?\s*(?:ml|l|g|kg|m|cm|mm|枚|個|本|箱|袋|ロール|巻|パック)|\d+\s*in\s*1/gi) || [];
+  const found = text.match(/\d+(?:\.\d+)?\s*(?:ml|kg|g|l|cm|mm|m|枚|組|個|コ|本|箱|袋|ロール|巻|パック|セット|w\b)|\d+\s*in\s*1|x\s*\d+/gi) || [];
   return Array.from(new Set(found.map((token) => compact(token))));
 }
 
@@ -364,11 +364,11 @@ function relevanceScore(product, query) {
   return score;
 }
 
-function safeMatch(itemName, product) {
+export function safeMatch(itemName, product) {
   const itemKey = compact(itemName);
   const productKey = compact(product.name);
   const brandKey = compact(product.brand);
-  const words = wordTokens(product.name, product.brand).slice(0, 7);
+  const words = wordTokens(product.name, product.brand);
   const specs = specTokens(product.name);
 
   const exactName = Boolean(productKey && itemKey.includes(productKey));
@@ -383,8 +383,22 @@ function safeMatch(itemName, product) {
   }
 
   const allSpecsMatch = specs.length === 0 || specMatches === specs.length;
-  const enoughWords = words.length === 0 ? false : wordMatches >= Math.min(2, words.length);
-  const identityOk = exactName || brandMatch || enoughWords;
+  // A brand (or two generic words) does not identify a product. In particular
+  // Scottie cashmere, standard tissue and unrelated goods may share a brand.
+  // Keep fallback results unpriced unless the whole identity is evidenced.
+  const enoughWords = words.length >= 2 && wordMatches === words.length;
+  const identityOk = exactName || (brandMatch && enoughWords);
+  const refill = /詰[め]?替[え]?|つめかえ|つめ替え|リフィル|レフィル/;
+  const variantMismatch = /ドラム/.test(productKey) !== /ドラム/.test(itemKey) ||
+    /部屋干し/.test(productKey) !== /部屋干し/.test(itemKey) ||
+    (refill.test(productKey) && /本体/.test(itemKey)) ||
+    (/本体/.test(productKey) && refill.test(itemKey));
+  const ambiguousListing = /(?:種類|タイプ|サイズ|容量|個数)を選べる|選べる|\d+種から|\d+\s*(?:個|袋|本|箱|パック)?\s*[~〜～/／]\s*\d+/.test(normalize(itemName)) ||
+    (refill.test(itemKey) && /本体/.test(itemKey));
+  // A pack with another capacity/count is not the exact product, even when
+  // its title contains the complete name of one component.
+  const itemSpecs = specTokens(itemName);
+  const unverifiedSpec = itemSpecs.some((spec) => !specs.includes(spec));
 
   let score = 0;
   if (exactName) score += 70;
@@ -394,7 +408,7 @@ function safeMatch(itemName, product) {
 
   // Safety-first: never accept a candidate that disagrees with size/count specs,
   // and never accept a candidate based on price/JAN search alone.
-  const accepted = allSpecsMatch && identityOk && score >= 20;
+  const accepted = allSpecsMatch && identityOk && !variantMismatch && !ambiguousListing && !unverifiedSpec && score >= 20;
   return { accepted, score, exactName, brandMatch, wordMatches, specMatches };
 }
 
@@ -410,7 +424,7 @@ function chooseSafeItem(items, product) {
     .sort((a, b) => a.item.price - b.item.price)[0];
 }
 
-function attachShipping(products, items) {
+export function attachShipping(products, items) {
   return products.map((product) => {
     const best = chooseSafeItem(items, product);
     if (!best) {
@@ -471,8 +485,18 @@ async function fetchProductCandidates(q, page, hits, env) {
     .filter((row) => row && typeof row === "object")
     .map(normalizeProduct)
     .filter(Boolean)
+    .filter((product) => queryRelevant(product, q))
     .sort((a, b) => relevanceScore(b, q) - relevanceScore(a, q));
   return { products, pageCount: safeInt(payload.pageCount), totalCount: safeInt(payload.count) };
+}
+
+// Product API metadata may carry an unrelated name under a requested brand.
+// Keep only candidates whose actual title (or exact code) evidences the query.
+export function queryRelevant(product, query) {
+  const key = (value) => compact(value).replace(/ティシュー/g, "ティッシュ");
+  if (product.product_code && key(product.product_code) === key(query)) return true;
+  const title = key(product.name);
+  return normalize(query).split(/\s+/).filter(Boolean).every((word) => title.includes(key(word)));
 }
 
 async function fetchIncludedItems(q, env, page = 1) {
@@ -567,7 +591,7 @@ async function exactShippingLookup(code, name, brand, env) {
         shipping_match_score: codeBest.score,
         shipping_match_name: codeBest.item.name,
         sale_quantity_label: codeBest.item.sale_quantity_label,
-        lookup_method: "product_code_verified",
+        lookup_method: "product_code_search_name_specs_verified",
       };
     }
     await sleep(1100);
@@ -622,7 +646,7 @@ export default {
     if (origin && origin !== ALLOWED_ORIGIN) return json({ error: "origin_not_allowed" }, 403, origin);
 
     if (url.pathname === "/" || url.pathname === "/health") {
-      return json({ ok: true, service: "daily-cost-api", platform: "cloudflare-workers", matching: "safe-images" }, 200, origin);
+      return json({ ok: true, service: "daily-cost-api", platform: "cloudflare-workers", matching: "strict-product-identity-v2" }, 200, origin);
     }
 
     if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
