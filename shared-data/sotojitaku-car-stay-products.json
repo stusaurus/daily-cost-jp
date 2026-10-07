@@ -1,10 +1,10 @@
 {
   "version": 1,
-  "updatedAt": "2026-10-06T12:20:14.164767+00:00",
+  "updatedAt": "2026-10-07T01:47:17.876729+00:00",
   "auditPolicyVersion": "carstay-daily-cost-rakuten-api-v2",
   "status": "partial",
-  "seedCount": 35,
-  "verifiedCount": 33,
+  "seedCount": 39,
+  "verifiedCount": 36,
   "products": [
     {
       "productId": "every-da17-da18-cartist-jr14971498",
@@ -21,7 +21,7 @@
       "itemUrl": "https://item.rakuten.co.jp/jroad/jr-car14971498/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr-car14971498%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000437%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12594710/car14971498_01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -67,7 +67,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/every-17-cradp/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fevery-17-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046485%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-g004-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -114,7 +114,7 @@
       "itemUrl": "https://item.rakuten.co.jp/auc-sovie-store/mr-09_1/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qwu4o.7cx6mcba.g00qwu4o.7cx6n76d/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fauc-sovie-store%2Fmr-09_1%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fauc-sovie-store%2Fi%2F10000425%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/auc-sovie-store/cabinet/cool/sgv01_lvmr-9.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -160,7 +160,7 @@
       "itemUrl": "https://item.rakuten.co.jp/autorder/au1175/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00u1rfo.7cx6m2b8.g00u1rfo.7cx6n238/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fautorder%2Fau1175%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fautorder%2Fi%2F10001966%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/autorder/cabinet/au1175/au1175_01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -203,7 +203,7 @@
       "itemUrl": "https://item.rakuten.co.jp/premoa/4982323269905/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00r8gxo.7cx6mee7.g00r8gxo.7cx6nc63/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fpremoa%2F4982323269905%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fpremoa%2Fi%2F11249364%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/premoa/cabinet/pics/1035/4982323269905.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -242,7 +242,7 @@
       "itemUrl": "https://item.rakuten.co.jp/shoppresidente/xy0723202/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usf4o.7cx6m8db.g00usf4o.7cx6necd/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fshoppresidente%2Fxy0723202%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fshoppresidente%2Fi%2F10011426%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/shoppresidente/cabinet/xy072/xy0723202_1.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -281,7 +281,7 @@
       "itemUrl": "https://item.rakuten.co.jp/suwariba/o010/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qtwxo.7cx6mf8e.g00qtwxo.7cx6n3fb/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fsuwariba%2Fo010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fsuwariba%2Fi%2F10000258%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/suwariba/cabinet/11820742/11820743/12119123/202510.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -320,7 +320,7 @@
       "itemUrl": "https://item.rakuten.co.jp/a-price/4982323271052/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qn68o.7cx6m19b.g00qn68o.7cx6ne7a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fa-price%2F4982323271052%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fa-price%2Fi%2F11313782%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/a-price/cabinet/pics/1035/4982323271052.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -358,7 +358,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/freed-gt18-lit-6/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Ffreed-gt18-lit-6%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10047160%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/05s-sam1/05s-c036-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -388,7 +388,7 @@
     },
     {
       "productId": "freed-gt5-cartist-jr00280029",
-      "name": "＼9日迄・限定5％OFF＋P2倍／【楽天1位】Cartist ホンダ 新型 フリード GT系 GB系 5人乗り 専用 フリード+ 車中泊 マット キャンプ マット 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水",
+      "name": "＼9日迄・限定5％OFF＋P2倍／【一部予約】【楽天1位】Cartist ホンダ 新型 フリード GT系 GB系 5人乗り 専用 フリード+ 車中泊 マット キャンプ マット 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水",
       "brand": "Cartist",
       "gapIds": [
         "floor_step",
@@ -401,7 +401,7 @@
       "itemUrl": "https://item.rakuten.co.jp/jroad/jr00280029/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr00280029%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000843%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12640901/jr00280029_01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -440,7 +440,7 @@
       "itemUrl": "https://item.rakuten.co.jp/atmys/kurumat-black-freed-gt18-2/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fkurumat-black-freed-gt18-2%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10043074%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/01k-sam/01k-c029-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -467,6 +467,44 @@
       }
     },
     {
+      "productId": "freed-gt7-wecar-kbl009-r023",
+      "name": "【ポイント10倍 送料無料】本田 フリード GT系 GT1 GT2 GT3 GT4 GT5 GT6 GT7 GT8 車中泊マット 車中泊 後部座席マット マットレス 折りたたみ式 車用ベッド アウトドア キャンプ 仮眠 マット 車載 段差解消マット シートフラットクッション WeCar",
+      "brand": "WeCar",
+      "gapIds": [
+        "floor_step"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 84,
+      "price": 6980,
+      "itemCode": "wecar:10011335",
+      "itemUrl": "https://item.rakuten.co.jp/wecar/kbl009-r023/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00upzfo.7cx6mf85.g00upzfo.7cx6nd75/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fwecar%2Fkbl009-r023%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fwecar%2Fi%2F10011335%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/wecar/cabinet/wecar/kbl/11wecarkbl09000.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "fitStrategy": "vehicle",
+      "measurementFit": null,
+      "vehicleFit": [
+        {
+          "vehicleId": "honda-freed-gt",
+          "status": "verified",
+          "seatCounts": [
+            7
+          ],
+          "trims": [
+            "AIR EX"
+          ]
+        }
+      ],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/wecar/kbl009-r023/",
+        "seedItemUrl": "https://item.rakuten.co.jp/wecar/kbl009-r023/"
+      }
+    },
+    {
       "productId": "hustler-mr52-92-atmys-kurumat3",
       "name": "【楽天1位】最大全額3,000円引 車マット 新型 ハスラー MR52S MR92S Jスタイル 対応 シートフラットクッション 段差解消 車中泊 マット (評価B) 車中泊 グッズ 防災 エアーマット ベッド キャンピングマット キャンプマット 【日本製】Lot No.03",
       "brand": "アトマイズ",
@@ -480,7 +518,7 @@
       "itemUrl": "https://item.rakuten.co.jp/atmys/kurumat-black-hustler-mr52s-2/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fkurumat-black-hustler-mr52s-2%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10015835%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/01k-sam/01k-g018-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -512,7 +550,7 @@
       "itemUrl": "https://item.rakuten.co.jp/atmys/hustler-mr52s-set/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fhustler-mr52s-set%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10016126%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/02s-sam/02s-g022-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -544,7 +582,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/hustler-mr52s-cradp/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fhustler-mr52s-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046461%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-g022-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -563,39 +601,6 @@
       }
     },
     {
-      "productId": "hustler-mr52-92-hobbyman-kurumat",
-      "name": "【楽天1位】最大全額3,000円引 車マット 新型 ハスラー MR52S MR92S Jスタイル 対応 シートフラットクッション 段差解消 車中泊 マット (評価B) 車中泊 グッズ 防災 エアーマット ベッド キャンピングマット キャンプマット 【日本製】Lot No.01",
-      "brand": "趣味職人",
-      "gapIds": [
-        "floor_step",
-        "sleep_surface"
-      ],
-      "recommendationRole": "beginner_alternative",
-      "score": 84,
-      "price": 9900,
-      "itemCode": "hobbyman:10020482",
-      "itemUrl": "https://item.rakuten.co.jp/hobbyman/kurumat-black-hustler-mr52s/",
-      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fkurumat-black-hustler-mr52s%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10020482%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
-      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/01k-sam/01k-g018-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
-      "fitVerifiedAt": "2026-10-06",
-      "fitStrategy": "vehicle",
-      "measurementFit": null,
-      "vehicleFit": [
-        {
-          "vehicleId": "suzuki-hustler-mr52s-mr92s",
-          "status": "verified"
-        }
-      ],
-      "audit": {
-        "status": "verified_live",
-        "mode": "rakuten_api_exact_page_item",
-        "salesSource": "daily-cost-jp_github_actions",
-        "fitEvidence": "https://item.rakuten.co.jp/hobbyman/kurumat-black-hustler-mr52s/",
-        "seedItemUrl": "https://item.rakuten.co.jp/hobbyman/kurumat-black-hustler-mr52s/"
-      }
-    },
-    {
       "productId": "hustler-mr52-92-levolva-lvmr13",
       "name": "【秋SALE P5倍】Levolva MR52S MR92S ハスラー 専用スマート車中泊マットDX 日本製【スズキ HUSTLER MR52系 MR92系 アクセサリー カスタムパーツ 車中泊グッズ 車中泊マットレス 車中泊ベッド ベッドキット 車内泊 防災グッズ 純正社外 専用パーツ】【SOVIE】",
       "brand": "Levolva",
@@ -610,7 +615,7 @@
       "itemUrl": "https://item.rakuten.co.jp/auc-sovie-store/mr-13/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qwu4o.7cx6mcba.g00qwu4o.7cx6n76d/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fauc-sovie-store%2Fmr-13%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fauc-sovie-store%2Fi%2F10000673%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/auc-sovie-store/cabinet/cool/sgv01_lvmr-13.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -642,7 +647,7 @@
       "itemUrl": "https://item.rakuten.co.jp/atmys/n-box-jf56-set/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fn-box-jf56-set%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10032252%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/02s-sam/02s-c034-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -682,7 +687,7 @@
       "itemUrl": "https://item.rakuten.co.jp/aurauto/at-tx878/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00utb7o.7cx6m149.g00utb7o.7cx6nfb1/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Faurauto%2Fat-tx878%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Faurauto%2Fi%2F10000184%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/aurauto/cabinet/12740132/tx878_02.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -722,7 +727,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hs-carshop/nboxjf5-flatc/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00ugjbo.7cx6m69d.g00ugjbo.7cx6na30/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhs-carshop%2Fnboxjf5-flatc%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhs-carshop%2Fi%2F10000609%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hs-carshop/cabinet/09982089/r-nboxjf56-flatc.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -762,7 +767,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/n-box-jf56-cradp-9/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fn-box-jf56-cradp-9%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046326%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-c034-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -803,7 +808,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/kurumat-black-n-box-jf56/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fkurumat-black-n-box-jf56%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10035501%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/01k-sam/01k-c027-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -843,7 +848,7 @@
       "itemUrl": "https://item.rakuten.co.jp/zenpou22/za-syzp-lsb-40/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00q9r1o.7cx6m14e.g00q9r1o.7cx6nf71/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fzenpou22%2Fza-syzp-lsb-40%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fzenpou22%2Fi%2F10044619%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/zenpou22/cabinet/07142215/lsb-40.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -883,7 +888,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/n-van-kurumat-9/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fn-van-kurumat-9%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10017620%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/02k-sam/02k-a005-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -915,7 +920,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/n-van-lit/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fn-van-lit%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10031996%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/05s-sam/05s-c025-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -948,7 +953,7 @@
       "itemUrl": "https://item.rakuten.co.jp/auc-sovie-store/mr-11/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qwu4o.7cx6mcba.g00qwu4o.7cx6n76d/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fauc-sovie-store%2Fmr-11%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fauc-sovie-store%2Fi%2F10000626%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/auc-sovie-store/cabinet/cool/sgv01_lvmr-11.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -981,7 +986,7 @@
       "itemUrl": "https://item.rakuten.co.jp/mgr-customs/mbk4646/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00r10po.7cx6m0ed.g00r10po.7cx6nb6f/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fmgr-customs%2Fmbk4646%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fmgr-customs%2Fi%2F10000431%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/mgr-customs/cabinet/bed/mbk4646_2_new.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1014,7 +1019,7 @@
       "itemUrl": "https://item.rakuten.co.jp/suwariba/o023/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qtwxo.7cx6mf8e.g00qtwxo.7cx6n3fb/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fsuwariba%2Fo023%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fsuwariba%2Fi%2F10000301%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/suwariba/cabinet/11820742/11820743/12641120/nvan.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1033,6 +1038,60 @@
       }
     },
     {
+      "productId": "power-jackery-300d",
+      "name": "【クーポン利用で19,992円 10/4 20:00から】Jackery ポータブル電源 300 D 288Wh リン酸鉄 長寿命 定格300W コンパクト 軽量 急速充電 家庭用 アウトドア用 防災 車中泊 UPS機能 純正弦波 ジャクリ",
+      "brand": "Jackery",
+      "gapIds": [
+        "power_capacity"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 95,
+      "price": 24990,
+      "itemCode": "jackery-japan:10000224",
+      "itemUrl": "https://item.rakuten.co.jp/jackery-japan/21-0001-000359/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tgroo.7cx6m160.g00tgroo.7cx6n627/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjackery-japan%2F21-0001-000359%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjackery-japan%2Fi%2F10000224%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jackery-japan/cabinet/13934099/13934159/imgrc0120314264.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "fitStrategy": "power",
+      "measurementFit": null,
+      "vehicleFit": [],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/jackery-japan/21-0001-000359/",
+        "seedItemUrl": "https://item.rakuten.co.jp/jackery-japan/21-0001-000359/"
+      }
+    },
+    {
+      "productId": "power-jackery-500-new",
+      "name": "【クーポン利用で45,370円 10/4 20:00から】Jackery ポータブル電源 500 New 512Wh リン酸鉄 長寿命 定格500W コンパクト 軽量 急速充電 家庭用 アウトドア用 防災 車中泊 UPS機能 純正弦波 ジャクリ",
+      "brand": "Jackery",
+      "gapIds": [
+        "power_capacity"
+      ],
+      "recommendationRole": "beginner_default",
+      "score": 96,
+      "price": 69800,
+      "itemCode": "jackery-japan:10000000",
+      "itemUrl": "https://item.rakuten.co.jp/jackery-japan/n-p-400200-bkor-jk2/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00tgroo.7cx6m160.g00tgroo.7cx6n627/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjackery-japan%2Fn-p-400200-bkor-jk2%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjackery-japan%2Fi%2F10000000%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jackery-japan/cabinet/13805583/imgrc0119192922.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "fitStrategy": "power",
+      "measurementFit": null,
+      "vehicleFit": [],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_exact_page_item",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://www.jackery.jp/products/explorer-500-new",
+        "seedItemUrl": "https://item.rakuten.co.jp/jackery-japan/n-p-400200-bkor-jk2/"
+      }
+    },
+    {
       "productId": "sienta10-5-cartist-jr00310032",
       "name": "＼9日迄・限定5％OFF＋P2倍／【楽天1位】【今だけ2年保証付き】Cartist トヨタ 新型 シエンタ 10系 5人乗り 専用 車中泊 マット キャンプ 子供用 ペット用 犬用 折りたたみ 後部座席 車用ベッド ベットキッド 車中泊ベッド マットレス 高反発 防水 アクセサリー",
       "brand": "Cartist",
@@ -1047,7 +1106,7 @@
       "itemUrl": "https://item.rakuten.co.jp/jroad/jr00310032/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00usruo.7cx6m5fe.g00usruo.7cx6n707/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fjroad%2Fjr00310032%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fjroad%2Fi%2F10000845%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/jroad/cabinet/12640914/jr00310032_01.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-05",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1083,7 +1142,7 @@
       "itemUrl": "https://item.rakuten.co.jp/suwariba/o017/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qtwxo.7cx6mf8e.g00qtwxo.7cx6n3fb/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fsuwariba%2Fo017%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fsuwariba%2Fi%2F10000270%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/suwariba/cabinet/11820742/11820743/202510.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1118,7 +1177,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/sienta-mxpl-cradp/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fsienta-mxpl-cradp%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10046584%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/09s-sam1/09s-a070-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1154,7 +1213,7 @@
       "itemUrl": "https://item.rakuten.co.jp/hobbyman/sienta-mxpl-set/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qdx2o.7cx6mca8.g00qdx2o.7cx6n2e8/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fhobbyman%2Fsienta-mxpl-set%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fhobbyman%2Fi%2F10031032%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/hobbyman/cabinet/07317019/02s-sam/02s-a070-sa.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1190,7 +1249,7 @@
       "itemUrl": "https://item.rakuten.co.jp/partsmax-shop/hn03t135a/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00texho.7cx6m598.g00texho.7cx6nfef/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fpartsmax-shop%2Fhn03t135a%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fpartsmax-shop%2Fi%2F10002112%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/partsmax-shop/cabinet/hn03t135a_p.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "vehicle",
       "measurementFit": null,
@@ -1226,7 +1285,7 @@
       "itemUrl": "https://item.rakuten.co.jp/atmys/im10cm-maker/",
       "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00qzcdo.7cx6mdfc.g00qzcdo.7cx6nd5a/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fatmys%2Fim10cm-maker%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fatmys%2Fi%2F10027203%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
       "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/atmys/cabinet/07683010/07k-sam/07k-a000-ca.jpg?_ex=128x128",
-      "verifiedAt": "2026-10-06T12:20:14.164767+00:00",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
       "fitVerifiedAt": "2026-10-06",
       "fitStrategy": "measurement",
       "measurementFit": {
@@ -1239,16 +1298,50 @@
       "vehicleFit": [],
       "audit": {
         "status": "verified_live",
-        "mode": "rakuten_api_exact_page_item",
+        "mode": "rakuten_api_seed_item_code",
         "salesSource": "daily-cost-jp_github_actions",
         "fitEvidence": "https://item.rakuten.co.jp/atmys/im10cm-maker/",
         "seedItemUrl": "https://item.rakuten.co.jp/atmys/im10cm-maker/"
+      }
+    },
+    {
+      "productId": "universal-ventlax-inflatable-8cm",
+      "name": "【公式】VENTLAX ヴェントラクス INFLATABLE MAT インフレータブルマット 8cm 自動拡張 キャンプ 車中泊",
+      "brand": "VENTLAX",
+      "gapIds": [
+        "sleep_surface"
+      ],
+      "recommendationRole": "beginner_alternative",
+      "score": 80,
+      "price": 6980,
+      "itemCode": "ventlax:10000010",
+      "itemUrl": "https://item.rakuten.co.jp/ventlax/10000010/",
+      "affiliateUrl": "https://hb.afl.rakuten.co.jp/hgc/g00uf1qo.7cx6maa7.g00uf1qo.7cx6ne47/?pc=https%3A%2F%2Fitem.rakuten.co.jp%2Fventlax%2F10000010%2F&m=http%3A%2F%2Fm.rakuten.co.jp%2Fventlax%2Fi%2F10000010%2F&rafcid=wsc_i_is_3fdd6218-dff7-43fd-8f3a-b4d75c514e43",
+      "image": "https://thumbnail.image.rakuten.co.jp/@0_mall/ventlax/cabinet/09581486/imgrc0103172101.jpg?_ex=128x128",
+      "verifiedAt": "2026-10-07T01:47:17.876729+00:00",
+      "fitVerifiedAt": "2026-10-06",
+      "fitStrategy": "measurement",
+      "measurementFit": {
+        "unitLengthMm": 1900,
+        "unitWidthMm": 630,
+        "maxUnits": 2,
+        "quantityMode": "target_width",
+        "note": "展開約190×63cm。車種適合ではなく、ユーザーが実測した寝床長・最狭幅が必要寸法以上の場合のみ表示する。"
+      },
+      "vehicleFit": [],
+      "audit": {
+        "status": "verified_live",
+        "mode": "rakuten_api_seed_item_code",
+        "salesSource": "daily-cost-jp_github_actions",
+        "fitEvidence": "https://item.rakuten.co.jp/ventlax/10000010/",
+        "seedItemUrl": "https://item.rakuten.co.jp/ventlax/10000010/"
       }
     }
   ],
   "failures": {
     "freed-gt-sunvic-shade": "cross_shop_rejected",
-    "freed-gt6-hobbyman-kurumat": "live_identity_listing_not_found [seed_item_code:HTTPError]"
+    "freed-gt6-hobbyman-kurumat": "live_identity_listing_not_found [seed_item_code:HTTPError]",
+    "power-ecoflow-river3plus": "live_identity_listing_not_found [identity_search:HTTPError]"
   },
   "deferred": {},
   "runtimeBudgetSeconds": 0
