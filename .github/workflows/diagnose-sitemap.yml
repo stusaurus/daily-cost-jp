@@ -1,0 +1,67 @@
+name: Diagnose sitemap delivery
+
+on:
+  push:
+    paths:
+      - ".github/workflows/diagnose-sitemap.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe sitemap repeatedly
+        shell: bash
+        run: |
+          set -u
+          URL="https://stusaurus.github.io/daily-cost-jp/sitemap.xml"
+          echo "=== DNS ==="
+          getent ahosts stusaurus.github.io || true
+          echo
+          for UA_NAME in browser googlebot; do
+            if [ "$UA_NAME" = googlebot ]; then
+              UA='Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+            else
+              UA='Mozilla/5.0'
+            fi
+            echo "=== UA: $UA_NAME ==="
+            for i in 1 2 3 4 5; do
+              rm -f /tmp/h /tmp/b
+              code=$(curl -L --max-time 20 --connect-timeout 10 -A "$UA" -sS -D /tmp/h -o /tmp/b -w '%{http_code}' "$URL" || echo CURL_ERROR)
+              echo "TRY=$i CODE=$code BYTES=$(wc -c </tmp/b 2>/dev/null || echo 0) SHA=$(sha256sum /tmp/b 2>/dev/null | awk '{print $1}')"
+              grep -Ei '^(HTTP/|content-type:|content-length:|cache-control:|etag:|last-modified:|server:|location:|x-github-request-id:)' /tmp/h || true
+              head -c 120 /tmp/b 2>/dev/null | tr '\n' ' '; echo
+              sleep 1
+            done
+          done
+          echo "=== PROJECT ROBOTS ==="
+          curl -L --max-time 20 -sS -D - https://stusaurus.github.io/daily-cost-jp/robots.txt -o /tmp/robots || true
+          cat /tmp/robots 2>/dev/null || true
+          echo
+          echo "=== HOST-ROOT ROBOTS ==="
+          curl -L --max-time 20 -sS -D - https://stusaurus.github.io/robots.txt -o /tmp/rootrobots || true
+          cat /tmp/rootrobots 2>/dev/null || true
+          echo
+          echo "=== XML PARSE ==="
+          curl -L --max-time 20 -sS "$URL" -o /tmp/sitemap.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          p='/tmp/sitemap.xml'
+          root=ET.parse(p).getroot()
+          ns='{http://www.sitemaps.org/schemas/sitemap/0.9}'
+          urls=[e.text for e in root.findall(f'{ns}url/{ns}loc')]
+          print('root=',root.tag)
+          print('urls=',len(urls),'unique=',len(set(urls)))
+          print('first=',urls[0] if urls else None)
+          print('last=',urls[-1] if urls else None)
+          bad=[u for u in urls if not (u or '').startswith('https://stusaurus.github.io/daily-cost-jp/')]
+          print('off_scope=',bad)
+          PY
+          echo "=== IPv4 ==="
+          curl -4 -L --max-time 20 -sS -o /dev/null -w 'ipv4 code=%{http_code} remote=%{remote_ip} type=%{content_type}\n' "$URL" || true
+          echo "=== IPv6 ==="
+          curl -6 -L --max-time 20 -sS -o /dev/null -w 'ipv6 code=%{http_code} remote=%{remote_ip} type=%{content_type}\n' "$URL" || true
