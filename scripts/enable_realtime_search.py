@@ -187,6 +187,7 @@ script = f"""
         target.shipping_lookup_pending = false;
         patchCard(target.product_id);
       }} catch (err) {{
+        if (generation !== searchGeneration) return;
         const target = liveRows.find((row) => row.product_id === p.product_id);
         if (target) {{
           target.shipping_lookup_pending = false;
@@ -244,6 +245,7 @@ script = f"""
         page: currentPage
       }});
     }} catch (err) {{
+      if (generation !== searchGeneration) return;
       console.error('Realtime product search failed', err);
       if (!append) {{
         status.textContent = '楽天のリアルタイム検索に接続できませんでした。';
