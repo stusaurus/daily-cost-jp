@@ -25,3 +25,23 @@ test('late responses never mix old prices and links into a newer search', async 
   assert.equal(w.dataLayer.filter(e=>e[0]==='event'&&e[1]==='realtime_product_search').length,1);
   dom.window.close();
 });
+
+test('legacy search remains primary; corrected shipping is conditional and guarded', async () => {
+  const html = execFileSync('python', ['tests/render_analytics_fixture.py'], {encoding:'utf8'});
+  for (const scenario of ['legacy-priced','corrected','wrong-form']) {
+    const calls=[];
+    const product={product_id:'one',name:'アリエール 部屋干しプラス 本体 690g',brand:'アリエール',product_code:'4987176117816',url:'https://product.rakuten.co.jp/one'};
+    const offer={found:true,shipping_included_price:1376,shipping_included_url:'https://hb.afl.rakuten.co.jp/hgc/verified',shipping_match_name:scenario==='wrong-form'?'アリエール 部屋干しプラス 詰め替え 690g':product.name};
+    const dom=new JSDOM(html,{url:'https://stusaurus.github.io/daily-cost-jp/products/?test=1',runScripts:'dangerously',beforeParse(w){w.CSS={escape:s=>s};w.fetch=async url=>{calls.push(url);return {ok:true,json:async()=>url.includes('product-search')?{products:[product]}:url.includes('kiyo0625puma')&&scenario!=='legacy-priced'?{found:false}:offer};};}});
+    const w=dom.window;const q=w.document.querySelector('#q');q.value='スコッティ ティッシュペーパー';q.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    for(let i=0;i<50&&!w.document.querySelector('.product-result-link');i++)await new Promise(r=>setTimeout(r,10));
+    await new Promise(r=>setTimeout(r,30));
+    assert.match(calls[0],/kiyo0625puma/);
+    assert.match(decodeURIComponent(calls[0]),/q=スコッティ ティッシュ&/);
+    assert.equal(calls.some(url=>url.includes('stuffedsaurus')),scenario!=='legacy-priced');
+    const link=w.document.querySelector('.product-result-link');
+    assert.equal(link.dataset.shippingPrice,scenario==='wrong-form'?'':'1376');
+    if(scenario==='wrong-form')assert.equal(link.href,product.url);
+    dom.window.close();
+  }
+});

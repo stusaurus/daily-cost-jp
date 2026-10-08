@@ -8,6 +8,8 @@ async function check(label, fn) {
 }
 async function inspect(page, width, slug) {
   await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(async()=>{for(let y=0;y<document.body.scrollHeight;y+=700){window.scrollTo(0,y);await new Promise(r=>setTimeout(r,80));}window.scrollTo(0,0);});
+  await page.waitForTimeout(1000);
   const geometry = await page.evaluate(() => {
     const vw = innerWidth;
     const visible = el => { const r = el.getBoundingClientRect(); const s=getComputedStyle(el); return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none'; };
@@ -31,6 +33,15 @@ async function inspect(page, width, slug) {
 (async()=>{
   await fs.mkdir('qa-evidence',{recursive:true});
   const browser=await chromium.launch();report.browser=browser.version();
+  // QA must target the deployed revision, not the old Pages build.
+  const deployment=await browser.newContext();
+  let ready=false;
+  for(let attempt=0;attempt<30;attempt++){
+    const response=await deployment.request.get(ROOT+'products/?qa_revision=verified-shipping');
+    if((await response.text()).includes('VERIFIED_SHIPPING_FALLBACK')){ready=true;break;}
+    console.log('Waiting for corrected Pages deployment');await new Promise(r=>setTimeout(r,20000));
+  }
+  await deployment.close();if(!ready)throw new Error('Corrected Pages revision was not deployed');
   for(const width of [1440,390,320]) {
     const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,deviceScaleFactor:1,locale:'ja-JP'});
     const page=await context.newPage();
@@ -86,7 +97,11 @@ async function inspect(page, width, slug) {
       await page.waitForFunction(()=>document.querySelector('#searchBtn')&&!document.querySelector('#searchBtn').disabled,{},{timeout:90000});
       await page.waitForFunction(()=>!document.body.innerText.includes('追加確認中'),{},{timeout:120000}).catch(()=>{});
       await inspect(page,width,'search-ariel');
-      return {text:(await page.locator('main').innerText()).slice(0,18000)};
+      const link=page.locator('.product-result-link:not([data-shipping-price=""])').first();
+      let clicked=null;
+      if(await link.count()){const href=await link.getAttribute('href');const pop=context.waitForEvent('page');await link.click();const target=await pop;await target.waitForLoadState('domcontentloaded').catch(()=>{});clicked={href,destination:target.url(),text:(await target.locator('body').innerText().catch(()=>'' )).slice(0,10000)};await target.screenshot({path:`qa-evidence/${width}-rakuten-ariel.png`}).catch(()=>{});await target.close();}
+      const events=await page.evaluate(()=> (window.dataLayer||[]).map(x=>Array.from(x)).filter(x=>x[0]==='event'&&x[1]==='affiliate_click'));
+      return {text:(await page.locator('main').innerText()).slice(0,18000),clicked,events};
     });
     await check(`${width} Scottie search and affiliate`,async()=>{
       await page.goto(ROOT+'products/?test=1',{waitUntil:'networkidle'});
