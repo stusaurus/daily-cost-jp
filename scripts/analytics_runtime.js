@@ -99,6 +99,10 @@
       const data = { ...(values || {}) };
       // An absent value is ambiguous in GA4. Explicit 0/1 applies to events sent through this wrapper.
       data.operator_test = operator ? '1' : '0';
+      data.site_id = 'daily-cost-jp';
+      data.page_path = location.pathname;
+      data.page_location = location.href;
+      data.traffic_environment = location.hostname === 'stusaurus.github.io' && location.pathname.startsWith(ROOT) ? 'production' : 'development';
       if (name === 'product_result_click') data.conversion_source = resultSource;
       if (name === 'same_product_rakuten_click') data.conversion_source = 'same_product_compare';
       if (name === 'affiliate_click' && !allowed.has(data.conversion_source)) data.conversion_source = 'other';

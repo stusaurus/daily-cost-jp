@@ -12,7 +12,7 @@ jobs:
     name: Build production pages without publishing
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,6 +25,10 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
+      - name: Verify search landing pages in desktop and mobile browsers
+        run: |
+          npx playwright install --with-deps chromium
+          node scripts/check_search_conversion.cjs
       - name: Audit generated mobile and desktop layouts with Lighthouse
         continue-on-error: true
         timeout-minutes: 4
@@ -48,6 +52,7 @@ jobs:
           path: |
             quality-report.json
             lighthouse-reports/
+            qa-search/
             site/
           retention-days: 14
 

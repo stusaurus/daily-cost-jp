@@ -56,45 +56,38 @@ def price_answer(category_id, data):
     name, guide = PRIORITY[category_id]
     items = filter_items(category_id, data.get('items', []))
     metric = {'100g': '100g', '100ml': '100ml', 'roll': '1ロール', 'box': '1箱', 'pack': '1パック'}.get(data.get('metric'), '同じ単位')
-    if items:
-        prices = [float(p['unit_price']) for p in items]
-        overview = f'<p class="answer-price"><strong>{metric}あたり {money(min(prices))}〜</strong>（送料込み）</p><p>今回取得した{len(items)}商品の参考値です。中央値は{money(statistics.median(prices))}／{metric}。市場全体の最安値・相場を示すものではありません。</p>'
-    else:
-        overview = '<p>現在、数量を確定して比較できる候補が不足しています。商品検索で最新の販売条件を確認してください。</p>'
-    supplemental = {}
-    for item in items:
-        detail = unit_details(category_id, item)
-        if detail:
-            label, value = detail
-            supplemental.setdefault(label, []).append(value)
-    if supplemental:
-        overview += '<p><strong>条件をそろえた目安：</strong>' + ' ／ '.join(f'{esc(k)}あたり 最低{money(min(v))}・中央値{money(statistics.median(v))}（{len(v)}候補）' for k, v in supplemental.items()) + '。商品名から条件を確認できた候補だけで計算しています。</p>'
+    from comparison_units import comparison_unit
+    groups = {}
+    for rank, item in enumerate(items, 1):
+        unit = comparison_unit(category_id, item)
+        if unit:
+            groups.setdefault(unit[0], []).append((unit[1], rank, item))
+    parts = []
+    for label, rows in groups.items():
+        value, rank, item = min(rows, key=lambda row: row[0])
+        median = statistics.median(row[0] for row in rows)
+        parts.append(f'<div class="search-price-group{ " answer-pick" if not parts else "" }"><h3>{esc(label)}で比較</h3>'
+                     f'<p><strong>掲載候補の最低単価 {money(value)}／{esc(label)}</strong><br>'
+                     f'中央値 {money(median)}／{esc(label)}（{len(rows)}候補）</p>'
+                     f'<p>この条件の掲載候補では、{money(median)}／{esc(label)}未満が中央値より安い目安です。'
+                     '銘柄・素材・用途も確認してください。</p>'
+                     f'<a href="#{category_id}-rank-{rank}" title="{esc(clean_display_name(item["name"]))}">'
+                     f'{esc(clean_display_name(item["name"]))}の商品・数量を確認 ↓</a>'
+                     f'<p>{esc(item.get("sale_quantity_label") or item.get("evidence", ""))} ・ '
+                     f'支払総額 {money(item["price"])}（送料込み） ・ {esc(item.get("shop", ""))}</p>'
+                     f'<a class="buy-button" data-conversion-source="category" data-category-id="{category_id}" '
+                     f'data-id="{esc(item.get("item_code", ""))}" data-product-name="{esc(clean_display_name(item["name"]))}" '
+                     f'data-shipping-price="{item["price"]}" data-unit-price-label="{esc(money(value)+"／"+label)}" '
+                     f'href="{esc(item["url"])}" target="_blank" rel="nofollow sponsored noopener">'
+                     '楽天でこの商品の価格・送料を確認</a></div>')
+    overview = ''.join(parts) or '<p>同じ条件で比較できる候補がありません。商品検索で内容量と送料を確認してください。</p>'
+    overview += '<p class="purchase-note">取得時点の掲載候補だけを集計しています。市場全体の最安値・相場ではありません。クーポン・ポイント還元は含みません。地域別送料、在庫、必要な量は購入前に確認してください。</p>'
     answers = {
         'laundry': ('洗濯洗剤はどこが安い？今日の比較価格', '同じ銘柄・タイプなら、店頭の税込価格を容量で割り、下の楽天送料込み単価と比べると買い先を選べます。濃縮度が違う洗剤同士は100g単価だけで決めず、1回使用量もそろえてください。'),
-        'toilet-paper': ('トイレットペーパーはいくらなら安い？', '1ロールの長さが違うと、ロール単価の安さが逆転します。シングル同士・ダブル同士で「支払総額 ÷ 総メートル数」を比較してください。下のランキングは1ロール単価順で、長さは統一していません。'),
+        'toilet-paper': ('トイレットペーパーはいくらなら安い？', '1ロールの長さが違うと、ロール単価の安さが逆転します。シングル同士・ダブル同士で「支払総額 ÷ 総メートル数」を比較してください。下の商品一覧は、商品名で確認できた重ね数別の10m単価ごとに安い順で表示します。'),
         'tissue': ('ティッシュはどこが安い？今日の値段比較', '同じ組数なら1箱単価で比較できます。200組と250組など組数が違う場合は「支払総額 ÷ 箱数 ÷ 1箱の組数 × 100」で100組単価を比較してください。400枚（200組）は200組として計算します。'),
     }
     heading, answer = answers[category_id]
-    from comparison_units import quantity_label
-    picks = [(unit_details(category_id, p), rank, p) for rank,p in enumerate(items,1)]
-    comparable = [row for row in picks if row[0]]
-    if comparable:
-        best_detail, best_rank, best_item = min(comparable,key=lambda row:row[0][1])
-        # Different toilet paper ply is never mixed in a single winning claim.
-        if category_id == 'toilet-paper':
-            first_type = comparable[0][0][0]
-            best_detail, best_rank, best_item = min((row for row in comparable if row[0][0] == first_type),key=lambda row:row[0][1])
-        best_label, best_value = best_detail
-    elif items:
-        best_rank, best_item = 1, items[0]
-        best_label, best_value = metric, float(best_item['unit_price'])
-    else:
-        best_item = None
-    if best_item:
-        display = clean_display_name(best_item['name'])
-        short = display if len(display) <= 80 else display[:79] + '…'
-        highlight = f'<div class="answer-pick"><p><strong>今日の比較候補：{esc(best_label)}単価が低い商品</strong></p><a href="#{category_id}-rank-{best_rank}" title="{esc(display)}">{esc(short)}</a><p><strong>{money(best_value)}／{esc(best_label)}</strong> ・ {esc(quantity_label(best_item))} ・ 支払総額{money(best_item["price"])}（送料込み）</p></div>'
-        overview = highlight + overview
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
     return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
 <p><strong>どこで買う？</strong>店頭価格は自動収集していません。楽天候補と店頭の税込・送料込み総額を同じ内容量で比べ、必要な数量だけ買える方を選びましょう。</p></details>
