@@ -1,0 +1,35 @@
+name: Live purchase QA PC and mobile
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/live-purchase-qa.yml'
+      - 'scripts/live_purchase_qa.cjs'
+      - 'scripts/diagnose_search.mjs'
+permissions:
+  contents: read
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Diagnose shipping-inclusive search without exposing credentials
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+        run: node scripts/diagnose_search.mjs
+      - name: Operate production site at PC, 390 and 320 pixels
+        run: node scripts/live_purchase_qa.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-purchase-qa
+          path: qa-evidence/
+          retention-days: 14
