@@ -164,3 +164,15 @@ test('daily-goods search example keeps product_search attribution and test flag'
   assert.equal(p.affiliate()[0][2].operator_test,'1');
   assert.equal(p.events.find(e=>e[1]==='product_result_click')[2].conversion_source,'product_search');
 });
+
+test('site and environment cannot be overridden by legacy event payloads',()=>{
+  for(const url of [BASE+'categories/laundry/', 'http://localhost:8765/daily-cost-jp/categories/laundry/']){
+    const dom=new JSDOM(link('buy-button'),{url,runScripts:'outside-only'});
+    const sent=[];dom.window.gtag=(...args)=>sent.push(args);dom.window.eval(runtime);
+    dom.window.gtag('event','affiliate_click',{site_id:'other',traffic_environment:'production',page_path:'/wrong',page_location:'https://wrong.test'});
+    const data=sent.find(e=>e[0]==='event')[2];
+    assert.equal(data.site_id,'daily-cost-jp');assert.equal(data.page_path,'/daily-cost-jp/categories/laundry/');assert.equal(data.page_location,url);
+    assert.equal(data.traffic_environment,url.startsWith(BASE)?'production':'development');
+    dom.window.close();
+  }
+});

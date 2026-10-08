@@ -1,0 +1,43 @@
+/* Real-browser QA against generated output. No GA requests or purchases. */
+const {chromium}=require('playwright');
+const http=require('node:http');
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+(async()=>{
+ const root=path.resolve('site');
+ const server=http.createServer((req,res)=>{
+  let rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/daily-cost-jp\//,'');
+  if(rel.endsWith('/'))rel+='index.html';
+  const file=path.resolve(root,rel);
+  if(!file.startsWith(root+path.sep)||!fs.existsSync(file)){res.writeHead(404);res.end();return;}
+  res.setHeader('Content-Type',file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':file.endsWith('.json')?'application/json':file.endsWith('.webp')?'image/webp':'text/html');res.end(fs.readFileSync(file));
+ });
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ let browser;
+ try{
+  browser=await chromium.launch({executablePath:process.env.CHROME_PATH||chromium.executablePath(),headless:true,args:['--no-sandbox']});
+  fs.mkdirSync('qa-search',{recursive:true});
+  const catalog=JSON.parse(fs.readFileSync('site/data.json','utf8'));
+  for(const width of [1440,390,320])for(const cid of ['laundry','tissue','toilet-paper']){
+   const page=await browser.newPage({viewport:{width,height:1000}});
+   await page.route(/googletagmanager|google-analytics/,route=>route.abort());
+   const errors=[];page.on('pageerror',error=>errors.push(error.message));
+   await page.goto(`http://127.0.0.1:${server.address().port}/daily-cost-jp/categories/${cid}/?test=1`,{waitUntil:'domcontentloaded'});
+   assert.equal(await page.locator('h1').count(),1);
+   assert.ok(await page.locator('.search-price-group').count()>0);
+   assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow '+cid+' '+width);
+   const links=await page.locator('.search-price-group .buy-button').evaluateAll(nodes=>nodes.map(n=>({url:n.href,id:n.dataset.id,price:Number(n.dataset.shippingPrice),name:n.dataset.productName})));
+   for(const link of links){const item=catalog.categories[cid].items.find(p=>p.url===link.url);assert.ok(item);assert.equal(item.price,link.price);assert.equal(item.item_code,link.id);}
+   await page.locator('.search-price-group .buy-button').first().evaluate(n=>n.addEventListener('click',e=>e.preventDefault()));
+   await page.locator('.search-price-group .buy-button').first().click();
+   const events=await page.evaluate(()=>dataLayer.filter(x=>x[0]==='event'&&x[1]==='affiliate_click').map(x=>x[2]));
+   assert.equal(events.length,1);assert.equal(events[0].operator_test,'1');assert.equal(events[0].site_id,'daily-cost-jp');assert.equal(events[0].traffic_environment,'development');assert.equal(events[0].category_id,cid);assert.equal(events[0].link_url,links[0].url);
+   assert.deepEqual(errors,[]);
+   await page.evaluate(()=>window.scrollTo(0,0));
+   await page.screenshot({path:`qa-search/${cid}-${width}.png`,fullPage:true});
+   console.log(JSON.stringify({cid,width,candidates:links.length,overflow:false,affiliate_events:1}));
+   await page.close();
+  }
+ }finally{await browser?.close();server.close();}
+})().catch(e=>{console.error(e);process.exitCode=1});
