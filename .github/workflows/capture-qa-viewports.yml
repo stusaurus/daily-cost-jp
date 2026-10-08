@@ -1,0 +1,26 @@
+name: Capture natural desktop and mobile viewports
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['scripts/capture_qa_viewports.cjs', '.github/workflows/capture-qa-viewports.yml']
+permissions:
+  contents: read
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/capture_qa_viewports.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qa-natural-viewports
+          path: qa-viewports/
+          retention-days: 14
