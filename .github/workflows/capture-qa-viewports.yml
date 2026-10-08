@@ -1,13 +1,15 @@
 name: Capture natural desktop and mobile viewports
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ['Build and deploy daily-cost-jp']
+    types: [completed]
     branches: [main]
-    paths: ['scripts/capture_qa_viewports.cjs', '.github/workflows/capture-qa-viewports.yml']
 permissions:
   contents: read
 jobs:
   capture:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
