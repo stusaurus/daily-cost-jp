@@ -28,6 +28,7 @@ class ProductDisplayTests(unittest.TestCase):
                        '【 10月1日から31日限定！ エントリーで全品ポイント5倍】ランキング1位受賞 ',
                        '【まとめ買いお得！★クーポン利用で498円~】【高評価人気商品】',
                        '[最大1,000円OFFクーポン★くらしにプラス] ',
+                       '[100円OFFクーポン/オータムラッシュ]',
                        '本日限定！ ']:
             self.assertEqual(clean_display_name(prefix+product),product)
 
