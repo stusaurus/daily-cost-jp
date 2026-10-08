@@ -29,11 +29,56 @@ jobs:
         working-directory: cloudflare-api
         run: npm install --no-save wrangler@4
 
+      - name: Verify Cloudflare workers.dev registration
+        working-directory: cloudflare-api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '5d7d9cc60a3bf36850e0ad6350ac2917' }}
+        run: |
+          node --input-type=module <<'NODE'
+          const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+          const token = process.env.CLOUDFLARE_API_TOKEN;
+          const expectedSubdomain = "stuffedsaurus";
+          if (!accountId || !token) {
+            throw new Error("Cloudflare account ID or API token is missing");
+          }
+          const url = `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/workers/subdomain`;
+          async function call(method, body) {
+            const response = await fetch(url, {
+              method,
+              headers: {
+                Authorization: `Bearer ${token}`,
+                ...(body ? { "Content-Type": "application/json" } : {}),
+              },
+              ...(body ? { body: JSON.stringify(body) } : {}),
+            });
+            const data = await response.json().catch(() => null);
+            const codes = Array.isArray(data?.errors) ? data.errors.map(e => e.code) : [];
+            return { status: response.status, ok: response.ok && data?.success === true, name: data?.result?.subdomain, codes };
+          }
+          const current = await call("GET");
+          if (current.ok && current.name) {
+            if (current.name !== expectedSubdomain) {
+              throw new Error("Cloudflare account has a different workers.dev subdomain; stopping to protect existing configuration");
+            }
+            console.log("Cloudflare workers.dev subdomain is already registered.");
+          } else if (current.status === 404 || (current.ok && !current.name) || current.codes.includes(10063)) {
+            console.log("Cloudflare API reports no workers.dev subdomain; registering the existing intended name.");
+            const created = await call("PUT", { subdomain: expectedSubdomain });
+            if (!created.ok || created.name !== expectedSubdomain) {
+              throw new Error(`workers.dev registration failed (HTTP ${created.status}, codes ${created.codes.join(",")}).`);
+            }
+            console.log("Cloudflare workers.dev subdomain registration succeeded.");
+          } else {
+            throw new Error(`Could not verify workers.dev registration (HTTP ${current.status}, codes ${current.codes.join(",")}). Check API token scope/account.`);
+          }
+          NODE
+
       - name: Deploy daily-cost-api
         working-directory: cloudflare-api
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || '5d7d9cc60a3bf36850e0ad6350ac2917' }}
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
