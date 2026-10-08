@@ -234,3 +234,7 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .search-price-group{padding:16px 0;border-bottom:1px solid var(--line);min-width:0;overflow-wrap:anywhere}
 .search-price-group h3{font-size:17px;margin:0 0 8px}.search-price-group p{font-size:14px;line-height:1.75}
 .search-price-group .buy-button{display:inline-flex;align-items:center;min-height:44px;padding:10px 14px;max-width:100%;white-space:normal;box-sizing:border-box}
+@media(max-width:600px){
+ .lab-answer:has(.search-price-group){grid-template-columns:1fr}
+ .lab-answer:has(.search-price-group) .lab-answer-photo{width:92px;max-width:100%}
+}

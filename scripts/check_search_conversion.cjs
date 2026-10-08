@@ -34,6 +34,7 @@ const assert=require('node:assert/strict');
    const events=await page.evaluate(()=>dataLayer.filter(x=>x[0]==='event'&&x[1]==='affiliate_click').map(x=>x[2]));
    assert.equal(events.length,1);assert.equal(events[0].operator_test,'1');assert.equal(events[0].site_id,'daily-cost-jp');assert.equal(events[0].traffic_environment,'development');assert.equal(events[0].category_id,cid);assert.equal(events[0].link_url,links[0].url);
    assert.deepEqual(errors,[]);
+   await page.evaluate(()=>window.scrollTo(0,0));
    await page.screenshot({path:`qa-search/${cid}-${width}.png`,fullPage:true});
    console.log(JSON.stringify({cid,width,candidates:links.length,overflow:false,affiliate_events:1}));
    await page.close();
