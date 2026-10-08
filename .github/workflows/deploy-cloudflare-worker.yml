@@ -83,3 +83,30 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
         run: node deploy.mjs
+
+      - name: Smoke test deployed Worker health and CORS
+        run: |
+          node --input-type=module <<'NODE'
+          const url = "https://daily-cost-api.stuffedsaurus.workers.dev/health";
+          const origin = "https://stusaurus.github.io";
+          let lastProblem = "No response";
+          for (let attempt = 1; attempt <= 6; attempt++) {
+            try {
+              const response = await fetch(url, {
+                headers: { Origin: origin },
+                signal: AbortSignal.timeout(10000),
+              });
+              const payload = await response.json().catch(() => null);
+              const cors = response.headers.get("access-control-allow-origin");
+              if (response.status === 200 && payload?.ok === true && payload?.service === "daily-cost-api" && cors === origin) {
+                console.log("Live Worker health and GitHub Pages CORS verified.");
+                process.exit(0);
+              }
+              lastProblem = `HTTP ${response.status}, ok=${payload?.ok}, service=${payload?.service}, cors=${cors}`;
+            } catch (error) {
+              lastProblem = error?.message || String(error);
+            }
+            await new Promise((resolve) => setTimeout(resolve, 3000));
+          }
+          throw new Error("Published Worker health check failed: " + lastProblem);
+          NODE
