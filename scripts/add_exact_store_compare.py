@@ -54,7 +54,7 @@ section = f'''
   <div class="exact-result" id="exact-result" aria-live="polite"></div>
 </section>
 <script>
-(() => {{
+document.addEventListener('DOMContentLoaded', () => {{
   const API = {API!r};
   const SHIPPING_API = {SHIPPING_API!r};
   const VERIFIED_SHIPPING_FALLBACK = 'https://daily-cost-api.stuffedsaurus.workers.dev/api/shipping-lookup';
@@ -230,7 +230,7 @@ section = f'''
   nameEl.addEventListener('keydown', e => {{ if (e.key === 'Enter') {{ e.preventDefault(); search(); }} }});
   candidatesEl.addEventListener('click', e => {{ const b=e.target.closest('.exact-choose'); if(b&&!b.disabled) choose(Number(b.dataset.index)); }});
   resultEl.addEventListener('click', e => {{ const a=e.target.closest('[data-exact-rakuten]'); if(a&&typeof window.gtag==='function') window.gtag('event','same_product_rakuten_click',{{search_term:searchTerm}}); }});
-}})();
+}});
 </script>
 '''
 

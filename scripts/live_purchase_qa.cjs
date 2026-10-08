@@ -38,7 +38,8 @@ async function inspect(page, width, slug) {
   let ready=false;
   for(let attempt=0;attempt<30;attempt++){
     const response=await deployment.request.get(ROOT+'products/?qa_revision=verified-shipping');
-    if((await response.text()).includes('VERIFIED_SHIPPING_FALLBACK')){ready=true;break;}
+    const home=await deployment.request.get(ROOT+'?qa_revision=exact-init');
+    if((await response.text()).includes('VERIFIED_SHIPPING_FALLBACK')&&(await home.text()).includes("document.addEventListener('DOMContentLoaded', () => {\n  const API = 'https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search'")){ready=true;break;}
     console.log('Waiting for corrected Pages deployment');await new Promise(r=>setTimeout(r,20000));
   }
   await deployment.close();if(!ready)throw new Error('Corrected Pages revision was not deployed');
@@ -86,8 +87,13 @@ async function inspect(page, width, slug) {
     await check(`${width} home search and store judge`,async()=>{
       await page.goto(ROOT+'?test=1',{waitUntil:'networkidle'});
       if(await page.locator('#exact-name').count()) {
-        await page.locator('#exact-name').fill('アリエール');await page.locator('#exact-store-price').fill('1000');await page.locator('#exact-search').click();
+        await page.locator('#exact-name').fill('アリエール 部屋干しプラス 本体 690g');await page.locator('#exact-store-price').fill('1000');await page.locator('#exact-search').click();
+        await page.waitForFunction(()=>document.querySelector('#exact-status').textContent.length>0);
         await page.waitForFunction(()=>!document.querySelector('#exact-search').disabled,{},{timeout:90000});
+        await page.locator('.exact-choose:not([disabled])').first().click();
+        await page.locator('#exact-result.show').waitFor();
+        report.interactions.push({label:`${width} exact comparison verdict`,status:'observed',text:await page.locator('#exact-result').innerText()});
+        await page.locator('#exact-store-compare').screenshot({path:`qa-evidence/${width}-exact-compare.png`});
         await inspect(page,width,'store-judge');
       }
       const home=page.locator('#product-finder-home');
