@@ -73,3 +73,22 @@ test('JAN alone and brand alone never establish a same-product offer', async () 
   assert.equal(safeMatch('スコッティ別製品', { name: 'スコッティ カシミヤ キューブ', brand: 'スコッティ', product_code: '4901750447076' }).accepted, false);
   assert.equal(safeMatch('4901750447076', { name: 'スコッティ カシミヤ キューブ', product_code: '4901750447076' }).accepted, false);
 });
+
+test('observed Arielle word order preserves identity, capacity, container and use', async () => {
+  const { safeMatch } = await import(source);
+  const product = { name: 'アリエール 洗濯洗剤 液体 部屋干しプラス 本体(690g)', brand: 'アリエール 液体' };
+  const listing = 'アリエール 部屋干しプラス 洗濯洗剤 液体 本体 690g 除湿乾燥機レベルで生乾き消臭';
+  assert.equal(safeMatch(listing, product).accepted, true);
+  for (const wrong of [listing.replace('690g','700g'), listing.replace('本体','詰め替え'), listing.replace('部屋干しプラス','除菌プラス'), listing + ' 6個セット', listing.replace('アリエール','アタック')]) {
+    assert.equal(safeMatch(wrong, product).accepted, false, wrong);
+  }
+});
+
+test('Scottie Japanese brand translation and tissue spelling preserve strict quantity checks', async () => {
+  const { safeMatch, queryRelevant } = await import(source);
+  const product = { name:'スコッティ ティッシュ カシミヤ エンボス(440枚入(220組))', brand:'スコッティ(SCOTTIE)' };
+  assert.equal(safeMatch('スコッティ カシミヤ エンボス ティシュー 440枚 220組', product).accepted, true);
+  assert.equal(safeMatch('スコッティ カシミヤ エンボス ティシュー 160枚 80組', product).accepted, false);
+  assert.equal(safeMatch('スコッティ カシミヤ キューブ ティシュー 440枚 220組', product).accepted, false);
+  assert.equal(queryRelevant(product, 'スコッティ ティッシュペーパー'), true);
+});

@@ -26,7 +26,8 @@ function normalize(value) {
 function compact(value) {
   return normalize(value)
     .replace(/[\s\u3000\-_/・.,!！?？()（）［］\[\]【】]/g, "")
-    .replace(/巻/g, "ロール");
+    .replace(/巻/g, "ロール")
+    .replace(/ティッシュペーパー|ティシュー/g, "ティッシュ");
 }
 
 // Realtime results have no unit-price field to cross-check.  Therefore expose
@@ -78,7 +79,7 @@ function wordTokens(name, brand) {
     .map((token) => token.trim())
     .filter(Boolean)
     .filter((token) => token.length >= 2)
-    .filter((token) => !/^\d+(?:\.\d+)?(?:ml|l|g|kg|m|cm|mm|枚|個|本|箱|袋|ロール|巻|パック)?$/i.test(token))
+    .filter((token) => !/^\d+(?:\.\d+)?(?:ml|l|g|kg|m|cm|mm|枚|組|個|コ|本|箱|袋|ロール|巻|パック|セット|w)?(?:入|入り)?$/i.test(token))
     .filter((token) => !GENERIC_WORDS.has(token))
     .filter((token) => compact(token) !== brandKey);
 }
@@ -372,7 +373,11 @@ export function safeMatch(itemName, product) {
   const specs = specTokens(product.name);
 
   const exactName = Boolean(productKey && itemKey.includes(productKey));
-  const brandMatch = Boolean(brandKey && brandKey.length >= 2 && itemKey.includes(brandKey));
+  // Metadata such as "アリエール 液体" describes separate words, not a
+  // contiguous title. Parenthetical Latin translations are not mandatory.
+  // All remaining brand words AND all product identity words still must match.
+  const brandWords = normalize(product.brand).replace(/\([^)]*\)/g, " ").split(/\s+/).filter(Boolean).map(compact);
+  const brandMatch = Boolean(brandWords.length && brandWords.every(word => word.length >= 2 && itemKey.includes(word)));
   let wordMatches = 0;
   for (const word of words) {
     if (itemKey.includes(compact(word))) wordMatches += 1;

@@ -57,6 +57,7 @@ section = f'''
 (() => {{
   const API = {API!r};
   const SHIPPING_API = {SHIPPING_API!r};
+  const VERIFIED_SHIPPING_FALLBACK = 'https://daily-cost-api.stuffedsaurus.workers.dev/api/shipping-lookup';
   const nameEl = document.getElementById('exact-name');
   const storeEl = document.getElementById('exact-store-price');
   const searchBtn = document.getElementById('exact-search');
@@ -134,9 +135,15 @@ section = f'''
     if (p.product_code) params.set('code', p.product_code);
     if (p.name) params.set('name', p.name);
     if (p.brand) params.set('brand', p.brand);
-    const response = await fetch(`${{SHIPPING_API}}?${{params.toString()}}`, {{mode:'cors'}});
-    if (!response.ok) return p;
-    const data = await response.json();
+    let data = null;
+    for (const endpoint of [SHIPPING_API, VERIFIED_SHIPPING_FALLBACK]) {{
+      try {{
+        const response = await fetch(`${{endpoint}}?${{params.toString()}}`, {{mode:'cors'}});
+        if (!response.ok) continue;
+        const candidate = await response.json();
+        if (candidate?.found && Number(candidate.shipping_included_price || 0) > 0) {{data=candidate;break;}}
+      }} catch (err) {{console.warn('Shipping endpoint unavailable');}}
+    }}
     if (data?.found && Number(data.shipping_included_price || 0) > 0) {{
       return window.dailyCostVerifiedOffer({{...p,
         shipping_included_price:Number(data.shipping_included_price),

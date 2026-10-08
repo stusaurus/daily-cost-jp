@@ -57,6 +57,7 @@ script = f"""
 (() => {{
   const API = {API!r};
   const SHIPPING_API = API.replace('/api/product-search', '/api/shipping-lookup');
+  const VERIFIED_SHIPPING_FALLBACK = 'https://daily-cost-api.stuffedsaurus.workers.dev/api/shipping-lookup';
   const FALLBACK_LIMIT = 20;
   let currentTerm = '';
   let currentPage = 1;
@@ -84,7 +85,8 @@ script = f"""
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   async function fetchPage(term, page) {{
-    const url = `${{API}}?q=${{encodeURIComponent(term)}}&page=${{page}}&hits=30`;
+    const searchTerm = term.replace(/ティッシュペーパー|ティシュー/g, 'ティッシュ');
+    const url = `${{API}}?q=${{encodeURIComponent(searchTerm)}}&page=${{page}}&hits=30`;
     const response = await fetch(url, {{ method: 'GET', mode: 'cors' }});
     if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
     return response.json();
@@ -95,9 +97,17 @@ script = f"""
     if (p.product_code) params.set('code', p.product_code);
     if (p.name) params.set('name', p.name);
     if (p.brand) params.set('brand', p.brand);
-    const response = await fetch(`${{SHIPPING_API}}?${{params.toString()}}`, {{ method: 'GET', mode: 'cors' }});
-    if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
-    return response.json();
+    // Keep the working legacy product API and its priced offers as primary.
+    // The corrected matcher is consulted only when no verified offer exists.
+    for (const endpoint of [SHIPPING_API, VERIFIED_SHIPPING_FALLBACK]) {{
+      try {{
+        const response = await fetch(`${{endpoint}}?${{params.toString()}}`, {{ method: 'GET', mode: 'cors' }});
+        if (!response.ok) continue;
+        const data = await response.json();
+        if (data?.found && Number(data.shipping_included_price || 0) > 0) return data;
+      }} catch (err) {{ console.warn('Shipping endpoint unavailable'); }}
+    }}
+    return {{found:false}};
   }}
 
   function liveCard(p) {{
@@ -213,6 +223,9 @@ script = f"""
     setBusy(true);
     try {{
       const data = await fetchPage(currentTerm, currentPage);
+      // Enter can start another query while an earlier fetch is in flight.
+      // Never render the earlier query's prices/URLs under the new query label.
+      if (generation !== searchGeneration) return;
       let rows = Array.isArray(data.products) ? data.products.map(window.dailyCostVerifiedOffer) : [];
       let fallbackCount = 0;
       rows = rows.map((p) => {{
@@ -239,7 +252,7 @@ script = f"""
       }}
       loadMore.style.display = 'none';
     }} finally {{
-      setBusy(false);
+      if (generation === searchGeneration) setBusy(false);
     }}
   }}
 
