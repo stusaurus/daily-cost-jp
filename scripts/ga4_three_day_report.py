@@ -126,6 +126,42 @@ def make_report(click_rows, session_rows, expected_dates, operator_dimension):
     }
 
 
+
+def markdown_report(result):
+    """Short Japanese report visible in GitHub Actions without ZIP download."""
+    summary = result["summary"]
+    fmt = lambda value: "不明" if value is None else str(value)
+    lines = [
+        "## 日用品サイト：GA4 3日間の読み取り専用分析",
+        "",
+        f"- 対象期間：{summary['period'][0]} ～ {summary['period'][1]}",
+        f"- 判定：**{summary['status']}**",
+        f"- 本番サイトの総クリック（テスト含む）：**{summary['production_raw_clicks']}件**",
+        f"- 運営者テストと判明したクリック：{summary['known_operator_test_clicks']}件",
+        f"- テストではない可能性があるクリック：{fmt(summary['provisional_non_operator_clicks'])}件（未検証）",
+        f"- テスト区分不明のクリック：{summary['unknown_operator_clicks']}件",
+        f"- 本番サイトのセッション：{fmt(summary['sessions'])}",
+        f"- 調査の候補：{summary['recommended_action']}",
+        "- 売上：**未取得**（クリックと購入は別）",
+        "",
+        "| 日付 | 本番クリック | テスト | 区分不明 | セッション |",
+        "|---|---:|---:|---:|---:|",
+    ]
+    for day in result["days"]:
+        b = day["click_buckets"]
+        total = sum(b[k] for k in ("production_operator", "production_non_operator", "production_unknown"))
+        lines.append(
+            f"| {day['date']} | {total} | {b['production_operator']} | "
+            f"{b['production_unknown']} | {fmt(day['site_sessions'])} |"
+        )
+    lines += [
+        "",
+        f"**注意：** {summary['reason'] or 'すべて暫定値。購入・収益の証拠ではありません。'}",
+        "",
+        "自動的な商品修正・リンク変更・サイト公開は行っていません。",
+    ]
+    return "\n".join(lines) + "\n"
+
 def fetch():
     property_id = os.environ["GA4_PROPERTY_ID"]
     if not property_id.isdigit():
@@ -202,6 +238,9 @@ def fetch():
     Path("audit-results").mkdir(exist_ok=True)
     path = Path("audit-results/ga4-three-day-report.json")
     path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    Path("audit-results/ga4-three-day-report.md").write_text(
+        markdown_report(result), encoding="utf-8"
+    )
     summary = result["summary"]
     print(
         f"GA4 3-day read-only audit: {summary['status']}; "
