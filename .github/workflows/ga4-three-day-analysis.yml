@@ -295,3 +295,49 @@ jobs:
             audit-results/health.json
           if-no-files-found: warn
           retention-days: 30
+
+  safe-repair-preparation:
+    name: Classify and prepare at most one tested Draft PR (never deploy)
+    needs: [cadence, operations-priority]
+    if: always() && needs.cadence.outputs.due == 'true' && needs.operations-priority.result == 'success' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v4
+        with:
+          name: autonomous-operations-triage
+          path: audit-results
+      - name: Install fixed test dependencies without project scripts
+        run: |
+          python3 -m pip install -r requirements-render.txt
+          npm ci --ignore-scripts
+      - name: Classify findings and apply only the approved documentation recipe
+        run: |
+          python3 scripts/autonomous_operations_step2.py prepare
+          cat audit-results/step2-plan.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Run complete tests on candidate before any PR API write
+        run: python3 scripts/check_step2_candidate.py
+      - name: Create Draft only after tests; deduplicate including closed PRs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/autonomous_operations_step2.py publish
+      - name: Preserve decisions, test receipt and publication result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-operations-step2
+          path: audit-results/step2-*
+          retention-days: 30
