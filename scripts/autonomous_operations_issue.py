@@ -16,6 +16,9 @@ ISSUE_TITLE = "【自動運営】日用品サイトの改善判断（最新）"
 MARKER = "<!-- daily-cost-autonomous-operations-v1 -->"
 TAG_RE = re.compile(r"<!-- findings-hash:([a-f0-9]{20}) -->")
 API = "https://api.github.com/repos/" + REPO
+# A 100-PR GitHub page can exceed 250 KB; cap the full response, not its JSON.
+# Refuse oversized payloads rather than parsing a truncated response or writing a PR.
+MAX_RESPONSE_BYTES = 8 * 1024 * 1024
 
 
 def should_update(existing, fingerprint, now=None):
@@ -74,7 +77,9 @@ def github_request(path, token, method="GET", payload=None):
         "User-Agent": "DailyCost-AutoOperations/1.0",
     })
     with urlopen(request, timeout=20) as response:
-        body = response.read(250_000)
+        body = response.read(MAX_RESPONSE_BYTES + 1)
+    if len(body) > MAX_RESPONSE_BYTES:
+        raise ValueError("GitHub API response exceeds the safe size limit")
     return json.loads(body)
 
 
