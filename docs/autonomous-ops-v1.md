@@ -27,3 +27,16 @@ Status: experiment only. No automatic production code changes.
 
 ## Next implementation
 Inventory current workflows and test commands, then implement a non-mutating GitHub Actions workflow on this branch. Avoid duplicate schedules and preserve the production workflows.
+
+## Revenue optimization loop (every 3 days)
+
+- Schedule every 3 days, with manual trigger available; persist last successful evaluation timestamp so runs cannot silently skip periods.
+- Compare trailing 3/7/28 day windows with prior comparable periods, taking data freshness and reporting delays into account.
+- Revenue source of truth: verified affiliate conversion/commission report when connected. GA4 affiliate_click is only an outbound click, not a sale. If no verified report, mark revenue as UNKNOWN, never zero.
+- Diagnose funnel in order: measurement health -> impressions -> organic visits -> product availability -> outbound clicks -> verified orders/commission.
+- Treat low traffic and insufficient sample size as INSUFFICIENT_EVIDENCE; avoid speculative automatic changes.
+- Keep an experiment log with hypothesis, baseline, change, guardrails, result and rollback decision. Do not repeat failed experiments without new evidence.
+- Safe auto-changes require allowlist, deterministic tests, preview, rollback and bounded change frequency. Pricing, product matching, affiliate attribution, tracking and material design changes require human approval.
+- AI API optional, disabled by default until explicit budget ceiling, credentials, and privacy review are set. Use deterministic checks first.
+- Never weaken product quality rules to increase clicks or apparent revenue.
+- Report succinctly: revenue VERIFIED_ZERO / VERIFIED_POSITIVE / UNKNOWN, likely bottleneck, evidence, action taken, next check.
