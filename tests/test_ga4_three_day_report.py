@@ -17,7 +17,8 @@ SITE = "https://stusaurus.github.io/daily-cost-jp/categories/tissue/"
 
 class ThreeDayReportTests(unittest.TestCase):
     def test_window_allows_ga4_reporting_delay(self):
-        self.assertEqual(module.window(dt.date(2026, 10, 10)), DAYS)
+        self.assertEqual(module.window(dt.date(2026, 10, 10)), [
+            dt.date(2026, 10, 6), dt.date(2026, 10, 7), dt.date(2026, 10, 8)])
 
     def test_scopes_events_and_excludes_operator_tests(self):
         report = module.make_report(
