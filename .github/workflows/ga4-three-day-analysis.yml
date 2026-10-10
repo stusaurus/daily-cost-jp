@@ -1,0 +1,102 @@
+name: GA4 Three-Day Read-Only Analysis
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ga4-three-day-analysis.yml'
+  schedule:
+    # 10:27 JST each day; a date gate below allows the authenticated run every 3 days.
+    - cron: '27 1 * * *'
+  pull_request:
+    paths:
+      - 'scripts/ga4_three_day_report.py'
+      - 'tests/test_ga4_three_day_report.py'
+      - '.github/workflows/ga4-three-day-analysis.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ga4-three-day-readonly
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate offline analysis
+        run: python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+
+  cadence:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      due: ${{ steps.check.outputs.due }}
+    steps:
+      - name: Choose 3-day JST reporting cadence
+        id: check
+        env:
+          RUN_EVENT: ${{ github.event_name }}
+        run: |
+          python3 - <<'PY'
+          import datetime as dt
+          import os
+          from zoneinfo import ZoneInfo
+          today = dt.datetime.now(ZoneInfo("Asia/Tokyo")).date()
+          anchor = dt.date(2026, 10, 10)
+          due = os.environ["RUN_EVENT"] in ("workflow_dispatch", "push") or (today - anchor).days % 3 == 0
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"due={str(due).lower()}\n")
+          print(f"GA4 three-day gate for {today}: {'run' if due else 'skip'}")
+          PY
+
+  report:
+    needs: cadence
+    if: needs.cadence.outputs.due == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ga4-readonly-pilot
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GA4_PROPERTY_ID: '552907444'
+      GCP_WIF_PROVIDER: 'projects/557507311026/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions'
+      GCP_SERVICE_ACCOUNT: 'daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test report logic without GA4 credentials
+        run: python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+      - name: Authenticate to Google using OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install read-only GA4 clients
+        run: python -m pip install 'google-auth>=2,<3' 'google-analytics-data>=0.18,<1'
+      - name: Generate site-specific, test-aware GA4 report
+        run: |
+          python scripts/ga4_three_day_report.py
+          cat audit-results/ga4-three-day-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve machine-readable report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga4-three-day-report
+          path: |
+            audit-results/ga4-three-day-report.json
+            audit-results/ga4-three-day-report.md
+          if-no-files-found: warn
+          retention-days: 30
