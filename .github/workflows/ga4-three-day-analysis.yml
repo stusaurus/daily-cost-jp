@@ -40,6 +40,42 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
           node --test tests/ga4_live_cta_audit.test.cjs
 
+
+  pr-browser-qa:
+    name: Verify new browser QA against production (PR only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright without running project scripts
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Inspect existing categories without affiliate clicks or GA4 access
+        run: node scripts/ga4_live_cta_audit.cjs
+      - name: Save independent, reviewable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-live-cta-qa
+          path: audit-results/live-cta-qa/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Add Japanese summary to PR checks
+        if: always()
+        run: |
+          if [ -f audit-results/live-cta-qa/report.md ]; then
+            cat audit-results/live-cta-qa/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   cadence:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
