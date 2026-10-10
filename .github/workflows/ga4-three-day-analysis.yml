@@ -244,7 +244,7 @@ jobs:
   operations-priority:
     name: Prioritize operations and maintain one rolling issue (no code writes)
     needs: [cadence, report, browser-qa]
-    if: always() && needs.cadence.outputs.due == 'true' && needs.report.result == 'success'
+    if: always() && needs.cadence.outputs.due == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     permissions:
@@ -260,7 +260,8 @@ jobs:
           python-version: '3.12'
       - name: Check offline decision and safety guards
         run: python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
-      - name: Download GA4 and GSC observations from this run
+      - name: Download GA4 and GSC observations if available (missing is reportable)
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: ga4-three-day-report
