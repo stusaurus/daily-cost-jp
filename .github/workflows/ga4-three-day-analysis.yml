@@ -14,6 +14,8 @@ on:
     paths:
       - 'scripts/ga4_three_day_report.py'
       - 'tests/test_ga4_three_day_report.py'
+      - 'scripts/ga4_page_diagnostics.py'
+      - 'tests/test_ga4_page_diagnostics.py'
       - '.github/workflows/ga4-three-day-analysis.yml'
 
 permissions:
@@ -31,7 +33,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate offline analysis
-        run: python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+        run: |
+          python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+          python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
 
   cadence:
     if: github.event_name != 'pull_request'
@@ -75,7 +79,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Test report logic without GA4 credentials
-        run: python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+        run: |
+          python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
+          python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
       - name: Authenticate to Google using OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -90,6 +96,10 @@ jobs:
         run: |
           python scripts/ga4_three_day_report.py
           cat audit-results/ga4-three-day-report.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Generate 7 and 28 day page investigation candidates
+        run: |
+          python scripts/ga4_page_diagnostics.py
+          cat audit-results/ga4-page-diagnostics.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve machine-readable report
         if: always()
         uses: actions/upload-artifact@v4
@@ -98,5 +108,7 @@ jobs:
           path: |
             audit-results/ga4-three-day-report.json
             audit-results/ga4-three-day-report.md
+            audit-results/ga4-page-diagnostics.json
+            audit-results/ga4-page-diagnostics.md
           if-no-files-found: warn
           retention-days: 30
