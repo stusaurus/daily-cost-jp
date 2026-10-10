@@ -10,7 +10,7 @@ Report actual GA4 `affiliate_click` events for `stusaurus.github.io/daily-cost-j
 - Existing `scripts/report_daily_clicks.py` validates `pageLocation` and partitions operator (1), non-operator (0), and unknown. The three-day script reuses this production classifier.
 
 ## Schedule and dates
-The workflow runs a lightweight **date check every day at 10:27 JST**. Only once every 3 JST calendar days does it request Google credentials and read GA4, anchored to 2026-10-10. Manual runs always permit a read-only report. For example, the next automatic evaluation dates after 2026-10-10 are **2026-10-13** and **2026-10-16**, subject to GitHub's scheduled workflow availability.
+The workflow runs a lightweight **date check every day at 10:27 JST**. Only once every 3 JST calendar days does it request Google credentials and read GA4, anchored to 2026-10-10. An initial read-only report also runs automatically when this new workflow is first merged into main (workflow-file push). Manual runs always permit a read-only report. For example, the next automatic evaluation dates after 2026-10-10 are **2026-10-13** and **2026-10-16**, subject to GitHub's scheduled workflow availability.
 
 Every execution analyzes three complete dates **four, three, and two days before** the run in Asia/Tokyo. This gives GA4 extra processing time; the property timezone must be checked before treating dates as an exact coverage guarantee.
 
@@ -39,6 +39,6 @@ A day missing from the sessions report is `null` (unknown), never zero. Truncate
 
 ## First rollout
 1. Require the full PR CI suite and synthetic tests to pass.
-2. Merge the read-only workflow; test manually on main.
+2. Merge the read-only workflow; verify the initial automatically triggered main-branch report. If it is skipped due to GitHub scheduling, trigger manually on main.
 3. Inspect `operator_test_custom_dimension_registered` and `summary.status` before interpreting the click counts. If `DATA_LIMITED`, do not auto-fix measurement settings without review.
 4. Observe the next scheduled run and verify no duplicates or missed windows. Expand to autonomous suggestions only after the metrics are reliable.
