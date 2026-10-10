@@ -138,6 +138,20 @@ class TissueForensicsTests(unittest.TestCase):
         self.assertIn("9月27", module.markdown(result))
         self.assertIn("Googleに記録", module.markdown(result))
 
+    def test_device_totals_mismatch_is_labeled_not_misrepresented(self):
+        data = {
+            "before": make_period(50, mobile=30, pc=5, queries=0),
+            "after": make_period(8, mobile=8, pc=None, queries=0),
+        }
+        result = module.report_for(data, {"status": "NO_INDEX_STATUS"})
+        self.assertEqual(result["device_coverage"]["before"]["status"],
+                         "DIFFERENT_GROUPED_TOTALS")
+        self.assertEqual(result["device_coverage"]["after"]["status"], "MATCHED")
+        message = module.markdown(result)
+        self.assertIn("端末別集計の整合性：DIFFERENT_GROUPED_TOTALS", message)
+        self.assertIn("集計行 0行", message)
+        self.assertIn("実際の検索語総数ではありません", message)
+
     def test_partial_data_report_is_not_sold_as_zero(self):
         before = make_period(12, mobile=10, pc=2)
         after = make_period(2)
