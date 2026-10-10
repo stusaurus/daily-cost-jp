@@ -63,6 +63,24 @@ class Safety(unittest.TestCase):
         self.assertIn('group: daily-cost-step2-token-verification', verification)
         self.assertNotIn('group: ga4-three-day-readonly', verification)
 
+    def test_platform_guard_allows_only_fixed_publisher_opt_out(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/validate-pr.yml').read_text()
+        snippet = workflow.split("          roots = ", 1)[1].split("          PY", 1)[0]
+        snippet = "from pathlib import Path\nroots = " + snippet.replace("\n          ", "\n")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / 'scripts').mkdir()
+            target = root / 'scripts/autonomous_operations_step2.py'
+            target.write_text("marker = '[skip netlify]'\n")
+            def scan():
+                return subprocess.check_output([sys.executable, '-c', snippet], cwd=d, text=True).strip()
+            self.assertEqual(scan(), '')
+            target.write_text("marker = '[skip netlify]'\nurl = 'https://old.netlify.app'\n")
+            self.assertEqual(scan(), 'scripts/autonomous_operations_step2.py')
+            target.write_text("marker = '[skip netlify]'\n")
+            (root / 'scripts/other.py').write_text("marker = '[skip netlify]'\n")
+            self.assertEqual(scan(), 'scripts/other.py')
+
     def test_exact_recipe_and_idempotence(self):
         out = s.classify(report(), s.ANCHOR + '\nExisting policy.\n')
         self.assertEqual(out['decisions'][0]['decision'], 'AUTO_FIX')

@@ -91,4 +91,6 @@ API途中失敗で専用ブランチだけ残った場合は次回EXISTING_BRANC
 
 ### 今回のローカル確認
 
-Python 269件、JavaScript 71件、Python/JavaScript/Worker構文検証は全成功。Pagesのトップ・洗濯洗剤・ティッシュ・トイレットペーパー・quality-status.jsonはHTTP 200で監査前の内容を保存した。両Workerの直接health取得はこの実行環境からCloudflare 403 / error code 1010となり、正常とは認定していない。既存Workerコード・設定・公開先は変更せず、マージ後に既存の読み取り監査runまたは通常の利用環境から再確認する。
+Python 270件、JavaScript 71件、Python/JavaScript/Worker構文検証は全成功。Pagesのトップ・洗濯洗剤・ティッシュ・トイレットペーパー・quality-status.jsonはHTTP 200で監査前の内容を保存した。両Workerの直接health取得はこの実行環境からCloudflare 403 / error code 1010となり、正常とは認定していない。既存Workerコード・設定・公開先は変更せず、マージ後に既存の読み取り監査runまたは通常の利用環境から再確認する。
+
+既存CIのプラットフォーム検査は、自動生成スクリプト内の固定 `[skip netlify]` だけを除去してから検査する。NetlifyのURL・設定や他ファイルの参照は引き続き拒否し、実際の検査snippetを使った回帰テストで確認する。Pages/Worker構成への復帰・変更を許容する例外ではない。
