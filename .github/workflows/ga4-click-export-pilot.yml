@@ -1,0 +1,61 @@
+name: GA4 Click Export Pilot
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/fetch_ga4_clicks.py'
+      - 'tests/test_fetch_ga4_clicks.py'
+      - 'tests/test_evaluate_affiliate_clicks.py'
+      - 'scripts/evaluate_affiliate_clicks.py'
+      - '.github/workflows/ga4-click-export-pilot.yml'
+permissions:
+  contents: read
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline GA4 export tests
+        run: |
+          python3 -m unittest discover -s tests -p 'test_fetch_ga4_clicks.py'
+          python3 -m unittest discover -s tests -p 'test_evaluate_affiliate_clicks.py'
+  export:
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ga4-readonly-pilot
+    env:
+      GA4_PROPERTY_ID: '552907444'
+      GCP_WIF_PROVIDER: 'projects/557507311026/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions'
+      GCP_SERVICE_ACCOUNT: 'daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate configuration
+        run: |
+          test -n "$GA4_PROPERTY_ID" || { echo 'Missing GA4_PROPERTY_ID'; exit 1; }
+          test -n "$GCP_WIF_PROVIDER" || { echo 'Missing GCP_WIF_PROVIDER'; exit 1; }
+          test -n "$GCP_SERVICE_ACCOUNT" || { echo 'Missing GCP_SERVICE_ACCOUNT'; exit 1; }
+      - name: Authenticate to Google (read-only)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analytics clients
+        run: python -m pip install 'google-auth>=2,<3' 'google-analytics-data>=0.18,<1'
+      - name: Export raw GA4 click events
+        run: python scripts/fetch_ga4_clicks.py
+      - name: Save report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga4-clicks-raw
+          path: audit-results/ga4-clicks-raw.json
+          if-no-files-found: ignore
+          retention-days: 7
