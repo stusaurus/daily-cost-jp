@@ -189,6 +189,17 @@ class IssueDedupeTests(unittest.TestCase):
         self.assertEqual(api.call_args.args[0], "/issues/55")
         self.assertEqual(api.call_args.args[2], "PATCH")
 
+    def test_user_closed_issue_is_respected_and_not_recreated(self):
+        prior = {"number": 55, "title": issue.ISSUE_TITLE,
+                 "state": "closed", "body": issue.MARKER,
+                 "html_url": f"https://github.com/{issue.REPO}/issues/55"}
+        with patch.object(issue, "github_request", return_value=[prior]) as api:
+            result = issue.sync_issue(self.report(), "fake", "38048780107",
+                                      "refs/heads/main", issue.REPO)
+        self.assertEqual(result["status"], "CLOSED_BY_USER")
+        self.assertEqual(api.call_count, 1)
+        self.assertEqual(api.call_args.args[0], "/issues?state=all&per_page=100")
+
     def test_duplicate_rolling_issues_fail_closed(self):
         r = self.report()
         duplicate = {"number": 1, "title": issue.ISSUE_TITLE,
