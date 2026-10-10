@@ -43,6 +43,20 @@ const assert=require('node:assert/strict');
        assert.ok(href.startsWith('../../products/?q='),'missing small stock must only link to in-site search');
        assert.match(await sizeBox.innerText(),/候補がありません/);
      }
+     // Final laboratory design removes inline CSS. Assert actual computed
+     // button styling, not merely the existence of HTML class names.
+     const linksToStyle=await sizeBox.locator('a.size-link').evaluateAll(nodes=>nodes.map(node=>{
+       const css=getComputedStyle(node);
+       return {display:css.display,minHeight:parseFloat(css.minHeight),
+               background:css.backgroundColor,decoration:css.textDecorationLine};
+     }));
+     assert.equal(linksToStyle.length,2);
+     for(const appearance of linksToStyle){
+       assert.equal(appearance.display,'inline-flex','tissue CTA lost final shared stylesheet');
+       assert.ok(appearance.minHeight>=44,'tissue CTA tap target shrank');
+       assert.notEqual(appearance.background,'rgba(0, 0, 0, 0)','tissue CTA has no visible background');
+       assert.equal(appearance.decoration,'none','tissue CTA looks like a plain text link');
+     }
      assert.equal(await sizeBox.locator('.tissue-size-card').nth(1).locator('a[href="#tissue"]').count(),1);
    }
    const links=await page.locator('.search-price-group .buy-button').evaluateAll(nodes=>nodes.map(n=>({url:n.href,id:n.dataset.id,price:Number(n.dataset.shippingPrice),name:n.dataset.productName})));
