@@ -6,7 +6,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 import autonomous_operations_step2 as s
@@ -48,6 +47,20 @@ class Safety(unittest.TestCase):
         self.assertIn('persist-credentials: false', job)
         self.assertNotIn('deploy-pages', job)
         self.assertNotIn('pull_request_target', workflow)
+
+    def test_naive_or_malformed_timestamp_rejected(self):
+        for value in [None, 123, '2026-10-10T00:00:00']:
+            with self.assertRaises(ValueError):
+                s.classify({**report(), 'generated_at_utc': value}, s.ANCHOR)
+
+    def test_pr_writes_require_separate_opt_in(self):
+        workflow = (Path(__file__).resolve().parents[1] / '.github/workflows/ga4-three-day-analysis.yml').read_text()
+        self.assertIn("if: vars.STEP2_ENABLE_PR_WRITES == 'true'", workflow)
+        verification = (Path(__file__).resolve().parents[1] / '.github/workflows/step2-token-verification.yml').read_text()
+        self.assertIn('default: false', verification)
+        self.assertNotIn('schedule:', verification)
+        self.assertNotIn('push:', verification)
+        self.assertIn('group: ga4-three-day-readonly', verification)
 
     def test_exact_recipe_and_idempotence(self):
         out = s.classify(report(), s.ANCHOR + '\nExisting policy.\n')
@@ -161,6 +174,87 @@ class Publication(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.publish()
         self.assertEqual(self.calls, [])
+
+    def make_verification(self):
+        Path(s.TARGET).write_text(subprocess.check_output(['git', 'show', 'HEAD:' + s.TARGET]).decode())
+        self.env.update({'GITHUB_EVENT_NAME': 'workflow_dispatch', 'GITHUB_WORKFLOW': s.VERIFY_WORKFLOW,
+                         'STEP2_VERIFY_TOKEN': 'true'})
+        s.prepare_verification(self.env)
+        self.plan = s.read_optional('audit-results/step2-plan.json')
+        self.receipt = {'base_sha': self.plan['base_sha'], 'candidate_hash': self.plan['candidate_hash'], 'tests': 'PASS'}
+
+    def test_manual_token_verification_uses_same_tested_publisher(self):
+        self.make_verification()
+        def api(path, token, method='GET', payload=None):
+            if path == '/pulls/123':
+                return {'draft': True, 'auto_merge': None, 'user': {'login': 'github-actions[bot]'},
+                        'base': {'ref': 'main'}, 'head': {'sha': 'new-object'}}
+            if path == '/pulls/123/files?per_page=100':
+                return [{'filename': s.VERIFY_TARGET, 'status': 'added'}]
+            value = self.request(path, token, method, payload)
+            if path == '/pulls':
+                self.assertIn('DO NOT MERGE', payload['title'])
+                self.assertEqual(payload['draft'], True)
+                value['number'] = 123
+            return value
+        result = s.publish(self.plan, self.receipt, 'token', self.env, api)
+        self.assertEqual(result['status'], 'DRAFT_CREATED')
+        tree = next(c for c in self.calls if c[0] == '/git/trees')[2]['tree']
+        self.assertEqual(tree, [{'path': s.VERIFY_TARGET, 'mode': '100644', 'type': 'blob', 'content': s.VERIFY_CONTENT}])
+        self.assertEqual(s.publish(self.plan, self.receipt, 'token', self.env, api)['status'], 'DUPLICATE_OR_DISMISSED')
+
+    def test_scheduled_or_unconfirmed_verification_forbidden(self):
+        with self.assertRaises(ValueError):
+            s.prepare_verification(self.env)
+        self.make_verification()
+        self.env['STEP2_VERIFY_TOKEN'] = 'false'
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.env['STEP2_VERIFY_TOKEN'] = 'true'
+        self.env['GITHUB_EVENT_NAME'] = 'schedule'
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(self.calls, [])
+
+    def test_fixed_verification_file_cannot_be_overwritten_or_tampered(self):
+        self.make_verification()
+        with self.assertRaises(ValueError):
+            s.prepare_verification(self.env)
+        Path(s.VERIFY_TARGET).write_text('arbitrary code or content')
+        with self.assertRaises(ValueError):
+            self.publish()
+        self.assertEqual(self.calls, [])
+
+    def test_verification_checks_real_pr_state_and_diff(self):
+        self.make_verification()
+        def api(path, token, method='GET', payload=None):
+            if path == '/pulls/123':
+                return {'draft': False, 'auto_merge': None}
+            value = self.request(path, token, method, payload)
+            if path == '/pulls':
+                value['number'] = 123
+            return value
+        with self.assertRaises(ValueError):
+            s.publish(self.plan, self.receipt, 'token', self.env, api)
+
+    def test_verification_rejects_auto_merge_wrong_author_and_wrong_files(self):
+        self.make_verification()
+        good = {'draft': True, 'auto_merge': None, 'user': {'login': 'github-actions[bot]'},
+                'base': {'ref': 'main'}, 'head': {'sha': 'new-object'}}
+        for mutation in [{'auto_merge': {}}, {'user': {'login': 'other'}}, {'base': {'ref': 'other'}},
+                         {'head': {'sha': 'wrong'}}, {'files': 'wrong'}]:
+            self.prs = []
+            def api(path, token, method='GET', payload=None):
+                if path == '/pulls/123':
+                    return {**good, **{k: v for k, v in mutation.items() if k != 'files'}}
+                if path == '/pulls/123/files?per_page=100':
+                    return [{'filename': 'price.json', 'status': 'added'}]
+                value = self.request(path, token, method, payload)
+                if path == '/pulls':
+                    value['number'] = 123
+                return value
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                s.publish(self.plan, self.receipt, 'token', self.env, api)
 
     def test_price_code_untracked_or_tampered_diff_forbidden(self):
         for path in [Path('price.json'), Path(s.TARGET)]:

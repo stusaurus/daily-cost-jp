@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 import subprocess
-from autonomous_operations_step2 import TARGET, digest, git, read_optional
+from autonomous_operations_step2 import candidate_target, digest, git, read_optional
 
 COMMANDS = [
     ['python3', '-m', 'unittest', 'discover', '-s', 'tests'],
@@ -22,7 +22,7 @@ def main():
         subprocess.run(['node', '--check', str(path)], check=True)
     plan = read_optional('audit-results/step2-plan.json')
     if plan and plan.get('recipe'):
-        if digest(Path(TARGET).read_text()) != plan['candidate_hash'] or git('rev-parse', 'HEAD') != plan['base_sha']:
+        if digest(Path(candidate_target(plan)).read_text(encoding='utf-8')) != plan['candidate_hash'] or git('rev-parse', 'HEAD') != plan['base_sha']:
             raise ValueError('Candidate changed during testing')
         receipt.write_text(json.dumps({'base_sha': plan['base_sha'], 'candidate_hash': plan['candidate_hash'], 'tests': 'PASS'}))
     print('STEP 2 fixed validation suite: PASS')

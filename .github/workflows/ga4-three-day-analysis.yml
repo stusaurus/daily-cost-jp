@@ -331,9 +331,20 @@ jobs:
       - name: Run complete tests on candidate before any PR API write
         run: python3 scripts/check_step2_candidate.py
       - name: Create Draft only after tests; deduplicate including closed PRs
+        if: vars.STEP2_ENABLE_PR_WRITES == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 scripts/autonomous_operations_step2.py publish
+      - name: Record disabled writes while awaiting real-token verification
+        if: vars.STEP2_ENABLE_PR_WRITES != 'true'
+        run: |
+          python3 - <<'PY2'
+          import json
+          from pathlib import Path
+          result = {'status': 'PR_WRITES_DISABLED_PENDING_TOKEN_VERIFICATION'}
+          Path('audit-results/step2-result.json').write_text(json.dumps(result, indent=2))
+          PY2
+          echo 'STEP 2 PR writes disabled: verify real workflow token, then explicitly enable STEP2_ENABLE_PR_WRITES.' >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve decisions, test receipt and publication result
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,0 +1,76 @@
+name: STEP 2 Token Verification (manual, never merge)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_documentation_only_draft:
+        description: 'Create one DO NOT MERGE Draft PR containing only a fixed verification document'
+        type: boolean
+        required: true
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/step2-token-verification.yml'
+      - 'scripts/autonomous_operations_step2.py'
+      - 'scripts/check_step2_candidate.py'
+      - 'tests/test_autonomous_operations_step2.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ga4-three-day-readonly
+  cancel-in-progress: false
+
+jobs:
+  offline-verification:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests -p 'test_autonomous_operations_step2.py'
+
+  verify-token:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_documentation_only_draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install fixed test dependencies
+        run: |
+          python3 -m pip install -r requirements-render.txt
+          npm ci --ignore-scripts
+      - name: Prepare the fixed new verification document only
+        env:
+          STEP2_VERIFY_TOKEN: 'true'
+        run: python3 scripts/autonomous_operations_step2.py prepare-verification
+      - name: Test exact candidate before GitHub writes
+        run: python3 scripts/check_step2_candidate.py
+      - name: Create one Draft and verify its state and file diff with real workflow token
+        env:
+          STEP2_VERIFY_TOKEN: 'true'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 scripts/autonomous_operations_step2.py publish
+          cat audit-results/step2-result.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve exact candidate test and PR evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step2-token-verification
+          path: audit-results/step2-*
+          retention-days: 30
