@@ -173,6 +173,18 @@ def report_for(data, inspection):
         }
     if not isinstance(inspection, dict):
         raise ValueError("Inspection status missing")
+    coverage = {}
+    for key in PERIODS:
+        agg = data[key]["aggregate"]["metrics"]
+        observed = data[key]["devices"]["devices"]
+        device_sum = sum(v["impressions"] for v in observed.values() if v is not None)
+        coverage[key] = {
+            "rows": data[key]["devices"]["returned_rows"],
+            "device_impressions": device_sum,
+            "aggregate_impressions": agg["impressions"] if agg else None,
+            "status": ("UNKNOWN" if agg is None else
+                       "MATCHED" if device_sum == agg["impressions"] else "DIFFERENT_GROUPED_TOTALS"),
+        }
     return {
         "source": "GSC Search Analytics + URL Inspection read-only",
         "site": SITE, "page": PAGE, "historical_windows": PERIODS,
@@ -181,16 +193,7 @@ def report_for(data, inspection):
         "observed_query_coverage": {
             name: data[name]["anonymous_queries"] for name in PERIODS
         },
-        "device_coverage": {name: {
-            "rows": data[name]["devices"]["returned_rows"],
-            "device_impressions": sum(
-                v["impressions"] for v in data[name]["devices"]["devices"].values() if v
-            ),
-            "aggregate_impressions": (
-                data[name]["aggregate"]["metrics"]["impressions"] if
-                data[name]["aggregate"]["metrics"] else None
-            ),
-        } for name in PERIODS},
+        "device_coverage": coverage,
         "index_inspection": inspection,
         "not_historical_index_proof": True,
         "no_keyword_strings_exported": True,
@@ -238,6 +241,14 @@ def markdown(out):
                      fmt(v["before"]["impressions"] if v["before"] else None) +
                      " | " + fmt(v["after"]["impressions"] if v["after"] else None) +
                      " | " + fmt(v["impression_change"]) + " |")
+    for key, label in (("before", "前期"), ("after", "後期")):
+        info = out["device_coverage"][key]
+        lines.append("- " + label + "の端末別集計の整合性：" + info["status"])
+    lines += ["", "### 検索クエリの取得範囲（検索語は非公開）"]
+    for key, label in (("before", "前期"), ("after", "後期")):
+        query = out["observed_query_coverage"][key]
+        lines.append("- " + label + "：APIで取得できた検索語の集計行 " +
+                     str(query["rows_returned"]) + "行。実際の検索語総数ではありません。")
     lines += ["", "### Googleのインデックス情報（現在の状態）", ""]
     ix = out["index_inspection"]
     lines.append("- 状態：" + ix.get("status", "UNKNOWN"))
