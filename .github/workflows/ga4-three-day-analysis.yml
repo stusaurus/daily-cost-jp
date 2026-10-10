@@ -82,12 +82,16 @@ jobs:
       - name: Install read-only GA4 clients
         run: python -m pip install 'google-auth>=2,<3' 'google-analytics-data>=0.18,<1'
       - name: Generate site-specific, test-aware GA4 report
-        run: python scripts/ga4_three_day_report.py
+        run: |
+          python scripts/ga4_three_day_report.py
+          cat audit-results/ga4-three-day-report.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve machine-readable report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ga4-three-day-report
-          path: audit-results/ga4-three-day-report.json
+          path: |
+            audit-results/ga4-three-day-report.json
+            audit-results/ga4-three-day-report.md
           if-no-files-found: warn
           retention-days: 30
