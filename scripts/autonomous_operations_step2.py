@@ -206,7 +206,7 @@ def publish(plan, receipt, token, env, request=github_request):
     base = request('/git/commits/' + sha, token)
     tree = request('/git/trees', token, 'POST', {'base_tree': base['tree']['sha'], 'tree': [
         {'path': target, 'mode': '100644', 'type': 'blob', 'content': candidate}]})
-    commit = request('/git/commits', token, 'POST', {'message': 'docs: restore operations safety review policy',
+    commit = request('/git/commits', token, 'POST', {'message': ('docs: verify workflow token' if verification else 'docs: restore operations safety review policy') + ' [skip netlify]',
                     'tree': tree['sha'], 'parents': [sha]})
     # Create branch at main, then advance it; never touch main or a deployment ref.
     request('/git/refs', token, 'POST', {'ref': 'refs/heads/' + branch, 'sha': sha})
@@ -227,7 +227,7 @@ def publish(plan, receipt, token, env, request=github_request):
         title = '[DO NOT MERGE] STEP 2 workflow token verification'
         body = marker + '\n\nMANUAL TOKEN VERIFICATION — DO NOT MERGE.\n\n' + body.split('\n\n', 1)[1]
     pr = request('/pulls', token, 'POST', {'head': branch, 'base': 'main', 'draft': True,
-                 'title': title, 'body': body})
+                 'title': title + ' [skip netlify]', 'body': body})
     if verification:
         confirmed = request('/pulls/' + str(pr['number']), token)
         if (confirmed.get('draft') is not True or 'auto_merge' not in confirmed or confirmed['auto_merge'] is not None or

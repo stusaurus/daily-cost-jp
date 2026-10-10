@@ -195,10 +195,12 @@ class Publication(unittest.TestCase):
             if path == '/pulls':
                 self.assertIn('DO NOT MERGE', payload['title'])
                 self.assertEqual(payload['draft'], True)
+                self.assertTrue(payload['title'].endswith('[skip netlify]'))
                 value['number'] = 123
             return value
         result = s.publish(self.plan, self.receipt, 'token', self.env, api)
         self.assertEqual(result['status'], 'DRAFT_CREATED')
+        self.assertTrue(next(c for c in self.calls if c[0] == '/git/commits')[2]['message'].endswith('[skip netlify]'))
         tree = next(c for c in self.calls if c[0] == '/git/trees')[2]['tree']
         self.assertEqual(tree, [{'path': s.VERIFY_TARGET, 'mode': '100644', 'type': 'blob', 'content': s.VERIFY_CONTENT}])
         self.assertEqual(s.publish(self.plan, self.receipt, 'token', self.env, api)['status'], 'DUPLICATE_OR_DISMISSED')

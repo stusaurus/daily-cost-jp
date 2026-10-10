@@ -62,7 +62,7 @@ UIの変更を扱うレシピは未登録。文書だけの修正にはPlaywrigh
 
 branch-protection専用APIは接続の管理権限不足で403。そのため権限を変更せず、一般branches/main APIの保護情報で必須チェック状態を確認した。GitHubによる必須レビューの強制は設定されていないため、承認待ちはこの作業の運用方針とDraft生成により維持する。保護設定を弱めたり成功statusで失敗を偽装したりしない。
 
-Netlifyは現行のGitHub Pages/Cloudflare Workerとは別の旧プロジェクト。PR #75の題名に公式の `[skip netlify]` を追加し、新しいPreviewの実行を抑止する。旧失敗の履歴は削除・偽装しない。旧連携全体の停止はこの接続の書き込みツールでは扱えず、管理画面は認証待ちのため未実施。ログイン済み管理者がdaily-cost-apiのBuild settingsでStop buildsを選択する場合も、サイト削除、環境変数削除、ドメイン変更、アプリ全体のアンインストールは不要。このPRではそれらの操作を行わない。スキップは今回のPRに限定されるため、将来の自動生成PRにも旧statusが付く可能性は残る。
+Netlifyは現行のGitHub Pages/Cloudflare Workerとは別の旧プロジェクト。PR #75の題名に公式の `[skip netlify]` を追加し、新しいPreviewの実行を抑止する。旧失敗の履歴は削除・偽装しない。旧連携全体の停止はこの接続の書き込みツールでは扱えず、管理画面は認証待ちのため未実施。ログイン済み管理者がdaily-cost-apiのBuild settingsでStop buildsを選択する場合も、サイト削除、環境変数削除、ドメイン変更、アプリ全体のアンインストールは不要。このPRではそれらの操作を行わない。同じNetlify専用スキップをSTEP 2が生成する両種類のDraftの題名・コミットにも付与し、旧Preview/buildの起動を抑止する。GitHub Actionsをスキップする指定は付けない。STEP 2以外のPRやpushに対する旧連携は残る。
 
 公式参照：https://docs.netlify.com/deploy/manage-deploys/manage-deploys-overview/
 
