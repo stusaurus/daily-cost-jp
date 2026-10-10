@@ -18,6 +18,8 @@ on:
       - 'tests/test_ga4_page_diagnostics.py'
       - 'scripts/gsc_readonly_pilot.py'
       - 'tests/test_gsc_readonly_pilot.py'
+      - 'scripts/gsc_daily_search.py'
+      - 'tests/test_gsc_daily_search.py'
       - 'scripts/search_affiliate_joint_report.py'
       - 'tests/test_search_affiliate_joint_report.py'
       - 'scripts/ga4_live_cta_audit.cjs'
@@ -43,6 +45,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
           node --test tests/ga4_live_cta_audit.test.cjs
 
@@ -128,6 +131,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
       - name: Authenticate to Google using OIDC
         uses: google-github-actions/auth@v2
@@ -154,6 +158,17 @@ jobs:
           if [ -f audit-results/gsc-search-pilot.md ]; then
             cat audit-results/gsc-search-pilot.md >> "$GITHUB_STEP_SUMMARY"
           fi
+      - name: Investigate daily search impressions on key categories (read-only)
+        continue-on-error: true
+        run: |
+          if [ -f audit-results/gsc-search-pilot.json ]; then
+            python scripts/gsc_daily_search.py
+            if [ -f audit-results/gsc-daily-search-change.md ]; then
+              cat audit-results/gsc-daily-search-change.md >> "$GITHUB_STEP_SUMMARY"
+            fi
+          else
+            echo "Search Console日別レポート：未取得。0回と判定しません。" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Rank GSC + GA4 page investigation hypotheses
         run: |
           python scripts/search_affiliate_joint_report.py
@@ -170,6 +185,8 @@ jobs:
             audit-results/ga4-page-diagnostics.md
             audit-results/gsc-search-pilot.json
             audit-results/gsc-search-pilot.md
+            audit-results/gsc-daily-search-change.json
+            audit-results/gsc-daily-search-change.md
             audit-results/search-affiliate-joint.json
             audit-results/search-affiliate-joint.md
           if-no-files-found: warn
