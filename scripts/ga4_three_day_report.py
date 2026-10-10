@@ -21,9 +21,9 @@ METRIC_KEYS = (
 
 
 def window(today):
-    """Use 3 older completed JST days, allowing GA4 reporting latency."""
-    end = today - dt.timedelta(days=3)
-    start = today - dt.timedelta(days=5)
+    """Use 3 completed JST days ending 2 days ago, allowing GA4 reporting latency."""
+    end = today - dt.timedelta(days=2)
+    start = today - dt.timedelta(days=4)
     return [start + dt.timedelta(days=i) for i in range(3)]
 
 
@@ -114,7 +114,7 @@ def make_report(click_rows, session_rows, expected_dates, operator_dimension):
     return {
         "source": "GA4 Data API",
         "site_scope": PROJECT_SITE,
-        "window_policy": "JST days 5 through 3 before run; check GA4 property timezone",
+        "window_policy": "JST days 4 through 2 before run; check GA4 property timezone",
         "operator_test_custom_dimension_registered": operator_dimension,
         "days": [
             {"date": day.isoformat(), "click_buckets": buckets[day.isoformat()],
