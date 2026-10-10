@@ -87,7 +87,8 @@ def sync_issue(report, token, run_id, ref, repository):
         raise ValueError("Invalid GitHub Actions run ID")
     url = f"https://github.com/{REPO}/actions/runs/{run_id}"
     body = render_issue(report, url)
-    data = github_request("/issues?state=open&per_page=100", token)
+    # Include closed reports so a deliberate user dismissal is never recreated.
+    data = github_request("/issues?state=all&per_page=100", token)
     if not isinstance(data, list):
         raise ValueError("Invalid existing-issue listing")
     matches = [issue for issue in data if isinstance(issue, dict) and
@@ -97,6 +98,8 @@ def sync_issue(report, token, run_id, ref, repository):
         raise ValueError("Duplicate rolling issues need manual cleanup; refuse creating more")
     if matches:
         issue = matches[0]
+        if issue.get("state") == "closed":
+            return {"status": "CLOSED_BY_USER", "url": issue.get("html_url", "")}
         if not should_update(issue, report["fingerprint"]):
             return {"status": "UNCHANGED", "url": issue.get("html_url", "")}
         response = github_request(f"/issues/{issue['number']}", token, "PATCH", {"body": body})
