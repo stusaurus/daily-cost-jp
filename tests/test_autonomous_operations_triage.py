@@ -134,8 +134,8 @@ class PriorityTests(unittest.TestCase):
         response.status = 200
         response.geturl.return_value = triage.QUALITY_URL
         response.read.return_value = json.dumps(src).encode()
-        response.__enter__ = Mock(return_value=response)
-        response.__exit__ = Mock(return_value=False)
+        response.__enter__ = MagicMock(return_value=response)
+        response.__exit__ = MagicMock(return_value=False)
         with patch.object(triage, "urlopen", return_value=response):
             self.assertEqual(triage.fetch_public_quality()["status"], "FRESH")
         src["updated_at"] = (now - dt.timedelta(days=10)).isoformat()
