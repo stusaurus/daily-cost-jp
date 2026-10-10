@@ -37,6 +37,41 @@ test('always inspect the core categories and at most two GA4 candidate extras', 
   assert.equal(selectPages(null).length, 3);
 });
 
+test('trusted GSC+GA4 candidates are inspected before GA4-only extras', () => {
+  const joint = {
+    source: 'GA4 + Search Console read-only page triage',
+    status: 'JOINT_PROVISIONAL',
+    top_investigations: [
+      {path: '/categories/laundry/', confidence: 'INVESTIGATION_ONLY'},
+      {path: '/categories/soap/', confidence: 'INVESTIGATION_ONLY'},
+      {path: '//evil.example/', confidence: 'INVESTIGATION_ONLY'},
+      {path: '/today/', confidence: 'INVESTIGATION_ONLY'},
+    ],
+  };
+  const ga4 = {top_investigations: [{page: '/products/'}]};
+  assert.deepEqual(selectPages(ga4, 5, joint), [
+    '/categories/laundry/', '/categories/tissue/', '/categories/toilet-paper/',
+    '/categories/soap/', '/today/',
+  ]);
+});
+
+test('unavailable or untrusted joint data never adds unauthorized paths', () => {
+  const ga4 = {top_investigations: [{page: '/products/'}]};
+  for (const joint of [
+    {source: 'GA4 + Search Console read-only page triage', status: 'GSC_UNAVAILABLE',
+      top_investigations: [{path: '/today/', confidence: 'INVESTIGATION_ONLY'}]},
+    {source: 'untrusted', status: 'JOINT_PROVISIONAL',
+      top_investigations: [{path: '/today/', confidence: 'INVESTIGATION_ONLY'}]},
+    {source: 'GA4 + Search Console read-only page triage', status: 'JOINT_PROVISIONAL',
+      top_investigations: [{path: '/today/', confidence: 'NO_JOINED_DECISION'}]},
+  ]) {
+    assert.deepEqual(selectPages(ga4, 5, joint), [
+      '/categories/laundry/', '/categories/tissue/', '/categories/toilet-paper/',
+      '/products/',
+    ]);
+  }
+});
+
 test('Rakuten link validation is URL and hostname strict; never follows links', () => {
   assert.equal(isRakutenHref('https://hb.afl.rakuten.co.jp/ichiba/abc'), true);
   assert.equal(isRakutenHref('https://item.rakuten.co.jp/seller/item'), true);
