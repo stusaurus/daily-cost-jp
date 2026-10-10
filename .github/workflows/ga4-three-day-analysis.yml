@@ -21,6 +21,9 @@ on:
       - 'scripts/gsc_daily_search.py'
       - 'tests/test_gsc_daily_search.py'
       - 'scripts/search_affiliate_joint_report.py'
+      - 'scripts/autonomous_operations_triage.py'
+      - 'tests/test_autonomous_operations_triage.py'
+      - 'scripts/autonomous_operations_issue.py'
       - 'tests/test_search_affiliate_joint_report.py'
       - 'scripts/ga4_live_cta_audit.cjs'
       - 'tests/ga4_live_cta_audit.test.cjs'
@@ -47,6 +50,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
+          python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
           node --test tests/ga4_live_cta_audit.test.cjs
 
 
@@ -133,6 +137,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
+          python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
       - name: Authenticate to Google using OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -234,3 +239,59 @@ jobs:
           path: audit-results/live-cta-qa/
           if-no-files-found: warn
           retention-days: 14
+
+
+  operations-priority:
+    name: Prioritize operations and maintain one rolling issue (no code writes)
+    needs: [cadence, report, browser-qa]
+    if: always() && needs.cadence.outputs.due == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      issues: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check offline decision and safety guards
+        run: python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
+      - name: Download GA4 and GSC observations if available (missing is reportable)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ga4-three-day-report
+          path: audit-results
+      - name: Download browser observations if available (failure is a finding)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ga4-live-cta-qa
+          path: audit-results/live-cta-qa
+      - name: Independently check public website availability
+        continue-on-error: true
+        run: python3 scripts/autonomous_health_audit.py
+      - name: Build bounded priority queue from independent evidence
+        run: |
+          python3 scripts/autonomous_operations_triage.py
+          cat audit-results/autonomous-operations.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Update only one rolling GitHub issue for material problems
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/autonomous_operations_issue.py
+      - name: Save decision and source audit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-operations-triage
+          path: |
+            audit-results/autonomous-operations.json
+            audit-results/autonomous-operations.md
+            audit-results/health.json
+          if-no-files-found: warn
+          retention-days: 30
