@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/fetch_ga4_clicks.py'
       - 'tests/test_fetch_ga4_clicks.py'
+      - 'tests/test_evaluate_affiliate_clicks.py'
+      - 'scripts/evaluate_affiliate_clicks.py'
       - '.github/workflows/ga4-click-export-pilot.yml'
 permissions:
   contents: read
@@ -14,7 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Offline GA4 export tests
-        run: python3 -m unittest discover -s tests -p 'test_fetch_ga4_clicks.py'
+        run: |
+          python3 -m unittest discover -s tests -p 'test_fetch_ga4_clicks.py'
+          python3 -m unittest discover -s tests -p 'test_evaluate_affiliate_clicks.py'
   export:
     if: github.event_name == 'workflow_dispatch'
     permissions:
