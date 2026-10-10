@@ -1,50 +1,72 @@
 #!/usr/bin/env python3
-"""Fetch read-only GA4 affiliate click counts using GitHub OIDC via Workload Identity Federation.
+"""Read-only GA4 affiliate_click export via GitHub OIDC; no static credential keys.
 
-Requires google-auth and google-analytics-data; no static service account key.
-Environment: GA4_PROPERTY_ID, GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT.
-This is a separate, optional step; fail closed if any credential is missing.
+Output intentionally remains RAW: operator_test exclusion and data completeness
+must be verified before feeding a three-day optimization decision.
 """
-import datetime as dt
 import json
 import os
 from pathlib import Path
 
+
+def normalize(rows):
+    """Normalize GA4 date/event rows without treating absent dates as zero."""
+    counts = {}
+    for date, event, count in rows:
+        if event != "affiliate_click":
+            continue
+        if len(date) != 8 or not date.isdigit():
+            raise ValueError("Unexpected GA4 date")
+        value = int(count)
+        if value < 0:
+            raise ValueError("Negative event count")
+        day = f"{date[:4]}-{date[4:6]}-{date[6:]}"
+        counts[day] = counts.get(day, 0) + value
+    return [{"date": day, "affiliate_click_raw": value} for day, value in sorted(counts.items())]
+
+
 def fetch():
     property_id = os.environ["GA4_PROPERTY_ID"]
-    provider = os.environ["GCP_WIF_PROVIDER"]
-    service_account = os.environ["GCP_SERVICE_ACCOUNT"]
     if not property_id.isdigit():
         raise ValueError("GA4_PROPERTY_ID must be numeric")
-    import google.auth
-    from google.auth import identity_pool
-    from google.analytics.data_v1beta import BetaAnalyticsDataClient
-    from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
-    # google-github-actions/auth creates GOOGLE_APPLICATION_CREDENTIALS for WIF.
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         raise RuntimeError("Workload Identity Federation credentials unavailable")
-    credentials, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/analytics.readonly"])
+
+    import google.auth
+    from google.analytics.data_v1beta import BetaAnalyticsDataClient
+    from google.analytics.data_v1beta.types import DateRange, Dimension, Metric, RunReportRequest
+
+    credentials, _ = google.auth.default(
+        scopes=["https://www.googleapis.com/auth/analytics.readonly"]
+    )
     client = BetaAnalyticsDataClient(credentials=credentials)
-    # GA4 reports are queried by property timezone; do not silently infer JST.
-    req = RunReportRequest(
+    request = RunReportRequest(
         property=f"properties/{property_id}",
         date_ranges=[DateRange(start_date="4daysAgo", end_date="yesterday")],
         dimensions=[Dimension(name="date"), Dimension(name="eventName")],
         metrics=[Metric(name="eventCount")],
         limit=10000,
     )
-    response = client.run_report(req)
-    clicks = {}
-    for row in response.rows:
-        date, event = [v.value for v in row.dimension_values]
-        if event != "affiliate_click":
-            continue
-        key = f"{date[:4]}-{date[4:6]}-{date[6:]}"
-        clicks[key] = clicks.get(key, 0) + int(row.metric_values[0].value)
-    output = {"source": "GA4", "property_id": property_id, "note": "Raw affiliate_click events; operator_test not filtered; data completeness not guaranteed", "days": [{"date": d, "affiliate_click_raw": n} for d,n in sorted(clicks.items())]}
+    response = client.run_report(request)
+    if response.row_count > len(response.rows):
+        raise RuntimeError("GA4 result truncated; cannot trust export")
+    rows = (
+        (row.dimension_values[0].value, row.dimension_values[1].value, row.metric_values[0].value)
+        for row in response.rows
+    )
+    result = {
+        "source": "GA4",
+        "property_id": property_id,
+        "data_status": "RAW_UNVERIFIED",
+        "note": "No operator_test exclusion, session denominator, or verified completeness. Never infer zero sales or zero clicks from missing rows.",
+        "days": normalize(rows),
+    }
     Path("audit-results").mkdir(exist_ok=True)
-    Path("audit-results/ga4-clicks-raw.json").write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("GA4 read-only raw click export created; no revenue inference.")
+    Path("audit-results/ga4-clicks-raw.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    print("Exported unverified GA4 raw clicks; optimization decisions remain disabled.")
+
 
 if __name__ == "__main__":
     fetch()
