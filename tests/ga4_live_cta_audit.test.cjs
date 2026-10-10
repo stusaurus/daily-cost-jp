@@ -150,6 +150,60 @@ test('HTTP failures and duplicate heading are actionable but do not edit product
   assert(result.problems.some(p => p.code === 'HEADING_MISSING_OR_DUPLICATE'));
 });
 
+test('correct live SEO metadata is observed without changing the original CTA verdict', () => {
+  const seo = {
+    title: 'ティッシュはどこが安い？楽天送料込み価格',
+    description: 'ティッシュを1箱あたりで比較。',
+    canonical: 'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',
+    robots: 'index,follow',
+    h1Text: 'ティッシュの値段比較',
+  };
+  assert.deepEqual(assess({...base, seo}), {status: 'PASS', problems: []});
+});
+
+test('missing document title and accidental noindex are blocking SEO issues', () => {
+  const observation = {...base, seo: {
+    title: '', description: '送料込み比較',
+    canonical: 'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',
+    robots: 'INDEX, NOINDEX',
+  }};
+  const result = assess(observation);
+  assert.equal(result.status, 'FAIL');
+  assert(result.problems.some(p => p.code === 'MISSING_SEO_TITLE'));
+  assert(result.problems.some(p => p.code === 'UNEXPECTED_NOINDEX'));
+});
+
+test('missing description and incorrect canonical trigger review, never automatic edits', () => {
+  const result = assess({...base, seo: {
+    title: 'ティッシュの比較', description: '',
+    canonical: 'https://stusaurus.github.io/sotojitaku/',
+    robots: '',
+  }});
+  assert.equal(result.status, 'REVIEW');
+  assert(result.problems.some(p => p.code === 'MISSING_META_DESCRIPTION'));
+  assert(result.problems.some(p => p.code === 'CANONICAL_NEEDS_REVIEW'));
+});
+
+test('SEO report shows checked title and search evidence gap', () => {
+  const record = {...base, seo: {
+    title: 'ティッシュの価格比較', description: '送料込み単価',
+    canonical: 'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',
+    robots: '',
+  }};
+  const output = markdown({
+    generated_at_utc: '2026-10-10T00:00:00Z',
+    pages: [record.path],
+    observations: [{...record, ...assess(record)}],
+    queryEvidenceStatus: 'NO_REPORTABLE_QUERY_ROWS',
+    searchSignals: [{path: record.path, code: 'CHECK_SEARCH_RESULT_APPEAL'}],
+  });
+  assert.match(output, /検索結果向けメタ情報/);
+  assert.match(output, /ティッシュの価格比較/);
+  assert.match(output, /CHECK_SEARCH_RESULT_APPEAL/);
+  assert.match(output, /NO_REPORTABLE_QUERY_ROWS/);
+  assert.match(output, /タイトル・説明文の変更を自動提案・実装しません/);
+});
+
 test('human-readable output clarifies observation is not sales or actual affiliate test', () => {
   const text = markdown({
     generated_at_utc: '2026-10-10T00:00:00Z',
