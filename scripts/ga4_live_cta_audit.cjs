@@ -21,8 +21,15 @@ function isAllowedPath(value) {
     /^\/categories\/[a-z0-9-]+\/$/.test(value);
 }
 
-function selectPages(report, limit = MAX_PAGES, jointReport = null) {
+function selectPages(report, limit = MAX_PAGES, jointReport = null, extraCategories = []) {
   const result = [...CORE];
+  // CI regression targets must still be restricted to local category paths.
+  if (Array.isArray(extraCategories)) {
+    for (const page of extraCategories) {
+      if (typeof page === 'string' && /^\/categories\/[a-z0-9-]+\/$/.test(page) &&
+          !result.includes(page) && result.length < limit) result.push(page);
+    }
+  }
   // Use joined search/affiliate evidence only when both sources were obtained.
   // The shortlist is a path allowlist, not a general web crawler.
   if (jointReport && jointReport.source === 'GA4 + Search Console read-only page triage' &&
@@ -63,7 +70,9 @@ function assess(observation) {
     add('warning', 'HORIZONTAL_OVERFLOW', '表示領域からはみ出す横スクロールがある');
   }
   if (observation.kind === 'category') {
-    if (observation.priceGroups === 0) add('error', 'MISSING_PRODUCT_COMPARISON', '価格比較欄が表示されない');
+    if (observation.coreCategory && observation.priceGroups === 0) {
+      add('error', 'MISSING_PRODUCT_COMPARISON', '主要カテゴリの価格比較欄が表示されない');
+    }
     if (observation.ctaCount === 0) add('error', 'MISSING_RAKUTEN_CTA', '楽天へ進むボタンがない');
     if (observation.hiddenCtaCount === observation.ctaCount && observation.ctaCount > 0) {
       add('error', 'NO_VISIBLE_RAKUTEN_CTA', '楽天ボタンが画面上に表示されない');
@@ -135,6 +144,7 @@ async function inspect(browser, pathname, viewport, outDir) {
   const record = {
     path: pathname, viewport,
     kind: pathname.startsWith('/categories/') ? 'category' : 'general',
+    coreCategory: CORE.includes(pathname),
     httpStatus: null, h1Count: 0, documentWidth: 0,
     priceGroups: 0, ctaCount: 0, hiddenCtaCount: 0,
     tinyCtaCount: 0, invalidHrefCount: 0,
@@ -145,14 +155,20 @@ async function inspect(browser, pathname, viewport, outDir) {
     const response = await page.goto(target, {waitUntil: 'domcontentloaded', timeout: 20000});
     record.httpStatus = response ? response.status() : null;
     await page.waitForTimeout(700);
-    const dom = await page.evaluate(() => {
+    const dom = await page.evaluate(({coreCategory}) => {
       const visible = el => {
         const rect = el.getBoundingClientRect();
         const css = getComputedStyle(el);
         return rect.height > 0 && rect.width > 0 && css.display !== 'none' &&
           css.visibility !== 'hidden' && css.opacity !== '0';
       };
-      const buttons = [...document.querySelectorAll('.search-price-group .buy-button')];
+      // The core 3 categories use a dedicated price-group layout. The other
+      // category pages use ranking cards and text-labelled Rakuten anchors.
+      // Requiring the core markup everywhere falsely flags valid product pages.
+      const buttons = coreCategory ?
+        [...document.querySelectorAll('.search-price-group .buy-button')] :
+        [...document.querySelectorAll('a[href]')].filter(el =>
+          /^楽天で(?:商品を)?確認する/.test((el.textContent || '').trim()));
       return {
         h1Count: document.querySelectorAll('h1').length,
         documentWidth: document.documentElement.scrollWidth,
@@ -162,7 +178,7 @@ async function inspect(browser, pathname, viewport, outDir) {
           return {href: el.href, visible: visible(el), width: rect.width, height: rect.height};
         }),
       };
-    });
+    }, {coreCategory: record.coreCategory});
     record.h1Count = dom.h1Count;
     record.documentWidth = dom.documentWidth;
     record.priceGroups = dom.priceGroups;
@@ -209,7 +225,9 @@ async function main() {
       throw new Error('Unexpected joint analytics report source or site');
     }
   }
-  const pages = selectPages(report, MAX_PAGES, joint);
+  const extraIndex = process.argv.indexOf('--extra-category');
+  const extra = extraIndex >= 0 ? process.argv[extraIndex + 1] : null;
+  const pages = selectPages(report, MAX_PAGES, joint, extra ? [extra] : []);
   const outDir = path.resolve('audit-results/live-cta-qa');
   fs.mkdirSync(outDir, {recursive: true});
   const {chromium} = require('playwright');

@@ -7,6 +7,7 @@
 - GA4の集計結果から高優先度のページを最大2つ追加し、固定の重要3カテゴリ（洗濯洗剤・ティッシュ・トイレットペーパー）と合わせて最大5ページを点検。
 - 画面幅 1440px、390px、320px で実際にGitHub Pagesを開き、スクリーンショットを残す。
 - HTTP 200、主見出し、横スクロール、カテゴリの価格比較欄、楽天購入ボタンの存在・可視性・URL形式・タップ領域を判定。
+- 主要3カテゴリでは従来の価格比較欄を確認。それ以外のカテゴリ（例：お風呂用洗剤）はランキングカード内の「楽天で商品を確認する」リンクを検査し、異なるHTML構造を誤って故障扱いしない。
 - ページのJavaScript例外を記録。警告と重大エラーを区別。
 - GA4で「閲覧数が少ない」とされたページの表示状態も点検するが、「サイト不具合」と「検索流入の不足」は別の問題として扱う。
 
@@ -20,7 +21,7 @@
 - ジョブが失敗しても、可能な範囲でスクリーンショットと集計結果を保存する。
 
 ## 実行場所
-- PR作成時：GA4 Three-Day Read-Only Analysis の Verify new browser QA against production (PR only) が重要3カテゴリを匿名ブラウザで検証。
+- PR作成時：GA4 Three-Day Read-Only Analysis の Verify new browser QA against production (PR only) が重要3カテゴリと、追加の回帰テスト対象（お風呂用洗剤）のランキングカードを匿名ブラウザで検証。
 - 本番反映後：3日間GA4取得ジョブが成功したとき、続く Read-only production browser CTA audit が同じ実行のGA4候補ファイルを取得してPC／スマホ検証。
 - GitHubの Actions → GA4 Three-Day Read-Only Analysis → Summary の日本語表を確認。
 - 画像・JSON・Markdownは ga4-live-cta-qa 成果物として14日間保存。
