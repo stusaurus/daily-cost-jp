@@ -1,0 +1,47 @@
+name: GA4 Click Export Pilot
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ga4-readonly-pilot
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate configuration
+        env:
+          GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          test -n "$GA4_PROPERTY_ID" || { echo 'Missing GA4_PROPERTY_ID'; exit 1; }
+          test -n "$GCP_WIF_PROVIDER" || { echo 'Missing GCP_WIF_PROVIDER'; exit 1; }
+          test -n "$GCP_SERVICE_ACCOUNT" || { echo 'Missing GCP_SERVICE_ACCOUNT'; exit 1; }
+      - name: Authenticate to Google (read-only)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install analytics clients
+        run: python -m pip install 'google-auth>=2,<3' 'google-analytics-data>=0.18,<1'
+      - name: Export raw GA4 click events
+        env:
+          GA4_PROPERTY_ID: ${{ vars.GA4_PROPERTY_ID }}
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: python scripts/fetch_ga4_clicks.py
+      - name: Save report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga4-clicks-raw
+          path: audit-results/ga4-clicks-raw.json
+          if-no-files-found: ignore
+          retention-days: 7
