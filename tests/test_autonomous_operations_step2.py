@@ -60,7 +60,8 @@ class Safety(unittest.TestCase):
         self.assertIn('default: false', verification)
         self.assertNotIn('schedule:', verification)
         self.assertNotIn('push:', verification)
-        self.assertIn('group: ga4-three-day-readonly', verification)
+        self.assertIn('group: daily-cost-step2-token-verification', verification)
+        self.assertNotIn('group: ga4-three-day-readonly', verification)
 
     def test_exact_recipe_and_idempotence(self):
         out = s.classify(report(), s.ANCHOR + '\nExisting policy.\n')

@@ -17,7 +17,7 @@
 3. 変更後に全Python/JS単体・回帰テスト、Python/JS/Worker構文検査を実行。価格、送料、数量、商品照合、楽天リンクの既存テストを含む。成功時だけbase SHAと候補ハッシュに結び付いたreceiptを出力する。
 4. 公開工程は対象ファイル、固定変換の再計算、差分、未知の未追跡ファイル、receiptを再検証。テスト用tokenはなく、GitHub tokenは公開ステップにだけ渡す。
 5. 全PR履歴をページングし、固定fingerprint/branchで閉じたPRも重複抑止。既存の孤立ブランチは上書きせず人の確認へ。mainが動いたら次の分析まで見送る。
-6. mainのSHAから専用ブランチを作成し、最大1件のDraft PRを生成する。main・デプロイ・マージAPIは呼ばない。既存のworkflow concurrencyで生成処理を直列化する。
+6. mainのSHAから専用ブランチを作成し、最大1件のDraft PRを生成する。main・デプロイ・マージAPIは呼ばない。既存のworkflow concurrencyで定期生成処理を直列化する。手動トークン検証は別のconcurrency groupを使い、既存3日分析のpending runを置き換えない。
 7. 分類、テストreceipt、公開結果を30日artifactに残す。失敗時はjobが失敗し、本番は維持。成功したフリや空PRは作らない。
 
 `contents:write / pull-requests:write / actions:read` は定期生成ジョブだけ。手動トークン検証はcontents:write / pull-requests:writeのみ。既存の分析・Issueジョブの権限は維持。リポジトリでActionsのPR作成が禁止されている場合は生成APIが失敗し、実行結果で確認が必要。追加PATは要求しない。

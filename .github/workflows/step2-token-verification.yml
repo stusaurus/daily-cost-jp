@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: ga4-three-day-readonly
+  group: daily-cost-step2-token-verification
   cancel-in-progress: false
 
 jobs:
