@@ -125,6 +125,14 @@ def combine(ga4, gsc):
         page = row.get("page") if isinstance(row, dict) else None
         if safe_path(page):
             ga4_pages[page] = parse_affiliate(row)
+    # Published Search Console rows are threshold-filtered to protect rare
+    # queries. Zero published rows NEVER implies that no real queries exist.
+    safe_queries = (gsc.get("top_queries", []) if gsc_ok else [])
+    if not isinstance(safe_queries, list):
+        raise ValueError("Malformed published GSC query evidence")
+    query_evidence = ("GSC_UNAVAILABLE" if not gsc_ok else
+                      "NO_REPORTABLE_QUERY_ROWS" if not safe_queries else
+                      "SOME_THRESHOLD_FILTERED_QUERY_ROWS")
     gsc_pages = {}
     if gsc_ok:
         for row in gsc["pages"]:
@@ -159,6 +167,9 @@ def combine(ga4, gsc):
         "status": "JOINT_PROVISIONAL" if gsc_ok else "GSC_UNAVAILABLE",
         "gsc_source_status": status,
         "gsc_unavailable_reason": reason if not gsc_ok else None,
+        "gsc_public_query_rows": len(safe_queries),
+        "gsc_query_evidence_status": query_evidence,
+        "seo_copy_change_authorized": False,
         "ga4_source_status": ga4.get("status", "UNKNOWN"),
         "ga4_operator_dimension_registered": operator_known,
         "gsc_period_last_28": gsc.get("windows", {}).get("last_28") if gsc_ok else None,
@@ -190,6 +201,9 @@ def markdown(result):
         "- GA4ページ表示・楽天クリック期間：" + period(result["ga4_period_last_28"]),
         "- **集計期間とユーザー母集団が異なるため、検索→購入の成約率は算出しません。**",
         "- **楽天クリックは売上・購入の証拠ではありません。**",
+        "- 検索クエリの根拠：" + result["gsc_query_evidence_status"] +
+          "（公開可能な集計行：" + str(result["gsc_public_query_rows"]) + "件）",
+        "- **クエリ不足や平均CTRだけでSEOタイトル・説明文を自動変更しません。**",
         "",
         "| ページ | 検索表示（28日） | 検索クリック | 平均掲載順位 | GA4表示（28日） | テスト外楽天クリック（暫定） | 優先調査 |",
         "|---|---:|---:|---:|---:|---:|---|",
