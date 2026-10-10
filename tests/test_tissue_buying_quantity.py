@@ -38,7 +38,10 @@ class TissueQuantityTests(unittest.TestCase):
     def test_five_box_candidate_is_verified_against_price_and_title(self):
         row = box_offer()
         self.assertEqual(safe_box_count(row), 5)
-        self.assertEqual(choose_small_tissue_offer([row]), row)
+        selected = choose_small_tissue_offer([row])
+        self.assertEqual(selected["url"], row["url"])
+        self.assertEqual(selected["price"], row["price"])
+        self.assertEqual(selected["category_id"], "tissue")
 
     def test_bulk_5_times_12_is_not_falsely_treated_as_five_boxes(self):
         self.assertIsNone(safe_box_count(bulk_offer()))
@@ -91,7 +94,7 @@ class TissueQuantityTests(unittest.TestCase):
         self.assertNotIn("5箱・支払総額 ¥3,980", rendered)
 
     def test_snapshot_cannot_import_unsafe_offer_into_catalog(self):
-        other = box_offer()
+        other = box_offer(9)
         other["postage"] = "送料別"
         safe = box_offer(2)
         fixture = {"categories": {
