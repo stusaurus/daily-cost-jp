@@ -98,7 +98,8 @@ def period_totals(page, views, clicks, dates):
     return result
 
 
-def diagnose(stats, operator_registered, coverage_complete):
+def diagnose(stats, operator_registered, recent_days_observed, prior_days_observed):
+    """Conservative investigation hypotheses; unobserved days need not be outages."""
     recent = stats["last_28"]
     current, previous = stats["last_7"], stats["prior_7"]
     views = recent["pageviews"]
@@ -110,32 +111,38 @@ def diagnose(stats, operator_registered, coverage_complete):
         return 1, "CHECK_UNKNOWN_TEST_EVENTS", "テスト区分不明のクリックを確認"
     if total and not views:
         return 1, "CHECK_MEASUREMENT_SCOPE", "クリックとページ表示の計測の整合性を確認"
-    if not coverage_complete:
-        return 2, "CHECK_DATA_COVERAGE", "比較期間に表示データのない日があり判断保留"
-    if (current["pageviews"] >= 20 and previous["pageviews"] >= 30 and
+    if recent_days_observed < 6:
+        return 2, "VERIFY_RECENT_OBSERVATIONS", "直近7日のサイト表示記録が少なく調査保留。アクセス0日の可能性もある"
+    if (current["pageviews"] <= 5 and views >= 8):
+        return 2, "LOW_RECENT_PAGE_EXPOSURE", "直近7日のページ表示が5回以下。検索露出・内部導線を別途確認"
+    if (prior_days_observed >= 6 and
+            current["pageviews"] >= 20 and previous["pageviews"] >= 30 and
             current["pageviews"] * 10 <= previous["pageviews"] * 6):
-        return 2, "INVESTIGATE_PAGEVIEW_DROP", "直近7日で表示が減少。流入元を別途確認"
+        return 2, "INVESTIGATE_PAGEVIEW_DROP", "直近7日の表示が前7日比で減少。流入元を別途確認"
     if views >= 50 and counts["production_non_operator"] == 0:
-        return 2, "AUDIT_CTA_AND_LINKS", "表示はあるがテスト外クリック未観測。購入導線を点検する仮説"
+        return 2, "AUDIT_CTA_AND_LINKS", "28日間で一定の表示があるがテスト外クリック未観測。導線点検の仮説"
     if views >= 100 and counts["production_non_operator"] * 100 < views:
-        return 3, "REVIEW_PRODUCT_FIT", "クリック密度が低い。商品適合性・CTAを調査する仮説"
+        return 3, "REVIEW_PRODUCT_FIT", "表示に比べクリックが少ない。商品適合性・CTAの調査仮説"
     if views < 50:
-        return 4, "OBSERVE_LOW_TRAFFIC", "表示が少なく現時点で導線の良否は判定できない"
+        return 4, "OBSERVE_LOW_TRAFFIC", "28日間の表示が少なく導線の良否は判定できない"
     return 5, "OBSERVE", "問題を特定できるだけの根拠がない"
-
 
 def make_report(click_rows, view_rows, today, operator_registered):
     dates = dates_for(today)
     views, clicks, covered, excluded = process_rows(
         click_rows, view_rows, dates, operator_registered)
     last28 = {d.isoformat() for d in dates[-28:]}
+    last7_days = {d.isoformat() for d in dates[-7:]}
+    prior7_days = {d.isoformat() for d in dates[-14:-7]}
+    recent_days_observed = len(last7_days & covered)
+    prior_days_observed = len(prior7_days & covered)
     coverage_complete = last28.issubset(covered)
     previous28 = {d.isoformat() for d in dates[:-28]}
     previous28_complete = previous28.issubset(covered)
     candidates = []
     for page in set(views) | set(clicks):
         stats = period_totals(page, views, clicks, dates)
-        priority, action, reason = diagnose(stats, operator_registered, coverage_complete)
+        priority, action, reason = diagnose(stats, operator_registered, recent_days_observed, prior_days_observed)
         denom = stats["last_28"]["pageviews"]
         recent_clicks = stats["last_28"]["clicks"]
         candidates.append({
@@ -155,15 +162,16 @@ def make_report(click_rows, view_rows, today, operator_registered):
         "period_last_28": [dates[-28].isoformat(), dates[-1].isoformat()],
         "status": ("NO_PAGEVIEWS" if not covered else
                    "OPERATOR_DIMENSION_UNAVAILABLE" if not operator_registered else
-                   "COVERAGE_UNCERTAIN" if not coverage_complete else "PROVISIONAL"),
+                   "PARTIAL_OBSERVED_DAYS" if not coverage_complete else "PROVISIONAL"),
         "operator_dimension_registered": operator_registered,
         "pageview_dates_observed_in_last_28": len(last28 & covered),
+        "pageview_dates_observed_in_last_7": recent_days_observed,
         "pageview_dates_observed_in_previous_28": len(previous28 & covered),
         "previous_28_coverage_complete": previous28_complete,
         "excluded_clicks": excluded,
         "pages": candidates,
         "top_investigations": candidates[:6],
-        "caveat": "GA4 pageviews are not users or sessions. Clicks/pageviews is not sales conversion. GSC and affiliate commissions not connected. No automatic site modifications.",
+        "caveat": "A day with no pageview row may represent zero pageviews rather than tracking failure. GA4 pageviews are not users or sessions. Clicks/pageviews is not sales conversion. GSC and affiliate commissions not connected. No automatic site modifications.",
     }
 
 
@@ -174,7 +182,9 @@ def markdown_report(report):
         "- **状態：** " + report["status"],
         "- 対象7日間：" + " ～ ".join(report["period_last_7"]),
         "- 対象28日間：" + " ～ ".join(report["period_last_28"]),
+        "- 直近7日で表示記録のある日：" + str(report["pageview_dates_observed_in_last_7"]) + "/7",
         "- 28日間で表示記録のある日：" + str(report["pageview_dates_observed_in_last_28"]) + "/28",
+        "- ※表示記録のない日は、アクセス0件の可能性もあり、計測障害とは断定しません。",
         "- 前28日間で表示記録のある日：" + str(report["pageview_dates_observed_in_previous_28"]) + "/28",
         "- **クリックは購入・売上ではありません。** GA4のみの調査仮説です。",
         "",
