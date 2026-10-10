@@ -94,6 +94,17 @@ class ThreeDayReportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.accumulate_clicks([("20261005", SITE, "0", -1)], DAYS, True)
 
+    def test_human_readable_report_marks_provisional_metrics(self):
+        report = module.make_report(
+            [("20261005", SITE, "1", 1), ("20261005", SITE, "0", 2)],
+            [("20261005", 10), ("20261006", 15), ("20261007", 12)],
+            DAYS, True)
+        markdown = module.markdown_report(report)
+        self.assertIn("3日間", markdown)
+        self.assertIn("テストではない可能性", markdown)
+        self.assertIn("売上：**未取得**", markdown)
+        self.assertIn("自動的な商品修正", markdown)
+
     def test_truncated_result_rejected(self):
         class Response:
             row_count = 12
