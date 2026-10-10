@@ -16,6 +16,8 @@ on:
       - 'tests/test_ga4_three_day_report.py'
       - 'scripts/ga4_page_diagnostics.py'
       - 'tests/test_ga4_page_diagnostics.py'
+      - 'scripts/ga4_live_cta_audit.cjs'
+      - 'tests/ga4_live_cta_audit.test.cjs'
       - '.github/workflows/ga4-three-day-analysis.yml'
 
 permissions:
@@ -36,6 +38,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_ga4_three_day_report.py'
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
+          node --test tests/ga4_live_cta_audit.test.cjs
 
   cadence:
     if: github.event_name != 'pull_request'
@@ -112,3 +115,46 @@ jobs:
             audit-results/ga4-page-diagnostics.md
           if-no-files-found: warn
           retention-days: 30
+
+  browser-qa:
+    name: Read-only production browser CTA audit
+    needs: [cadence, report]
+    if: needs.cadence.outputs.due == 'true' && needs.report.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install browser QA dependencies
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+      - name: Download this run's GA4 page candidates
+        uses: actions/download-artifact@v4
+        with:
+          name: ga4-three-day-report
+          path: audit-results
+      - name: Verify read-only audit helper logic
+        run: node --test tests/ga4_live_cta_audit.test.cjs
+      - name: Open production pages without clicking affiliate links
+        run: node scripts/ga4_live_cta_audit.cjs --ga4 audit-results/ga4-page-diagnostics.json
+      - name: Show Japanese technical findings
+        if: always()
+        run: |
+          if [ -f audit-results/live-cta-qa/report.md ]; then
+            cat audit-results/live-cta-qa/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Save desktop/mobile screenshots and findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ga4-live-cta-qa
+          path: audit-results/live-cta-qa/
+          if-no-files-found: warn
+          retention-days: 14
