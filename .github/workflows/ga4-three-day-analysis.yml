@@ -2,6 +2,11 @@ name: GA4 Three-Day Read-Only Analysis
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ga4-three-day-analysis.yml'
   schedule:
     # 10:27 JST each day; a date gate below allows the authenticated run every 3 days.
     - cron: '27 1 * * *'
@@ -46,7 +51,7 @@ jobs:
           from zoneinfo import ZoneInfo
           today = dt.datetime.now(ZoneInfo("Asia/Tokyo")).date()
           anchor = dt.date(2026, 10, 10)
-          due = os.environ["RUN_EVENT"] == "workflow_dispatch" or (today - anchor).days % 3 == 0
+          due = os.environ["RUN_EVENT"] in ("workflow_dispatch", "push") or (today - anchor).days % 3 == 0
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
               out.write(f"due={str(due).lower()}\n")
           print(f"GA4 three-day gate for {today}: {'run' if due else 'skip'}")
