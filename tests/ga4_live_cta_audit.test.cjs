@@ -5,7 +5,7 @@ const {isAllowedPath, selectPages, isRakutenHref, assess, markdown, safeName} =
   require('../scripts/ga4_live_cta_audit.cjs');
 
 const base = {
-  path: '/categories/tissue/', viewport: 390, kind: 'category',
+  path: '/categories/tissue/', viewport: 390, kind: 'category', coreCategory: true,
   httpStatus: 200, h1Count: 1, documentWidth: 390,
   priceGroups: 3, ctaCount: 4, hiddenCtaCount: 0,
   tinyCtaCount: 0, invalidHrefCount: 0, pageErrors: [],
@@ -91,6 +91,23 @@ test('missing CTA and price group are failures on category pages', () => {
   assert.equal(result.status, 'FAIL');
   assert(result.problems.some(p => p.code === 'MISSING_PRODUCT_COMPARISON'));
   assert(result.problems.some(p => p.code === 'MISSING_RAKUTEN_CTA'));
+});
+
+test('ranking-card category does not need the core price-group layout', () => {
+  const bath = {...base, path: '/categories/bath-cleaner/', coreCategory: false,
+    priceGroups: 0, ctaCount: 12, hiddenCtaCount: 0, invalidHrefCount: 0};
+  assert.deepEqual(assess(bath), {status: 'PASS', problems: []});
+});
+
+test('ranking-card category must still have a valid visible Rakuten purchase CTA', () => {
+  const missing = assess({...base, path: '/categories/bath-cleaner/',
+    coreCategory: false, priceGroups: 0, ctaCount: 0});
+  assert(missing.problems.some(p => p.code === 'MISSING_RAKUTEN_CTA'));
+  assert(!missing.problems.some(p => p.code === 'MISSING_PRODUCT_COMPARISON'));
+  const wrong = assess({...base, path: '/categories/bath-cleaner/',
+    coreCategory: false, priceGroups: 0, ctaCount: 5, invalidHrefCount: 1});
+  assert.equal(wrong.status, 'FAIL');
+  assert(wrong.problems.some(p => p.code === 'UNEXPECTED_CTA_DESTINATION'));
 });
 
 test('invalid destination and all hidden CTAs are failures', () => {
