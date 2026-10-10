@@ -1,27 +1,27 @@
-# GA4 read-only pilot: one-time Google Cloud setup
+# GA4 read-only pilot — verified setup and safe first run
 
-Status: NOT CONNECTED. Do not merge or enable automatic publication on the strength of this document.
+## Status (2026-10-10)
+- Google Cloud project `daily-cost-analytics` created; Analytics Data API enabled (user-provided screenshots).
+- GA4 property: `552907444`; service account `daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com`.
+- GA4 property **Viewer** permission granted by owner (user confirmation; actual API read not yet verified).
+- Workload Identity Pool `github-actions-pool`, provider `github-actions`, verified in Cloud Shell.
+- Provider mapping: `google.subject=assertion.sub`, `attribute.repository=assertion.repository`.
+- Provider condition: `assertion.repository == 'stusaurus/daily-cost-jp' && assertion.ref == 'refs/heads/main'`.
+- Service account role `roles/iam.workloadIdentityUser` granted to matching repository principalSet; Cloud Shell returned `Updated IAM policy`.
+- GitHub environment `ga4-readonly-pilot` exists and allows only `main` branch; user screenshot verified.
+- **Actual GA4 authenticated export NOT YET EXECUTED.** No revenue conclusions or site edits permitted.
 
-## Prerequisites
-- Google Cloud project with billing/cost alerts configured if applicable
-- Google Analytics Data API enabled in that project
-- GA4 numeric **property ID** (not G- measurement ID)
-- Permissions to administer GA4 property access and Google Cloud IAM
-- GitHub repository stusaurus/daily-cost-jp
+## First authenticated smoke test
+1. Ensure this branch's CI tests pass and the read-only pilot is merged into `main`. A `workflow_dispatch` workflow must be present on the default branch to appear in Actions.
+2. No GitHub Secrets or variables to enter for this pilot; property ID, provider resource and service account email are non-secret constants in the workflow. **Never upload a service-account JSON key.**
+3. On GitHub: Actions → **GA4 Click Export Pilot** → **Run workflow**, branch **main**. The export job runs only on manual dispatch, with environment `ga4-readonly-pilot` and `id-token: write`. Pull-request jobs only run offline tests without Google credentials.
+4. Inspect the run. Confirm **Authenticate to Google (read-only)** and **Export raw GA4 click events** both succeeded.
+5. Download the `ga4-clicks-raw` artifact only from a successful run. It intentionally contains `RAW_UNVERIFIED` values, not qualified clicks or commissions. Empty rows are **not evidence of zero clicks**.
+6. If authentication fails, inspect only the error summary, avoid sharing tokens or logs that contain credentials. Common causes: IAM Service Account Credentials API not enabled, insufficient GA4 Viewer access, WIF provider or environment constraints.
+7. Do not run on a PR branch, relax branch restrictions, assign project Editor/Admin, enable deployment credentials, or auto-merge changes to resolve an authentication error.
 
-## Secure identity setup
-1. In Google Cloud IAM, create a dedicated service account for this pilot, with **no project-wide Editor/Owner** role.
-2. In GA4 Admin > Property access management, grant the service account email **Viewer** on the intended property only.
-3. Create a Workload Identity Pool and OIDC provider for issuer `https://token.actions.githubusercontent.com`.
-4. Map `google.subject=assertion.sub`, `attribute.repository=assertion.repository`, `attribute.ref=assertion.ref`, and `attribute.environment=assertion.environment` as supported by the provider configuration.
-5. Set provider condition restricting `assertion.repository == 'stusaurus/daily-cost-jp'`; restrict the service account's Workload Identity User principal binding to that repository and the dedicated `ga4-readonly-pilot` environment. Verify GitHub OIDC claim shape and provider mapping before enabling.
-6. In GitHub Settings > Environments, create `ga4-readonly-pilot`; require a reviewer for initial runs where the plan supports it. Limit deployment branches to the reviewed branch or main as appropriate.
-7. Set GitHub Actions **variables** (not passwords): `GA4_PROPERTY_ID` (numeric), `GCP_WIF_PROVIDER` (full provider resource name), `GCP_SERVICE_ACCOUNT` (service-account email). Do not paste service-account JSON keys into the repository or chat.
-8. Once this workflow exists on the default branch, use Actions > GA4 Click Export Pilot > Run workflow. A workflow on an experiment branch alone may not appear in the manual-run UI.
-9. Inspect the run and `ga4-clicks-raw` artifact. If authentication fails, verify pool provider, principal binding, environment and GA4 Viewer permission. Stop rather than broadening IAM roles.
-
-## Important limitations
-- The export is raw event counts. It does **not** remove `operator_test`, does **not** establish complete zero-click days, and does **not** provide session counts.
-- Never feed this raw output directly to `evaluate_affiliate_clicks.py`; that evaluator expects verified complete daily records with test clicks and sessions.
-- Keep auto-merge, product selection changes, affiliate URL edits and production write access disabled until separate verified tests and safety controls exist.
-- Initial authenticated run is intentionally manual, not scheduled.
+## Boundaries
+- This pilot is **read-only**. It cannot update product data, affiliate URLs, website code, or GA4 configuration.
+- The raw export does not filter `operator_test`, does not establish completeness of zero-click days, and has no GA4 sessions denominator.
+- Never feed it straight into `evaluate_affiliate_clicks.py`; that evaluator requires verified complete daily records with test clicks and session counts.
+- Independent 3-day optimization and automatic production edits remain **disabled**.
