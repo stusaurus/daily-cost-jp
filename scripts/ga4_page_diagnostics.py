@@ -108,10 +108,10 @@ def diagnose(stats, operator_registered, coverage_complete):
         return 1, "CHECK_OPERATOR_DIMENSION", "GA4で運営者テストの区別を確認"
     if counts["production_unknown"]:
         return 1, "CHECK_UNKNOWN_TEST_EVENTS", "テスト区分不明のクリックを確認"
-    if not coverage_complete:
-        return 2, "CHECK_DATA_COVERAGE", "比較期間に表示データのない日があり判断保留"
     if total and not views:
         return 1, "CHECK_MEASUREMENT_SCOPE", "クリックとページ表示の計測の整合性を確認"
+    if not coverage_complete:
+        return 2, "CHECK_DATA_COVERAGE", "比較期間に表示データのない日があり判断保留"
     if (current["pageviews"] >= 20 and previous["pageviews"] >= 30 and
             current["pageviews"] * 10 <= previous["pageviews"] * 6):
         return 2, "INVESTIGATE_PAGEVIEW_DROP", "直近7日で表示が減少。流入元を別途確認"
@@ -147,8 +147,8 @@ def make_report(click_rows, view_rows, today, operator_registered):
                 and coverage_complete else None),
         })
     candidates.sort(key=lambda x: (
-        x["priority"], -x["periods"]["last_28"]["pageviews"],
-        x["page"] not in FOCUS_PAGES, x["page"]))
+        x["priority"], x["page"] not in FOCUS_PAGES,
+        -x["periods"]["last_28"]["pageviews"], x["page"]))
     return {
         "source": "GA4 Data API",
         "period_last_7": [dates[-7].isoformat(), dates[-1].isoformat()],
