@@ -37,6 +37,19 @@ test('always inspect the core categories and at most two GA4 candidate extras', 
   assert.equal(selectPages(null).length, 3);
 });
 
+test('extra-category browser regression path must remain an allowed local category', () => {
+  assert.deepEqual(selectPages(null, 5, null, ['/categories/bath-cleaner/']), [
+    '/categories/laundry/', '/categories/tissue/', '/categories/toilet-paper/',
+    '/categories/bath-cleaner/',
+  ]);
+  assert.deepEqual(selectPages(null, 5, null, ['https://evil.example']), [
+    '/categories/laundry/', '/categories/tissue/', '/categories/toilet-paper/',
+  ]);
+  assert.deepEqual(selectPages(null, 5, null, ['/../../escape/']), [
+    '/categories/laundry/', '/categories/tissue/', '/categories/toilet-paper/',
+  ]);
+});
+
 test('trusted GSC+GA4 candidates are inspected before GA4-only extras', () => {
   const joint = {
     source: 'GA4 + Search Console read-only page triage',
