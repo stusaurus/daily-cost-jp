@@ -130,6 +130,8 @@ def make_report(click_rows, view_rows, today, operator_registered):
         click_rows, view_rows, dates, operator_registered)
     last28 = {d.isoformat() for d in dates[-28:]}
     coverage_complete = last28.issubset(covered)
+    previous28 = {d.isoformat() for d in dates[:-28]}
+    previous28_complete = previous28.issubset(covered)
     candidates = []
     for page in set(views) | set(clicks):
         stats = period_totals(page, views, clicks, dates)
@@ -156,6 +158,8 @@ def make_report(click_rows, view_rows, today, operator_registered):
                    "COVERAGE_UNCERTAIN" if not coverage_complete else "PROVISIONAL"),
         "operator_dimension_registered": operator_registered,
         "pageview_dates_observed_in_last_28": len(last28 & covered),
+        "pageview_dates_observed_in_previous_28": len(previous28 & covered),
+        "previous_28_coverage_complete": previous28_complete,
         "excluded_clicks": excluded,
         "pages": candidates,
         "top_investigations": candidates[:6],
@@ -171,10 +175,11 @@ def markdown_report(report):
         "- 対象7日間：" + " ～ ".join(report["period_last_7"]),
         "- 対象28日間：" + " ～ ".join(report["period_last_28"]),
         "- 28日間で表示記録のある日：" + str(report["pageview_dates_observed_in_last_28"]) + "/28",
+        "- 前28日間で表示記録のある日：" + str(report["pageview_dates_observed_in_previous_28"]) + "/28",
         "- **クリックは購入・売上ではありません。** GA4のみの調査仮説です。",
         "",
-        "| ページ | 7日表示 | 28日表示 | 28日暫定テスト外クリック | 調査内容 |",
-        "|---|---:|---:|---:|---|",
+        "| ページ | 直近7日表示 | 前7日表示 | 直近28日表示 | 前28日表示 | テスト外クリック（暫定・28日） | 調査候補 |",
+        "|---|---:|---:|---:|---:|---:|---|",
     ]
     for candidate in report["top_investigations"]:
         periods = candidate["periods"]
@@ -184,13 +189,18 @@ def markdown_report(report):
                  counts["production_unknown"] == 0)
         click_text = str(counts["production_non_operator"]) if valid else "不明"
         page = candidate["page"].replace("|", "%7C").replace("\n", "")
+        last7 = str(periods["last_7"]["pageviews"])
+        prev7 = str(periods["prior_7"]["pageviews"])
+        last28 = str(periods["last_28"]["pageviews"])
+        prev28 = (str(periods["prior_28"]["pageviews"])
+                  if report["previous_28_coverage_complete"] else "不明")
+        reason = candidate["hypothesis"].replace("|", "、")
         lines.append(
-            "| " + page + " | " + str(periods["last_7"]["pageviews"]) + " | " +
-            str(periods["last_28"]["pageviews"]) + " | " + click_text + " | " +
-            candidate["action_code"] + " |"
+            "| " + page + " | " + last7 + " | " + prev7 + " | " +
+            last28 + " | " + prev28 + " | " + click_text + " | " + reason + " |"
         )
     if not report["top_investigations"]:
-        lines.append("| データなし | — | — | — | 計測状況を確認 |")
+        lines.append("| データなし | — | — | — | — | — | 計測状況を確認 |")
     lines += [
         "",
         "**注意：** 表示数から流入経路や原因は断定できません。商品・価格・楽天リンクを自動変更しません。",
