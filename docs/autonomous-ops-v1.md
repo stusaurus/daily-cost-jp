@@ -40,3 +40,15 @@ Inventory current workflows and test commands, then implement a non-mutating Git
 - AI API optional, disabled by default until explicit budget ceiling, credentials, and privacy review are set. Use deterministic checks first.
 - Never weaken product quality rules to increase clicks or apparent revenue.
 - Report succinctly: revenue VERIFIED_ZERO / VERIFIED_POSITIVE / UNKNOWN, likely bottleneck, evidence, action taken, next check.
+
+## Initial optimization KPI: affiliate clicks (owner decision)
+
+Until traffic and outbound clicks reach useful volume, prioritize growth in qualified affiliate clicks over verified commission. Do not require affiliate dashboard login for the pilot.
+
+- Primary metric: GA4 event_name=affiliate_click, excluding operator_test=1. Keep operator_test=0 and (not set) separately reported because neither guarantees non-owner traffic.
+- Do not add auxiliary events product_result_click or same_product_rakuten_click to affiliate_click; they may describe the same interaction.
+- Review rolling three-day totals every three days, alongside sessions, affiliate clicks per session, landing pages, conversion_source and 7/28-day baselines.
+- Triage bands for three-day affiliate clicks: 0 = check instrumentation/link failures and traffic; 1-4 = inspect traffic and CTAs; 5-9 = identify effective entry points; 10+ = evaluate repeatable successes. Bands are investigation triggers, not statistical proof.
+- Never optimize for fabricated or self-generated clicks. No bot clicking or artificial traffic.
+- Owner's '100 clicks = 1 yen' is a planning placeholder only; do not report this as observed revenue or a credible conversion rate.
+- Require sufficient evidence before changes, preserve all product-quality gates, and log each experiment and measured outcome.
