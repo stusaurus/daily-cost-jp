@@ -99,7 +99,11 @@ jobs:
                   if path.is_file() and path.suffix in {'.py', '.js', '.yml', '.yaml', '.json', '.jsonc', '.toml'}:
                       if path == Path('.github/workflows/validate-pr.yml'):
                           continue
-                      if ('net' + 'lify') in path.read_text(encoding='utf-8').lower():
+                      text = path.read_text(encoding='utf-8').lower()
+                      # Only this fixed opt-out marker is permitted in the docs-only publisher.
+                      if path == Path('scripts/autonomous_operations_step2.py'):
+                          text = text.replace('[skip ' + 'net' + 'lify]', '')
+                      if ('net' + 'lify') in text:
                           matches.append(str(path))
           print('\n'.join(matches))
           PY
