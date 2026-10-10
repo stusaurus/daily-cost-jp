@@ -208,7 +208,7 @@ def markdown(result):
                      f(a["pageviews"] if a else None) + " | " + c + " | " +
                      item["hypothesis"].replace("|", "、") + " |")
     if result["status"] != "JOINT_PROVISIONAL":
-        lines += ["", "**Search Consoleの実データがないため、検索流入の原因を断定せず保留します。**"]
+        lines += ["", "**検索データがないため、検索流入の原因を断定せず保留します。**"]
     lines += ["", "※検索順位は表示に基づく平均値。個々の検索語の固定順位ではありません。",
               "※購入ボタン・SEO・商品情報・楽天リンク・計測設定の自動変更は行っていません。", ""]
     return "\n".join(lines)
