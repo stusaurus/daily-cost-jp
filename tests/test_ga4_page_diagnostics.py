@@ -84,12 +84,29 @@ class DiagnosticsTests(unittest.TestCase):
         report = module.make_report([], view_records(28, 1), TODAY, True)
         self.assertEqual(report["pages"][0]["action_code"], "OBSERVE_LOW_TRAFFIC")
 
-    def test_missing_days_block_cta_conclusion(self):
+    def test_unobserved_old_day_is_not_automatically_a_tracking_failure(self):
         report = module.make_report([], view_records(27, 20), TODAY, True)
-        self.assertEqual(report["status"], "COVERAGE_UNCERTAIN")
+        self.assertEqual(report["status"], "PARTIAL_OBSERVED_DAYS")
         self.assertEqual(report["pageview_dates_observed_in_last_28"], 27)
-        self.assertEqual(report["pages"][0]["action_code"], "CHECK_DATA_COVERAGE")
+        self.assertEqual(report["pageview_dates_observed_in_last_7"], 7)
+        self.assertEqual(report["pages"][0]["action_code"], "AUDIT_CTA_AND_LINKS")
         self.assertIsNone(report["pages"][0]["provisional_clicks_per_100_pageviews"])
+        self.assertIn("アクセス0件", module.markdown_report(report))
+
+    def test_low_recent_exposure_is_flagged_for_category(self):
+        rows = [(d.strftime("%Y%m%d"), PATH, 1) for d in DATES[-28:-7]]
+        rows += [(d.strftime("%Y%m%d"), PATH, 1 if i < 3 else 0)
+                 for i, d in enumerate(DATES[-7:])]
+        report = module.make_report([], rows, TODAY, True)
+        self.assertEqual(report["pages"][0]["action_code"], "LOW_RECENT_PAGE_EXPOSURE")
+        self.assertEqual(report["pages"][0]["periods"]["last_7"]["pageviews"], 3)
+
+    def test_sparse_recent_site_observations_withhold_cta_hypothesis(self):
+        rows = [row for row in view_records(28, 10)
+                if row[0] not in {d.strftime("%Y%m%d") for d in DATES[-4:]}]
+        report = module.make_report([], rows, TODAY, True)
+        self.assertEqual(report["pageview_dates_observed_in_last_7"], 3)
+        self.assertEqual(report["pages"][0]["action_code"], "VERIFY_RECENT_OBSERVATIONS")
 
     def test_unregistered_dimension_prevents_clean_click_claim(self):
         report = module.make_report([click(DATES[-1], flag="0", count=5)],
