@@ -160,6 +160,7 @@ def combine(ga4, gsc):
         "gsc_source_status": status,
         "gsc_unavailable_reason": reason if not gsc_ok else None,
         "ga4_source_status": ga4.get("status", "UNKNOWN"),
+        "ga4_operator_dimension_registered": operator_known,
         "gsc_period_last_28": gsc.get("windows", {}).get("last_28") if gsc_ok else None,
         "ga4_period_last_28": ga4["period_last_28"],
         "not_same_population_or_period": True,
@@ -196,7 +197,8 @@ def markdown(result):
     for item in result["top_investigations"]:
         g, a = item["gsc_last_28"], item["ga4_last_28"]
         f = lambda value: "不明" if value is None else str(value)
-        operator_valid = (a is not None and a["unknown_operator_clicks"] == 0 and
+        operator_valid = (result["ga4_operator_dimension_registered"] and a is not None and
+                          a["unknown_operator_clicks"] == 0 and
                           item["confidence"] == "INVESTIGATION_ONLY")
         c = f(a["provisional_non_operator_clicks"]) if operator_valid else "不明"
         lines.append("| " + item["path"].replace("|", "%7C") + " | " +
