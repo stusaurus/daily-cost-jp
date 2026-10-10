@@ -342,6 +342,24 @@ def fetch():
                                   if isinstance(error, ValueError) else "SEARCH_CONSOLE_UNAVAILABLE"))
         return
     report = build_report(today, aggregate_data, page_data, query_data)
+
+    # Supplemental, best-effort daily evidence. The existing site/per-page
+    # GSC export must remain successful if a dated endpoint is unavailable.
+    try:
+        from gsc_daily_search import normalize_daily
+        start, end = periods_by_name["last_28"]
+        common = {"startDate": start, "endDate": end,
+                  "type": "web", "dataState": "final", "rowLimit": MAX_ROWS}
+        site_daily = query({**common, "dimensions": ["date"]})
+        page_daily = query({**common, "dimensions": ["date", "page"]})
+        report["daily_series"] = normalize_daily(site_daily, page_daily, [start, end])
+    except (ValueError, ConnectionError) as error:
+        report["daily_series"] = {
+            "status": "DAILY_COLLECTION_UNAVAILABLE",
+            "reason": "API_DATA_INVALID" if isinstance(error, ValueError) else "REQUEST_FAILED",
+            "note": "The original Search Console aggregate data remains valid.",
+        }
+
     report["generated_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
     send_report(report)
 
