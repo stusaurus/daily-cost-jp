@@ -34,6 +34,16 @@ STYLE = '''<style id="purchase-ux">
 .purchase-links a{padding:10px 12px;min-height:44px;border:1px solid #d8d1cb;border-radius:10px;text-decoration:none;background:#fff;font-size:14px;font-weight:700}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p,.category-seo-faq summary{font-size:14px}
 @media(min-width:760px){.product-card{grid-template-columns:110px minmax(0,1fr)}}
+.tissue-size-guide{margin:14px 0;padding:16px;border:1px solid #ddd1c4;border-radius:16px;background:#fff;scroll-margin-top:10px}
+.tissue-size-guide h2{font-size:20px;line-height:1.4;margin:2px 0 8px}
+.tissue-size-guide p{font-size:14px;line-height:1.7;margin:7px 0}
+.tissue-size-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.tissue-size-card{min-width:0;padding:13px;border:1px solid #e8e4df;border-radius:12px;background:#faf9f7;overflow-wrap:anywhere}
+.tissue-size-card h3{font-size:16px;line-height:1.4;margin:0 0 5px}
+.tissue-size-card .tissue-size-price{font-size:18px;font-weight:800;color:#9d281f}
+.tissue-size-card .size-link{min-height:44px;margin-top:9px;padding:10px 12px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:10px;background:#252525;color:#fff;text-decoration:none;font-size:14px;font-weight:750}
+.tissue-size-card .size-link.secondary{background:#fff;color:#252525;border:1px solid #b8b2ab}
+@media(max-width:600px){.tissue-size-cards{grid-template-columns:1fr}.tissue-size-guide{padding:14px}}
 @media(max-width:380px){.product-card{grid-template-columns:72px minmax(0,1fr);gap:10px;padding:12px}.product-image{width:72px;height:72px}.grid>.card{grid-template-columns:68px minmax(0,1fr);gap:10px}.card .img,.card .pic{width:68px;height:68px}}
 </style>'''
 
@@ -50,6 +60,64 @@ def unit_details(category_id, item):
     """Supplemental, comparable unit from explicit title evidence only."""
     from comparison_units import comparison_unit
     return comparison_unit(category_id, item) if category_id in ('tissue', 'toilet-paper') else None
+
+
+def tissue_size_guide(data):
+    """Verified small-pack offer plus honest bulk comparison navigation.
+
+    The 1–10-box offer is kept separate from the existing top-12 unit-price
+    ranking. Do not claim this is the cheapest item in the entire market.
+    """
+    from tissue_buying_quantity import safe_box_count
+    from comparison_units import comparison_unit
+    small = data.get("small_pack_offer")
+    count = safe_box_count(small) if small else None
+    if count is not None and small.get("postage") == "送料込み":
+        unit = comparison_unit("tissue", small)
+        normalized = (
+            f'<p>参考：{money(unit[1])}円／100組</p>'
+            if unit and unit[0] == "100組" else
+            '<p>100組単価は商品名だけでは確定できません</p>'
+        )
+        label = clean_display_name(small["name"])
+        small_block = (
+            '<p>取得できた10箱以下の比較候補から、箱単価が低い商品を表示。</p>'
+            f'<p class="tissue-size-price">{count}箱・支払総額 {money(small["price"])}（送料込み）</p>'
+            f'{normalized}'
+            f'<p>{esc(label)} ・ {esc(small.get("shop", ""))}</p>'
+            f'<a class="size-link" href="{esc(small["url"])}" target="_blank" '
+            'rel="nofollow sponsored noopener" data-conversion-source="category" '
+            'data-category-id="tissue" '
+            f'data-id="{esc(small.get("item_code", ""))}" '
+            f'data-product-name="{esc(label)}" '
+            f'data-shipping-price="{small["price"]}" '
+            f'data-unit-price-label="{esc(money(small["unit_price"]) + "／1箱")}" '
+            '>楽天でこの商品の価格・数量を確認</a>'
+        )
+    else:
+        # A search is NOT presented as a verified merchant offer or price.
+        small_block = (
+            '<p>今回の取得分には、箱数と送料を確認できた10箱以下の候補がありません。</p>'
+            '<p>個別に探す場合も、送料や購入する個数を確認してから判断してください。</p>'
+            '<a class="size-link" data-conversion-source="product_search" '
+            'href="../../products/?q=%E3%83%86%E3%82%A3%E3%83%83%E3%82%B7%E3%83%A5%205%E7%AE%B1%20200%E7%B5%84">'
+            '5箱・200組の候補を商品検索で探す</a>'
+        )
+    return (
+        '<section class="tissue-size-guide" id="tissue-buy-size" aria-labelledby="tissue-buy-size-title">'
+        '<p>CHOOSE HOW MANY</p><h2 id="tissue-buy-size-title">欲しい箱数から選ぶ</h2>'
+        '<p>100組あたりの単価が安くても、60箱まとめ買いでは支払総額が大きくなります。'
+        '必要な量と置き場所も確認してください。</p>'
+        '<div class="tissue-size-cards">'
+        '<div class="tissue-size-card"><h3>まずは少量で買いたい</h3>' + small_block + '</div>'
+        '<div class="tissue-size-card"><h3>まとめ買いで単価を抑えたい</h3>'
+        '<p>まとめ買いも100組あたりの単価で比較。価格だけでなく総箱数を確認できます。</p>'
+        '<a class="size-link secondary" href="#tissue">今日の送料込み単価ランキングを見る</a>'
+        '</div></div>'
+        '<p class="purchase-note">選択された商品は取得時点の楽天候補です。'
+        '10箱以下の候補がない場合は価格を推測しません。サイト全体の最安値は保証しません。</p>'
+        '</section>'
+    )
 
 
 def price_answer(category_id, data):
@@ -103,7 +171,9 @@ def enhance_priority(payload):
         # Replace the former 90%-of-mixed-median buy claim with qualified facts.
         markup = re.sub(r'<section class="buy-line-box">.*?</section>', '', markup, flags=re.S)
         markup = re.sub(r'<section class="purchase-answer" id="buying-answer">.*?</section>', '', markup, flags=re.S)
-        markup = markup.replace('<main class="container">', '<main class="container">' + price_answer(category_id, payload.get('categories', {}).get(category_id, {})), 1)
+        category_data = payload.get('categories', {}).get(category_id, {})
+        fragment = (tissue_size_guide(category_data) if category_id == 'tissue' else '') + price_answer(category_id, category_data)
+        markup = markup.replace('<main class="container">', '<main class="container">' + fragment, 1)
         if category_id == 'laundry':
             q, a = 'アタックZEROはどこが安いですか？', '通常用・ドラム式用などタイプと容量、販売個数をそろえ、送料込み支払額を比較してください。複数個から選ぶ商品ページの最低価格を、大容量セットの価格として比較しないことが大切です。'
         elif category_id == 'toilet-paper':

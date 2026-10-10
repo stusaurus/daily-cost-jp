@@ -46,7 +46,7 @@ def identity(item):
 
 
 def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
-    """Keep successful pages on optional failures, dedupe, stop at five safe rows.
+    """Keep successful pages on optional failures, dedupe and preserve a bounded search budget.
 
     The first two requests mirror the old acquisition, making the same-run
     baseline measurable. At most three supplemental searches follow. Only the
@@ -93,10 +93,20 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
     baseline = baseline[category['id']]
     baseline['ranked'] = ranked_count()
     baseline.pop('rejected')  # Full final exclusions are in quality-report.json.
+
+    # Tissue ranking can reach five safe *bulk* items and stop before showing
+    # an affordable first-purchase pack. Probe exactly one optional 5-box
+    # search when the current safe supply contains no 1–10-box offer.
+    # This never relaxes the shared shipping/quantity matcher.
+    if category['id'] == 'tissue' and len(requests) < MAX_REQUESTS:
+        from tissue_buying_quantity import choose_small_tissue_offer
+        if choose_small_tissue_offer(items) is None:
+            append_page(SUPPLEMENTAL_QUERIES['tissue'][0], 1, supplementary=True)
+
     for query in SUPPLEMENTAL_QUERIES.get(category['id'], ()):
         if ranked_count() >= TARGET or len(requests) >= MAX_REQUESTS:
             break
-        if query != category['keyword']:
+        if query != category['keyword'] and not any(r['query'] == query and r['page'] == 1 for r in requests):
             append_page(query, 1, supplementary=True)
     return items, {'baseline': baseline, 'requests': requests,
                    'received': sum(r.get('received', 0) for r in requests),

@@ -27,6 +27,38 @@ const assert=require('node:assert/strict');
    assert.equal(await page.locator('h1').count(),1);
    assert.ok(await page.locator('.search-price-group').count()>0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow '+cid+' '+width);
+   if(cid==='tissue'){
+     const sizeBox=page.locator('#tissue-buy-size');
+     assert.equal(await sizeBox.count(),1,'tissue must offer shopping-size choices');
+     assert.equal(await sizeBox.locator('.tissue-size-card').count(),2);
+     const offer=catalog.categories.tissue.small_pack_offer;
+     const smallLink=sizeBox.locator('.tissue-size-card').first().locator('a.size-link');
+     const href=await smallLink.getAttribute('href');
+     if(offer){
+       assert.equal(href,offer.url,'small offer must match quality-checked catalog');
+       assert.equal(Number(await smallLink.getAttribute('data-shipping-price')),offer.price);
+       assert.equal(await smallLink.getAttribute('data-id'),offer.item_code);
+       assert.match(await sizeBox.innerText(),new RegExp(''+catalog.categories.tissue.small_pack_boxes+'箱'));
+     }else{
+       assert.ok(href.startsWith('../../products/?q='),'missing small stock must only link to in-site search');
+       assert.match(await sizeBox.innerText(),/候補がありません/);
+     }
+     // Final laboratory design removes inline CSS. Assert actual computed
+     // button styling, not merely the existence of HTML class names.
+     const linksToStyle=await sizeBox.locator('a.size-link').evaluateAll(nodes=>nodes.map(node=>{
+       const css=getComputedStyle(node);
+       return {display:css.display,minHeight:parseFloat(css.minHeight),
+               background:css.backgroundColor,decoration:css.textDecorationLine};
+     }));
+     assert.equal(linksToStyle.length,2);
+     for(const appearance of linksToStyle){
+       assert.ok(['flex','inline-flex'].includes(appearance.display),'tissue CTA lost final shared stylesheet');
+       assert.ok(appearance.minHeight>=44,'tissue CTA tap target shrank');
+       assert.notEqual(appearance.background,'rgba(0, 0, 0, 0)','tissue CTA has no visible background');
+       assert.equal(appearance.decoration,'none','tissue CTA looks like a plain text link');
+     }
+     assert.equal(await sizeBox.locator('.tissue-size-card').nth(1).locator('a[href="#tissue"]').count(),1);
+   }
    const links=await page.locator('.search-price-group .buy-button').evaluateAll(nodes=>nodes.map(n=>({url:n.href,id:n.dataset.id,price:Number(n.dataset.shippingPrice),name:n.dataset.productName})));
    for(const link of links){const item=catalog.categories[cid].items.find(p=>p.url===link.url);assert.ok(item);assert.equal(item.price,link.price);assert.equal(item.item_code,link.id);}
    await page.locator('.search-price-group .buy-button').first().evaluate(n=>n.addEventListener('click',e=>e.preventDefault()));
