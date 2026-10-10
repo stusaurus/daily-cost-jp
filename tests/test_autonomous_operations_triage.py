@@ -4,7 +4,7 @@ import json
 import pathlib
 import sys
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))
 import autonomous_operations_triage as triage
@@ -130,7 +130,7 @@ class PriorityTests(unittest.TestCase):
     def test_fetch_quality_healthy_and_expired(self):
         now = dt.datetime.now(dt.timezone.utc)
         src = {"updated_at": now.isoformat(), "errors": [], "warnings": []}
-        response = Mock()
+        response = MagicMock()
         response.status = 200
         response.geturl.return_value = triage.QUALITY_URL
         response.read.return_value = json.dumps(src).encode()
