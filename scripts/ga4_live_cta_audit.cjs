@@ -21,8 +21,15 @@ function isAllowedPath(value) {
     /^\/categories\/[a-z0-9-]+\/$/.test(value);
 }
 
-function selectPages(report, limit = MAX_PAGES, jointReport = null) {
+function selectPages(report, limit = MAX_PAGES, jointReport = null, extraCategories = []) {
   const result = [...CORE];
+  // CI regression targets must still be restricted to local category paths.
+  if (Array.isArray(extraCategories)) {
+    for (const page of extraCategories) {
+      if (typeof page === 'string' && /^\/categories\/[a-z0-9-]+\/$/.test(page) &&
+          !result.includes(page) && result.length < limit) result.push(page);
+    }
+  }
   // Use joined search/affiliate evidence only when both sources were obtained.
   // The shortlist is a path allowlist, not a general web crawler.
   if (jointReport && jointReport.source === 'GA4 + Search Console read-only page triage' &&
@@ -218,7 +225,9 @@ async function main() {
       throw new Error('Unexpected joint analytics report source or site');
     }
   }
-  const pages = selectPages(report, MAX_PAGES, joint);
+  const extraIndex = process.argv.indexOf('--extra-category');
+  const extra = extraIndex >= 0 ? process.argv[extraIndex + 1] : null;
+  const pages = selectPages(report, MAX_PAGES, joint, extra ? [extra] : []);
   const outDir = path.resolve('audit-results/live-cta-qa');
   fs.mkdirSync(outDir, {recursive: true});
   const {chromium} = require('playwright');
