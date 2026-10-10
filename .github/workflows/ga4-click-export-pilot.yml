@@ -1,11 +1,23 @@
 name: GA4 Click Export Pilot
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/fetch_ga4_clicks.py'
+      - 'tests/test_fetch_ga4_clicks.py'
+      - '.github/workflows/ga4-click-export-pilot.yml'
 permissions:
   contents: read
   id-token: write
 jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline GA4 export tests
+        run: python3 -m unittest discover -s tests -p 'test_fetch_ga4_clicks.py'
   export:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: ga4-readonly-pilot
