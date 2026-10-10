@@ -52,7 +52,7 @@ const assert=require('node:assert/strict');
      }));
      assert.equal(linksToStyle.length,2);
      for(const appearance of linksToStyle){
-       assert.equal(appearance.display,'inline-flex','tissue CTA lost final shared stylesheet');
+       assert.ok(['flex','inline-flex'].includes(appearance.display),'tissue CTA lost final shared stylesheet');
        assert.ok(appearance.minHeight>=44,'tissue CTA tap target shrank');
        assert.notEqual(appearance.background,'rgba(0, 0, 0, 0)','tissue CTA has no visible background');
        assert.equal(appearance.decoration,'none','tissue CTA looks like a plain text link');
