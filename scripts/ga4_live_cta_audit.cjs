@@ -21,8 +21,20 @@ function isAllowedPath(value) {
     /^\/categories\/[a-z0-9-]+\/$/.test(value);
 }
 
-function selectPages(report, limit = MAX_PAGES) {
+function selectPages(report, limit = MAX_PAGES, jointReport = null) {
   const result = [...CORE];
+  // Use joined search/affiliate evidence only when both sources were obtained.
+  // The shortlist is a path allowlist, not a general web crawler.
+  if (jointReport && jointReport.source === 'GA4 + Search Console read-only page triage' &&
+      jointReport.status === 'JOINT_PROVISIONAL' &&
+      Array.isArray(jointReport.top_investigations)) {
+    for (const candidate of jointReport.top_investigations) {
+      const pathname = candidate && candidate.confidence === 'INVESTIGATION_ONLY' && candidate.path;
+      if (isAllowedPath(pathname) && !result.includes(pathname) && result.length < limit) {
+        result.push(pathname);
+      }
+    }
+  }
   if (report && Array.isArray(report.top_investigations)) {
     for (const candidate of report.top_investigations) {
       const pathname = candidate && candidate.page;
@@ -187,7 +199,17 @@ async function main() {
     catch (error) { throw new Error('GA4 input artifact missing or invalid: ' + error.message); }
   }
   if (report && report.source !== 'GA4 Data API') throw new Error('Unexpected GA4 artifact source');
-  const pages = selectPages(report);
+  const jointIndex = process.argv.indexOf('--joint');
+  const jointFile = jointIndex >= 0 ? process.argv[jointIndex + 1] : null;
+  let joint = null;
+  if (jointFile) {
+    try { joint = JSON.parse(fs.readFileSync(jointFile, 'utf8')); }
+    catch (error) { throw new Error('Joint report missing or invalid: ' + error.message); }
+    if (joint.source !== 'GA4 + Search Console read-only page triage' || joint.site !== SITE) {
+      throw new Error('Unexpected joint analytics report source or site');
+    }
+  }
+  const pages = selectPages(report, MAX_PAGES, joint);
   const outDir = path.resolve('audit-results/live-cta-qa');
   fs.mkdirSync(outDir, {recursive: true});
   const {chromium} = require('playwright');
@@ -210,6 +232,7 @@ async function main() {
     site: SITE, pages,
     ga4_period: report?.period_last_28 || null,
     ga4_status: report?.status || 'NOT_PROVIDED',
+    joined_gsc_status: joint?.status || 'NOT_PROVIDED',
     read_only: true, analytics_blocked: true, external_links_clicked: false,
     observations,
     counts: {
