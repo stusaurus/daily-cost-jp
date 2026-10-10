@@ -69,6 +69,23 @@ function assess(observation) {
   if (observation.documentWidth > observation.viewport + 2) {
     add('warning', 'HORIZONTAL_OVERFLOW', '表示領域からはみ出す横スクロールがある');
   }
+  // Check rendered search appearance metadata without making SEO edits.
+  // Absence of a tag is a technical finding, not evidence that a title rewrite
+  // would raise CTR. Canonical should omit our analytics-safe ?test=1 parameter.
+  if (observation.seo && observation.httpStatus === 200) {
+    const seo = observation.seo;
+    if (!seo.title || !seo.title.trim()) add('error', 'MISSING_SEO_TITLE', '検索タイトルが空');
+    if (!seo.description || !seo.description.trim()) {
+      add('warning', 'MISSING_META_DESCRIPTION', '説明文の設定を確認');
+    }
+    if (/(?:^|[,\s])noindex(?:$|[,\s])/i.test(seo.robots || '')) {
+      add('error', 'UNEXPECTED_NOINDEX', '検索対象ページにnoindexが設定されている');
+    }
+    const expectedCanonical = SITE + observation.path.replace(/^\//, '');
+    if (!seo.canonical || seo.canonical !== expectedCanonical) {
+      add('warning', 'CANONICAL_NEEDS_REVIEW', 'canonicalのURLを確認');
+    }
+  }
   if (observation.kind === 'category') {
     if (observation.coreCategory && observation.priceGroups === 0) {
       add('error', 'MISSING_PRODUCT_COMPARISON', '主要カテゴリの価格比較欄が表示されない');
@@ -117,6 +134,26 @@ function markdown(report) {
       ((r.documentWidth ?? 0) > r.viewport + 2 ? 'あり' : 'なし') + ' | ' +
       issues.replace(/[|\r\n]/g, ' ') + ' |');
   }
+  lines.push('', '### 検索結果向けメタ情報（実画面のHTMLから取得）', '',
+    '| ページ | タイトル | 説明文 | canonical | robots | Search Console調査仮説 |',
+    '|---|---|---|---|---|---|');
+  const clean = value => String(value || '未設定').replace(/[|\r\n]/g, ' ').slice(0, 150);
+  const searchSignals = Object.fromEntries((report.searchSignals || [])
+    .filter(item => item && isAllowedPath(item.path))
+    .map(item => [item.path, item.code]));
+  const reportedPaths = new Set();
+  for (const item of report.observations) {
+    if (reportedPaths.has(item.path)) continue;
+    reportedPaths.add(item.path);
+    const seo = item.seo || {};
+    lines.push('| ' + clean(item.path) + ' | ' + clean(seo.title) +
+      ' | ' + clean(seo.description).slice(0, 90) + ' | ' +
+      clean(seo.canonical) + ' | ' + clean(seo.robots) + ' | ' +
+      clean(searchSignals[item.path] || '検索データ未連携') + ' |');
+  }
+  lines.push('', '- 検索クエリの根拠：' + clean(report.queryEvidenceStatus || '未取得') +
+    '。クエリ明細が不十分な場合、**タイトル・説明文の変更を自動提案・実装しません**。',
+    '- ページのmeta情報が正常でも検索順位・CTRの改善は保証されません。');
   lines.push('', '### 判定上の注意',
     '商品比較ページとカテゴリページでは購入ボタンの設計が異なります。カテゴリページのみ既存の価格比較欄・購入リンクを必須検査しています。',
     'リンク先URLの構文は検査しますが、**楽天への外部遷移や購入操作は実行していません。**',
@@ -149,7 +186,7 @@ async function inspect(browser, pathname, viewport, outDir) {
     priceGroups: 0, ctaCount: 0, hiddenCtaCount: 0,
     tinyCtaCount: 0, invalidHrefCount: 0,
     invalidHrefExamples: [], pageErrors: errors,
-    screenshot: null,
+    seo: null, screenshot: null,
   };
   try {
     const response = await page.goto(target, {waitUntil: 'domcontentloaded', timeout: 20000});
@@ -173,6 +210,14 @@ async function inspect(browser, pathname, viewport, outDir) {
         h1Count: document.querySelectorAll('h1').length,
         documentWidth: document.documentElement.scrollWidth,
         priceGroups: document.querySelectorAll('.search-price-group').length,
+        seo: {
+          title: (document.title || '').trim().slice(0, 200),
+          description: (document.querySelector('meta[name="description"]')?.getAttribute('content') || '').trim().slice(0, 500),
+          canonical: (document.querySelector('link[rel="canonical"]')?.href || '').trim().slice(0, 500),
+          robots: [...document.querySelectorAll('meta[name="robots"]')]
+            .map(el => el.getAttribute('content') || '').join(',').slice(0, 200),
+          h1Text: (document.querySelector('h1')?.textContent || '').trim().slice(0, 200),
+        },
         buttons: buttons.map(el => {
           const rect = el.getBoundingClientRect();
           return {href: el.href, visible: visible(el), width: rect.width, height: rect.height};
@@ -182,6 +227,7 @@ async function inspect(browser, pathname, viewport, outDir) {
     record.h1Count = dom.h1Count;
     record.documentWidth = dom.documentWidth;
     record.priceGroups = dom.priceGroups;
+    record.seo = dom.seo;
     record.ctaCount = dom.buttons.length;
     record.hiddenCtaCount = dom.buttons.filter(b => !b.visible).length;
     record.tinyCtaCount = dom.buttons.filter(b => b.visible &&
@@ -251,6 +297,8 @@ async function main() {
     ga4_period: report?.period_last_28 || null,
     ga4_status: report?.status || 'NOT_PROVIDED',
     joined_gsc_status: joint?.status || 'NOT_PROVIDED',
+    queryEvidenceStatus: joint?.gsc_query_evidence_status || 'NOT_PROVIDED',
+    searchSignals: (joint?.top_investigations || []).map(x => ({path:x.path, code:x.code})),
     read_only: true, analytics_blocked: true, external_links_clicked: false,
     observations,
     counts: {

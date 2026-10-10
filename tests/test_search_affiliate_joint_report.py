@@ -158,6 +158,30 @@ class JointReportTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             module.combine(ga4_report(), g)
 
+    def test_no_reportable_queries_blocks_seo_rewrites_without_claiming_zero_demand(self):
+        output = module.combine(ga4_report(), gsc_report())
+        self.assertEqual(output["gsc_public_query_rows"], 0)
+        self.assertEqual(output["gsc_query_evidence_status"], "NO_REPORTABLE_QUERY_ROWS")
+        self.assertFalse(output["seo_copy_change_authorized"])
+        self.assertIn("クエリ不足", module.markdown(output))
+
+    def test_threshold_filtered_query_count_is_metadata_only(self):
+        gsc = gsc_report()
+        gsc["top_queries"] = [{
+            "page": TISSUE, "query": "ティッシュ 値段",
+            "impressions": 25, "clicks": 1, "ctr": .04, "position": 10,
+        }]
+        output = module.combine(ga4_report(), gsc)
+        self.assertEqual(output["gsc_public_query_rows"], 1)
+        self.assertEqual(output["gsc_query_evidence_status"], "SOME_THRESHOLD_FILTERED_QUERY_ROWS")
+        self.assertFalse(output["seo_copy_change_authorized"])
+
+    def test_search_console_missing_keeps_query_coverage_unavailable(self):
+        output = module.combine(ga4_report(), None)
+        self.assertEqual(output["gsc_query_evidence_status"], "GSC_UNAVAILABLE")
+        self.assertEqual(output["gsc_public_query_rows"], 0)
+        self.assertFalse(output["seo_copy_change_authorized"])
+
     def test_top_rows_incomplete_does_not_claim_zero(self):
         result = module.combine(ga4_report(), gsc_report(status="TOP_ROW_COVERAGE_UNCERTAIN"))
         self.assertEqual(result["status"], "JOINT_PROVISIONAL")
