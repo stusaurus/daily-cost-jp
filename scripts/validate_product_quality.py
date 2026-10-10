@@ -77,6 +77,18 @@ def validate_catalog(payload):
             if item.get('metric') != category.get('metric'):
                 errors.append(f'{category_id}: mixed ranking units')
         accepted[category_id] = {p['url']: p for p in safe}
+        if category_id == 'tissue' and category.get('small_pack_offer') is not None:
+            # The extra direct-buy offer must pass the same production safety
+            # gate. It may be absent from the bulk top-12, but is not an
+            # unverified link or a fabricated pack quantity.
+            from tissue_buying_quantity import safe_box_count
+            small = category['small_pack_offer']
+            if (safe_box_count(small) is None or
+                    len(filter_items('tissue', [small])) != 1 or
+                    category.get('small_pack_boxes') != safe_box_count(small)):
+                errors.append('tissue: unsafe small-pack offer')
+            else:
+                accepted[category_id][small['url']] = small
     if not any(accepted.values()):
         errors.append('Refusing to publish a catalog with zero safe products')
     return errors, accepted
