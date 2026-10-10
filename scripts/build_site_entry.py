@@ -252,6 +252,14 @@ def build_site_improved():
             "items": ranked,
             "error": error,
         }
+        if category["id"] == "tissue":
+            # A separately validated small-pack alternative MUST NOT change
+            # the established bulk unit-price ranking or its top-12 order.
+            from tissue_buying_quantity import small_offer_snapshot
+            snapshot = small_offer_snapshot(items)
+            serializable[category["id"]]["small_pack_offer"] = snapshot["offer"]
+            serializable[category["id"]]["small_pack_boxes"] = snapshot["boxes"]
+            quality_report[category["id"]]["small_pack_status"] = snapshot["status"]
         category_snapshots.append((category, metric, ranked))
         category_results.append(core.render_category(category, items, error=error))
 
