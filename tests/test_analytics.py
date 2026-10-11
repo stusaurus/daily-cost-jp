@@ -19,7 +19,7 @@ class AnalyticsBuildTests(unittest.TestCase):
                 analytics.inject_file(path, 'G-GFVSZ8YDQ5')
                 text = path.read_text()
                 self.assertIn(content, text)
-                self.assertEqual(text.count("gtag('config', 'G-GFVSZ8YDQ5')"), 1)
+                self.assertEqual(text.count("gtag('config', 'G-GFVSZ8YDQ5', window.dailyCostMeasurementContext())"), 1)
                 self.assertEqual(text.count("function affiliate(event)"), 1)
                 self.assertEqual(text.count("gtag/js?id="), 1)
                 self.assertLess(text.index('daily_cost_operator_test_v1'), text.index("gtag('config',"))

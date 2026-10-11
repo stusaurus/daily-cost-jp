@@ -67,7 +67,7 @@ def inject_file(path: Path, safe_id: str) -> bool:
       }}
     }})();
 
-    gtag('config', '{safe_id}');
+    gtag('config', '{safe_id}', window.dailyCostMeasurementContext());
   </script>
 """
 

@@ -148,6 +148,26 @@ def inspect_category(category_id, category):
                                  "offer_ref": None, "codes": ["SUPPLEMENT_NOT_VERIFIED"],
                                  "size_band": "UNKNOWN"})
 
+    # STEP5 candidates are separate from ranking, but the audit must see them.
+    pool = category.get('purpose_candidates', [])
+    if isinstance(pool, list) and len(pool) <= 30 and all(isinstance(r, dict) for r in pool):
+        good_pool = filter_items(category_id, pool)
+        fields = ('name', 'url', 'price', 'unit_price', 'metric', 'confidence', 'postage', 'item_code')
+        approved = {id(r) for r in pool if any(all(r.get(k) == g.get(k) for k in fields) for g in good_pool)}
+        from step4_recommendations import destination_matches, sale_band
+        from comparison_units import comparison_unit
+        for row in pool:
+            observation = safe_observation(category_id, row, 'PURPOSE_SUPPLEMENT', approved)
+            if observation['status'] == 'VERIFIED':
+                if not destination_matches(row) or not comparison_unit(category_id, row):
+                    observation.update(status='REJECTED', codes=['PURPOSE_IDENTITY_OR_UNIT_UNCONFIRMED'])
+                else:
+                    observation['size_band'] = (sale_band(category_id, row, observation['quantity']) or 'UNKNOWN').upper()
+            observations.append(observation)
+    else:
+        observations.append({'status':'REJECTED','source':'PURPOSE_SUPPLEMENT','offer_ref':None,
+                             'codes':['INVALID_PURPOSE_SUPPLEMENT'],'size_band':'UNKNOWN'})
+
     seen = set()
     unique = []
     codes = []

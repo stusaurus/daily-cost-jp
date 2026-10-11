@@ -128,6 +128,10 @@
   // Set defaults before config. GA-generated events (e.g. session_start) may
   // still omit this custom parameter; their GA4 reports must be checked separately.
   window.gtag('set', { operator_test: operator ? '1' : '0' });
+  window.dailyCostMeasurementContext = () => ({
+    operator_test: operator ? '1' : '0', site_id: 'daily-cost-jp',
+    traffic_environment: location.hostname === 'stusaurus.github.io' && location.pathname.startsWith(ROOT) ? 'production' : 'development'
+  });
   document.addEventListener('DOMContentLoaded', showOperatorStatus, { once: true });
   if (document.readyState !== 'loading') showOperatorStatus();
   window.addEventListener('storage', (event) => {

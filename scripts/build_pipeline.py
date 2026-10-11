@@ -44,6 +44,7 @@ STEPS = (
     'add_back_to_top',
     'redesign_laboratory',
     'step4_automation',
+    'step5_evaluation',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',
@@ -91,7 +92,7 @@ def main():
     for name in STEPS:
         print(f'::group::{name}', flush=True)
         try:
-            subprocess.run([sys.executable, f'scripts/{name}.py'] + (['build'] if name == 'step4_automation' else []), cwd=ROOT, check=True)
+            subprocess.run([sys.executable, f'scripts/{name}.py'] + (['build'] if name == 'step4_automation' else ['--build'] if name == 'step5_evaluation' else []), cwd=ROOT, check=True)
         except subprocess.CalledProcessError:
             if name != 'build_daily_og':
                 raise
