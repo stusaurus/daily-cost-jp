@@ -13,6 +13,20 @@ BEFORE = Path('audit-results/step6-before')
 AFTER = Path('audit-results/step6-after')
 
 
+def expected_after_bytes(before, cid, baseline_cfg, proposed_cfg):
+    """Only newly enabled FAQ sections are allowed to change during before/after QA.
+
+    On a PR checkout, HEAD already contains its approved policy change, so
+    previously enabled sections are present on *both* sides of the comparison.
+    """
+    if not cid or not proposed_cfg['pages'][cid] or baseline_cfg['pages'][cid]:
+        return before
+    closing = b'</main>'
+    if MARKER.encode() in before or before.count(closing) != 1:
+        raise ValueError('Unexpected baseline for fixed SEO addition')
+    return before.replace(closing, markup(cid).encode() + closing, 1)
+
+
 def prepare(site=Path('site'), quality=Path('quality-report.json'), exercise=False):
     cfg = policy(Path(TARGET).read_text())
     baseline_cfg = policy(subprocess.check_output(['git','show','HEAD:'+TARGET],text=True))
@@ -63,7 +77,7 @@ def prepare(site=Path('site'), quality=Path('quality-report.json'), exercise=Fal
         rel = p.relative_to(BEFORE)
         before, after = p.read_bytes(), (AFTER/rel).read_bytes()
         cid = next((c for c in REGISTRY if rel.as_posix() == f'categories/{c}/index.html'), None)
-        expected = before.decode().replace('</main>', markup(cid)+'</main>', 1).encode() if cid and cfg['pages'][cid] else before
+        expected = expected_after_bytes(before, cid, baseline_cfg, cfg)
         if expected != after:
             raise ValueError('Unexpected protected file change: ' + rel.as_posix())
         compared += 1
