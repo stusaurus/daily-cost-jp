@@ -25,4 +25,6 @@ runs:
         fi
     - name: Fetch, render and validate all production pages
       shell: bash
+      env:
+        STEP4_READ_TOKEN: ${{ github.token }}
       run: python scripts/build_pipeline.py

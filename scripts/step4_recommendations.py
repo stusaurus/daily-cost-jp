@@ -59,7 +59,7 @@ def sale_band(cid, item, qty):
     text = normalize(item['name'])
     if cid == 'laundry':
         # Six separate bottles are not a household trial even at modest volume.
-        counts = re.findall(r'(?:x\s*|【\s*|\[\s*)(\d+)\s*(?:個|袋|本)(?:セット)?', text, re.I)
+        counts = re.findall(r'x\s*(\d+)', text, re.I) + re.findall(r'(?:【\s*|\[\s*)(\d+)\s*(?:個|袋|本)(?:セット)?', text, re.I)
         if counts and max(map(int, counts)) > 2: return 'bulk'
         if re.search(r'業務用', text): return 'bulk'
     return 'small' if qty <= small else 'bulk' if qty >= bulk else 'everyday'
@@ -131,12 +131,13 @@ def block(cid, result, name):
         else:
             p = r['offer']
             unit_label = LABELS.get(p['metric'], p['metric'])
-            qty_label = f'{r["quantity"]:g}' + {'box':'箱','roll':'ロール','100g':'×100g','100ml':'×100ml'}.get(p['metric'],'')
+            qty_label = (f'{r["quantity"]*100:g}g' if p['metric']=='100g' else f'{r["quantity"]*100:g}ml' if p['metric']=='100ml' else f'{r["quantity"]:g}' + {'box':'箱','roll':'ロール'}.get(p['metric'],''))
+            normalized = f' · ¥{r["unit"][1]:,.2f}／{esc(r["unit"][0])}' if r['unit'][0] != unit_label else ''
             image = p.get('image','')
             photo = f'<img src="{esc(image)}" alt="" loading="lazy" width="96" height="96">' if isinstance(image,str) and image.startswith('https://') else ''
             content = (photo + f'<h4>{esc(clean_display_name(p["name"]))}</h4><p>確認できた総数量：{esc(qty_label)}</p>'
                        f'<p>支払総額 <strong>¥{p["price"]:,.0f}</strong>（送料込み）</p>'
-                       f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)} · ¥{r["unit"][1]:,.2f}／{esc(r["unit"][0])}</p>'
+                       f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)}{normalized}</p>'
                        f'<p class="step4-reason">{esc(label)}：' + ('この数量区分の確認済み候補から同じ比較単位の単価を重視。保管場所もご確認ください。' if purpose=='bulk' else 'この数量区分の確認済み候補から支払総額を重視。用途・ブランドもご確認ください。') + '</p>'
                        f'<a class="buy-button" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener" data-conversion-source="category" data-category-id="{cid}" data-id="{esc(r["spec_ref"])}" data-purchase-purpose="{purpose}" data-shipping-price="{p["price"]}">楽天でこの商品を確認する ↗</a>')
         parts.append(f'<article class="step4-purpose" data-purpose="{purpose}"><h3>{label}</h3>{content}</article>')
@@ -146,7 +147,7 @@ def block(cid, result, name):
             '<p class="step4-caution">価格・在庫・地域別送料は変動します。購入前に楽天で最新の条件を確認してください。</p></section>')
 
 
-CSS = '''.step4-recommendations{margin:24px 0;padding:20px;border:1px solid #dfcdbf;border-radius:14px;background:#fffaf6;color:#342f2c}.step4-recommendations h2{font-size:20px;margin:0 0 12px}.step4-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.step4-purpose{min-width:0;padding:12px;background:#fff;border-radius:10px;overflow-wrap:anywhere}.step4-purpose h3{font-size:16px;margin:0 0 10px}.step4-purpose h4{font-size:14px;line-height:1.6}.step4-purpose p{font-size:13px;line-height:1.7}.step4-purpose img{object-fit:contain;max-width:100%}.step4-recommendations a{display:inline-flex;align-items:center;min-height:44px;padding:8px 4px;max-width:100%;white-space:normal}.step4-purpose .buy-button{font-size:13px}.step4-caution{font-size:12px;color:#5f5650}.step4-recommendations a:focus-visible{outline:3px solid #22663a;outline-offset:3px}@media(max-width:650px){.step4-grid{grid-template-columns:1fr}.step4-recommendations{padding:16px}}'''
+CSS = '''.step4-home-purpose{margin:12px 0;border:1px solid #dfcdbf;border-radius:12px;background:#fffaf6}.step4-home-purpose>summary{min-height:44px;padding:14px 16px;font-size:16px;font-weight:700;cursor:pointer}.step4-home-purpose .step4-recommendations{border:0;margin:0}.step4-recommendations{margin:24px 0;padding:20px;border:1px solid #dfcdbf;border-radius:14px;background:#fffaf6;color:#342f2c}.step4-recommendations h2{font-size:20px;margin:0 0 12px}.step4-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.step4-purpose{min-width:0;padding:12px;background:#fff;border-radius:10px;overflow-wrap:anywhere}.step4-purpose h3{font-size:16px;margin:0 0 10px}.step4-purpose h4{font-size:14px;line-height:1.6}.step4-purpose p{font-size:13px;line-height:1.7}.step4-purpose img{object-fit:contain;max-width:100%}.step4-recommendations a{display:inline-flex;align-items:center;min-height:44px;padding:8px 4px;max-width:100%;white-space:normal}.step4-purpose .buy-button{font-size:13px}.step4-caution{font-size:12px;color:#5f5650}.step4-recommendations a:focus-visible{outline:3px solid #22663a;outline-offset:3px}@media(max-width:650px){.step4-grid{grid-template-columns:1fr}.step4-recommendations{padding:16px}}'''
 
 
 def apply(site=Path('site'), *, enabled=False):
@@ -168,7 +169,10 @@ def apply(site=Path('site'), *, enabled=False):
             c = snapshot['categories'].get(cid)
             r = report['categories'][cid]
             if not isinstance(c,dict) or c.get('error'): continue
-            blocks.append(block(cid, r, c.get('name',cid)))
+            section_markup = block(cid, r, c.get('name',cid))
+            if path == site/'index.html':
+                section_markup = f'<details class="step4-home-purpose"><summary>{esc(c.get("name",cid))}：買う量から選ぶ</summary>'+section_markup+'</details>'
+            blocks.append(section_markup)
         if not blocks: continue
         anchor = re.search(r'<section\b[^>]*id="purchase-tools"[^>]*>', markup)
         position = anchor.start() if anchor else markup.index('</main>')

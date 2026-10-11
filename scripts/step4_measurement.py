@@ -59,7 +59,7 @@ def report(page_diagnostics=None,event_report=None,gsc=None):
     return r
 
 
-def fetch_events():
+def fetch_events(include_prior=False):
     prop=os.environ['GA4_PROPERTY_ID']
     if not prop.isdigit():raise ValueError('Invalid GA4 property')
     import google.auth
@@ -71,14 +71,19 @@ def fetch_events():
     registered=any(d.api_name=='customEvent:operator_test' for d in meta.dimensions)
     end=dt.datetime.now(ZoneInfo('Asia/Tokyo')).date()-dt.timedelta(days=2);start=end-dt.timedelta(days=27)
     period=[start.isoformat(),end.isoformat()]
-    raw=client.run_report(RunReportRequest(property=property_,date_ranges=[DateRange(start_date=period[0],end_date=period[1])],
+    fetch_start=start-dt.timedelta(days=28) if include_prior else start
+    raw=client.run_report(RunReportRequest(property=property_,date_ranges=[DateRange(start_date=fetch_start.isoformat(),end_date=period[1])],
        dimensions=[Dimension(name='date'),Dimension(name='eventName'),Dimension(name='pageLocation')]+([Dimension(name='customEvent:operator_test')] if registered else []),
        metrics=[Metric(name='eventCount')],dimension_filter=FilterExpression(filter=Filter(field_name='eventName',in_list_filter=Filter.InListFilter(values=list(EVENTS)))),limit=100000))
     rows=[]
     for row in check_response(raw):
         v=[d.value for d in row.dimension_values];day=dt.datetime.strptime(v[0],'%Y%m%d').date().isoformat()
         rows.append((day,v[1],v[2],v[3] if registered else '',int(row.metric_values[0].value)))
-    return aggregate_events(rows,period,registered)
+    current=aggregate_events([r for r in rows if r[0]>=period[0]],period,registered)
+    if include_prior:
+        prior=[fetch_start.isoformat(),(start-dt.timedelta(days=1)).isoformat()]
+        return current,aggregate_events([r for r in rows if r[0]<period[0]],prior,registered)
+    return current
 
 
 def read(path):
@@ -91,7 +96,9 @@ def main():
     root=Path('audit-results');root.mkdir(exist_ok=True)
     events=read(root/'step4-events-28d.json')
     if args.fetch:
-        try:events=fetch_events()
+        try:
+            events,prior=fetch_events(include_prior=True)
+            (root/'step4-events-prior-28d.json').write_text(json.dumps(prior,ensure_ascii=False,indent=2))
         except Exception:
             # Never log credentials, API URLs, raw query or arbitrary errors.
             events={'source':'GA4 Data API','status':'UNAVAILABLE','response_complete':False}

@@ -24,7 +24,8 @@ VERIFY_TARGET = 'docs/step2-token-verification.md'
 VERIFY_CONTENT = '# STEP 2 workflow token verification\n\nDO NOT MERGE. This Draft PR is a manual, documentation-only permission test.\nNo site, product, affiliate, analytics, deployment or merge changes are authorized.\n'
 VERIFY_WORKFLOW = 'STEP 2 Token Verification (manual, never merge)'
 PROTECTED = {'PRODUCT_QUALITY_WARNINGS', 'PRODUCT_QUALITY_FAILURE', 'SEO_SNIPPET_RESEARCH',
-             'PRODUCT_PRICE', 'POSTAGE', 'QUANTITY', 'RAKUTEN_LINK', 'SEO_TITLE', 'SAFETY_RULE'}
+             'PRODUCT_PRICE', 'POSTAGE', 'QUANTITY', 'RAKUTEN_LINK', 'SEO_TITLE', 'SAFETY_RULE',
+             'PRODUCT_QUALITY', 'PRICE_CALCULATION', 'RAKUTEN_URL', 'SEO', 'CODE_CSS_NEW_FEATURE'}
 
 
 def digest(text):
@@ -97,6 +98,12 @@ def prepare():
             target = css_path
             result.update(recipe=ui['recipe'], fingerprint=digest(ui['recipe'] + ':' + ui_target)[:24],
                           original_hash=digest(css), ui_evidence_hash=ui['evidence_hash'])
+    # STEP4 adds classifications only; it cannot propose or execute a code recipe.
+    from step4_automation import feedback_valid
+    control = read_optional('audit-results/step4-control.json')
+    if feedback_valid(control):
+        result['decisions'].extend({'code':d['code'], 'path':d['path'], 'decision':d['classification']}
+                                  for d in control['decisions'] if d['classification'] != 'AUTO_CONTENT')
     result['candidate_hash'] = digest(candidate) if candidate is not None else None
     if result['recipe']:
         target.write_text(candidate, encoding='utf-8')

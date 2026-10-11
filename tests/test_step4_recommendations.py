@@ -20,6 +20,10 @@ class RecommendationsTests(unittest.TestCase):
         p=offer('laundry',30,'100ml',title='洗濯洗剤 500ml×6本')
         slots=r.select_category('laundry',{'items':[p]})['slots']
         self.assertIsNone(slots['small']);self.assertIsNone(slots['everyday']);self.assertIsNotNone(slots['bulk'])
+    def test_six_small_bottles_never_fill_trial(self):
+        p=offer('laundry',6,'100ml',title='洗濯洗剤 100ml×6')
+        slots=r.select_category('laundry',{'items':[p]})['slots']
+        self.assertIsNone(slots['small']);self.assertIsNone(slots['everyday']);self.assertIsNotNone(slots['bulk'])
     def test_three_offers_one_pack_not_three_choices(self):
         rows=[offer(qty=5,suffix=str(i)) for i in range(3)]
         result=r.select_category('tissue',{'items':rows})

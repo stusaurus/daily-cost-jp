@@ -56,11 +56,13 @@ async function inspect(browser,root,route,width,phase){
   }
   if(phase==='after'&& !['products/','today/'].includes(route)){
    assert(await page.locator('.step4-recommendations').count()>0);
+   await page.locator('details.step4-home-purpose').evaluateAll(es=>es.forEach(e=>e.open=true));
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=width+2);
    const links=await page.locator('.step4-recommendations a').evaluateAll(es=>es.map(e=>({href:e.href,height:e.getBoundingClientRect().height,name:e.textContent.trim()})));
    assert(links.every(e=>e.height>=44&&e.name));
    for(const e of links.filter(e=>e.href.includes('rakuten.co.jp'))){const u=new URL(e.href);assert(u.protocol==='https:'&&u.hostname.endsWith('.rakuten.co.jp'));}
    const target=page.locator('.step4-recommendations').first();await target.scrollIntoViewIfNeeded();
-   await target.screenshot({path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}-recommendations.png`});
+   await target.screenshot({style:'.lab-masthead,.lab-mobile-nav,#back-to-top{visibility:hidden!important}',path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}-recommendations.png`});
   }
   await page.screenshot({path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}.png`,fullPage:true});
   return {route,width,phase,status:'PASS',protected_hash:protect,document_width:beforeWidth,operations:'search or compare/save/reload',affiliate_navigation:'BLOCKED',google_requests:'BLOCKED'};

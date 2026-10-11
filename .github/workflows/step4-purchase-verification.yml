@@ -15,7 +15,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -46,6 +46,25 @@ jobs:
           python scripts/step4_prepare_candidate.py
       - name: Verify 18 pairs and protected product/analytics DOM
         run: node scripts/step4_browser_qa.cjs
+      - name: Lighthouse the unpublished active purchase layer without Google or affiliate requests
+        timeout-minutes: 8
+        run: |
+          mkdir -p /tmp/step4-lighthouse-web audit-results/step4-lighthouse
+          ln -s "$GITHUB_WORKSPACE/audit-results/step4-preview-after" /tmp/step4-lighthouse-web/daily-cost-jp
+          python -m http.server 8766 --directory /tmp/step4-lighthouse-web > /tmp/step4-lighthouse-server.log 2>&1 &
+          step4_server_pid=$!
+          trap 'kill "$step4_server_pid"' EXIT
+          for page in home laundry tissue toilet-paper products; do
+            case "$page" in
+              home) route='' ;;
+              products) route='products/' ;;
+              *) route="categories/$page/" ;;
+            esac
+            for profile in mobile desktop; do
+              if [ "$profile" = desktop ]; then preset='--preset=desktop'; else preset=''; fi
+              npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "http://127.0.0.1:8766/daily-cost-jp/$route?test=1" --chrome-flags='--headless --no-sandbox' $preset --blocked-url-patterns='*googletagmanager.com/*,*google-analytics.com/*,https://hb.afl.rakuten.co.jp/*,https://*.workers.dev/*' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="audit-results/step4-lighthouse/$page-$profile" --quiet
+            done
+          done
       - name: Preserve review evidence (no search logs or credentials)
         if: always()
         uses: actions/upload-artifact@v4
@@ -54,4 +73,7 @@ jobs:
           path: |
             audit-results/step4-qa/
             audit-results/step4-preview-after/purchase-recommendations.json
+            audit-results/step4-preview-after/step4-content-state.json
+            audit-results/step4-preview-after/step4-preview-mode.json
+            audit-results/step4-lighthouse/
           retention-days: 30

@@ -88,9 +88,10 @@
         const button=node('button');button.type='button';button.dataset.productTool=kind;button.dataset.productKey=p.key;
         button.addEventListener('click',()=>{
           const set=kind==='save'?saved:selected;
+          let added=false;
           if(set.has(p.key))set.delete(p.key);
-          else {if(set.size>=(kind==='save'?50:4)){status.textContent=kind==='save'?'保存は50商品までです。':'一度に比較できるのは4商品までです。';return;}set.add(p.key);measure(kind==='save'?'purchase_save_add':'purchase_compare_add');}
-          const ok=kind==='save'?persist():true;sync();if(ok)status.textContent=kind==='save'?'保存一覧を更新しました。':'比較候補を更新しました。「比較を見る」で確認できます。';
+          else {if(set.size>=(kind==='save'?50:4)){status.textContent=kind==='save'?'保存は50商品までです。':'一度に比較できるのは4商品までです。';return;}set.add(p.key);added=true;}
+          const ok=kind==='save'?persist():true;if(ok&&added)measure(kind==='save'?'purchase_save_add':'purchase_compare_add');sync();if(ok)status.textContent=kind==='save'?'保存一覧を更新しました。':'比較候補を更新しました。「比較を見る」で確認できます。';
           if(!panel.hidden)show();
         });tools.append(button);
       });body.append(tools);

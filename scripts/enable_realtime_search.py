@@ -248,7 +248,8 @@ script = f"""
       // Enter can start another query while an earlier fetch is in flight.
       // Never render the earlier query's prices/URLs under the new query label.
       if (generation !== searchGeneration) return;
-      let rows = Array.isArray(data.products) ? data.products.map(window.dailyCostVerifiedOffer) : [];
+      if (!data || !Array.isArray(data.products)) throw new Error('INVALID_API_RESPONSE');
+      let rows = data.products.map(window.dailyCostVerifiedOffer);
       let fallbackCount = 0;
       rows = rows.map((p) => {{
         const needsFallback = !Number(p.shipping_included_price || 0) && fallbackCount < FALLBACK_LIMIT;

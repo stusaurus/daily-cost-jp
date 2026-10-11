@@ -23,6 +23,10 @@ def main(site=Path('audit-results/step4-preview-after')):
     page.write_text(old)
     (site/'assets/purchase-tools.js').write_text(Path('scripts/purchase_tools.js').read_text())
     for path in site.rglob('index.html'):inject_file(path,'G-GFVSZ8YDQ5')
-    apply(site,enabled=True)
+    from step4_automation import build_content,diagnose
+    snapshot=json.loads((site/'data.json').read_text())
+    control=diagnose(snapshot,True)
+    build_content(site,{'STEP4_ENABLE_CONTENT':'true'},feedback=control)
+    (site/'step4-preview-mode.json').write_text(json.dumps({'mode':'OFFLINE_CURRENT_DATA_FEEDBACK','real_token_verified':False}))
     print('Applied unpublished STEP4 candidate; pricing/URLs/catalog retained')
 if __name__=='__main__':main()

@@ -33,3 +33,10 @@ test('new purpose preserves existing affiliate event and attribution',()=>{
  w.document.querySelector('a').addEventListener('click',e=>e.preventDefault());w.document.querySelector('a').click();
  const e=events.find(e=>e[1]==='affiliate_click');assert.equal(e[2].conversion_source,'category');assert.equal(e[2].purchase_purpose,'small');assert.equal(e[2].operator_test,'1');dom.window.close();
 });
+test('malformed API is failed acquisition rather than zero products',async()=>{
+ const html=execFileSync('python',['tests/render_analytics_fixture.py'],{encoding:'utf8'});
+ const dom=new JSDOM(html,{url:'https://stusaurus.github.io/daily-cost-jp/products/?test=1',runScripts:'dangerously',beforeParse(w){w.fetch=async()=>({ok:true,json:async()=>({error:'provider failure'})});}});
+ const q=dom.window.document.querySelector('#q');q.value='アリエール';q.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+ await new Promise(r=>setTimeout(r,30));
+ const events=dom.window.dataLayer.filter(e=>e[1]==='purchase_search_diagnostics');assert.equal(events.length,1);assert.equal(events[0][2].diagnostic_status,'API_FETCH_FAILURE');assert.equal(events[0][2].fetched_count,undefined);dom.window.close();
+});
