@@ -56,6 +56,8 @@ async function inspect(browser,root,route,width,phase){
   }
   if(phase==='after'&& !['products/','today/'].includes(route)){
    assert(await page.locator('.step4-recommendations').count()>0);
+   await page.locator('details.step4-home-purpose').evaluateAll(es=>es.forEach(e=>e.open=true));
+   assert(await page.evaluate(()=>document.documentElement.scrollWidth)<=width+2);
    const links=await page.locator('.step4-recommendations a').evaluateAll(es=>es.map(e=>({href:e.href,height:e.getBoundingClientRect().height,name:e.textContent.trim()})));
    assert(links.every(e=>e.height>=44&&e.name));
    for(const e of links.filter(e=>e.href.includes('rakuten.co.jp'))){const u=new URL(e.href);assert(u.protocol==='https:'&&u.hostname.endsWith('.rakuten.co.jp'));}
