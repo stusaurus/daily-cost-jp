@@ -17,7 +17,7 @@
 #home-ranking-hero .home-rank-all{display:inline-flex;align-items:center;min-height:44px}
 ```
 
-トップ末尾の「楽天総合ランキングTOP50を見る」の元生成処理 `promote_home_ranking.py` には44pxの指定がある。最終CSSには同セレクタがなく、取得した公開HTML/CSSの隔離再現で1440pxは高さ18px、390/320pxは16pxだった。トップの生活カテゴリ導線は既に44px以上であり、変更しない。公開を直接開くActionsで同じ原因を確認してから、実装PRにこのCSS候補を反映する。
+トップ末尾の「楽天総合ランキングTOP50を見る」の元生成処理 `promote_home_ranking.py` には44pxの指定がある。最終CSSには同セレクタがなく、[公開実画面の18画面監査 run38098024641](https://github.com/stusaurus/daily-cost-jp/actions/runs/38098024641)が成功し、1440pxは高さ17px、390/320pxは16pxと再現した。トップの生活カテゴリ導線は既に44px以上であり、変更しない。同じ原因を確認したため、実装Draft PR #78にこのCSS候補だけを反映した。候補はブラウザ内で置換して検証し、本番へは公開しない。
 
 44pxは本サイトの操作性の目標（WCAG 2.5.5の強化基準を参考）であり、24pxのWCAG 2.5.8最低基準への違反とは断定しない。色、書体、リンク先、商品データ、判定、計測は変えない。横スクロールを隠すレシピは登録していない。
 
@@ -69,3 +69,11 @@ STEP 3のPR検証workflowはcontents:readだけ。定期publisherのcontents:wri
 - https://www.w3.org/WAI/WCAG22/Understanding/target-size-enhanced/
 - https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum/
 - https://docs.github.com/en/actions/concepts/security/github_token
+
+## 検証範囲の区別
+
+Python282件・JavaScript75件、商品照合/送料/数量/楽天安全性・構文の固定回帰、3幅の模擬レシピが成功。公開診断は上記runで全18画面成功。最終候補の18画面前後比較はPRのSTEP 3 UI verification artifactで確認する。画像・JSONは30日保持するため、レビュー時に保存する。
+
+共通publisherの実GITHUB_TOKEN生成と重複抑止は#77の既存runで実証済み。新UIレシピの実トークンによる無人PR生成は、この未マージDraftからは実行しない。固定CSS生成・proof拒否・Draft API・重複抑止は模擬publisherで検証済み。マージ後の定期runでは、対象が本PRで解消済みならNO_SAFE_FIXが正しい。追加の実トークン確認には既存の手動検証workflowをcreate→再実行し、DO NOT MERGEの#77が再作成されないことを確認する。UIを故意に本番で壊して検証しない。
+
+QAは固定6ページの機械診断であり、全ページのアクセシビリティ適合やUX原因を証明しない。楽天API検索は空応答を固定した操作確認で、購入・計測送信は行わない。重なり/コントラスト等の未確定項目はINVESTIGATEのまま。機能追加と収益向上は未実施。
