@@ -76,7 +76,7 @@ async function interactions(page,pathname){
   if(await page.locator('#purchase-tool-panel a[data-conversion-source=comparison]').count()<1)throw Error('Comparison attribution missing');
   const save=page.locator('[data-product-tool=save]').first();await save.click();await page.locator('#show-saved').click();
   await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').first().waitFor({state:'visible'});
-  await page.reload({waitUntil:'domcontentloaded'});await page.locator('#show-saved').click();
+  await page.reload({waitUntil:'domcontentloaded'});await page.locator('[data-product-tool=save][aria-pressed=true]').first().waitFor({state:'visible'});await page.locator('#show-saved').click();
   await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').first().waitFor({state:'visible'});
   results.push('compare-save-and-reload-persistence');
  }
