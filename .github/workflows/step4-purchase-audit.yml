@@ -35,6 +35,7 @@ jobs:
           node-version: '22'
       - name: Run complete Python and JavaScript regression suites
         run: |
+          python3 -m pip install -r requirements-render.txt
           python3 -m unittest discover -s tests
           python3 -m compileall -q scripts
           npm ci --ignore-scripts
