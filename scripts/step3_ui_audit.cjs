@@ -75,9 +75,9 @@ async function interactions(page,pathname){
   if(!await page.locator('#purchase-tool-panel').isVisible())throw Error('Comparison panel failed');
   if(await page.locator('#purchase-tool-panel a[data-conversion-source=comparison]').count()<1)throw Error('Comparison attribution missing');
   const save=page.locator('[data-product-tool=save]').first();await save.click();await page.locator('#show-saved').click();
-  if(await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').count()<1)throw Error('Saved panel failed');
+  await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').first().waitFor({state:'visible'});
   await page.reload({waitUntil:'domcontentloaded'});await page.locator('#show-saved').click();
-  if(await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').count()<1)throw Error('Saved persistence failed');
+  await page.locator('#purchase-tool-panel a[data-conversion-source=saved]').first().waitFor({state:'visible'});
   results.push('compare-save-and-reload-persistence');
  }
  return results;
