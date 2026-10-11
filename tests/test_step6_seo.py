@@ -13,7 +13,7 @@ import step6_seo_audit as a
 import step6_seo_content as c
 import step6_effects as e
 from step6_gsc_sitemaps import collect_sitemaps
-from step6_verification import validate_receipt
+from step6_verification import validate_receipt, expected_after_bytes
 
 NOW=dt.datetime(2026,10,11,14,30,tzinfo=dt.timezone.utc)
 SHA='a'*40
@@ -129,6 +129,25 @@ class Audit(unittest.TestCase):
 
 
 class FixedContent(unittest.TestCase):
+    def test_reviewed_pr_keeps_existing_help_byte_identical(self):
+        # Automated Draft QA has HEAD=old policy and adds exactly one section.
+        # PR CI has HEAD=new policy; existing sections must not be inserted twice.
+        plain = b'<main><section id="tissue">price, ranking, affiliate URLs</section></main>'
+        initial = c.policy(CONFIG)
+        tissue_enabled = c.policy(c.repair(CONFIG, c.recipe('tissue')))
+        tissue_html = plain.replace(b'</main>', c.markup('tissue').encode() + b'</main>', 1)
+        self.assertEqual(expected_after_bytes(plain, 'tissue', initial, tissue_enabled), tissue_html)
+        self.assertEqual(expected_after_bytes(tissue_html, 'tissue', tissue_enabled, tissue_enabled), tissue_html)
+
+        # A later proposal for another page preserves the already approved one.
+        with_laundry = c.policy(c.repair(json.dumps(tissue_enabled), c.recipe('laundry')))
+        self.assertEqual(expected_after_bytes(tissue_html, 'tissue', tissue_enabled, with_laundry), tissue_html)
+        self.assertEqual(expected_after_bytes(plain, 'laundry', tissue_enabled, with_laundry),
+                         plain.replace(b'</main>', c.markup('laundry').encode() + b'</main>', 1))
+        self.assertEqual(expected_after_bytes(plain, None, initial, tissue_enabled), plain)
+        with self.assertRaises(ValueError):
+            expected_after_bytes(b'<main>incomplete', 'tissue', initial, tissue_enabled)
+
     def test_one_page_fixed_policy_and_idempotence(self):
         revised=c.repair(CONFIG,c.recipe('laundry'))
         self.assertEqual(c.policy(revised)['pages'],{'laundry':True,'tissue':False,'toilet-paper':False})
