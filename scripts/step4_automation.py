@@ -115,7 +115,10 @@ def build_content(site=Path('site'),env=None,feedback=None):
     enabled=env.get('STEP4_ENABLE_CONTENT')=='true';paused=env.get('STEP4_PAUSE_CONTENT')=='true'
     try:snapshot=json.loads((site/'data.json').read_text())
     except (OSError,ValueError):snapshot=None
-    decision=diagnose(snapshot,enabled,paused)
+    try:decision=diagnose(snapshot,enabled,paused)
+    except (TypeError,ValueError,KeyError,AttributeError):
+        snapshot=None
+        decision=diagnose(None,enabled,paused)
     if enabled and not paused:
         feedback=feedback if feedback is not None else read_feedback(env.get('STEP4_READ_TOKEN',''))
         if not feedback_valid(feedback):decision.update(content_action='STOP_AND_FALLBACK',reason='FRESH_MAIN_FEEDBACK_UNAVAILABLE')

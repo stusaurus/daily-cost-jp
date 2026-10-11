@@ -78,3 +78,23 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual((site/'data.json').read_text(),raw);self.assertIn('data-step4-category',(site/'index.html').read_text())
             state=json.loads((site/'step4-content-state.json').read_text());self.assertFalse(state['automatic_merge'])
 if __name__=='__main__':unittest.main()
+
+class FeedbackArtifactTests(unittest.TestCase):
+    def test_exact_success_main_artifact_only_and_no_extraction(self):
+        import io,zipfile
+        now=dt.datetime.now(dt.timezone.utc)
+        control=a.diagnose(catalog(),True,now=now)
+        buf=io.BytesIO()
+        with zipfile.ZipFile(buf,'w') as z:z.writestr('step4-control.json',json.dumps(control))
+        response=unittest.mock.MagicMock();response.__enter__.return_value.read.return_value=buf.getvalue()
+        opener=unittest.mock.MagicMock();opener.open.return_value=response
+        runs={'workflow_runs':[{'id':123456,'head_branch':'main','event':'workflow_dispatch','conclusion':'success','updated_at':now.isoformat()}]}
+        artifacts={'artifacts':[{'id':42,'name':'step4-operations-feedback','expired':False,'size_in_bytes':1000}]}
+        with patch('autonomous_operations_issue.github_request',side_effect=[runs,artifacts]) as api,patch('urllib.request.build_opener',return_value=opener):
+            r=a.read_feedback('fake-test-token')
+        self.assertTrue(a.feedback_valid(r));self.assertEqual(r['evidence_run_id'],123456)
+        self.assertIn('branch=main',api.call_args_list[0].args[0]);self.assertIn('/actions/runs/123456/',api.call_args_list[1].args[0])
+    def test_other_branch_and_bad_archive_cannot_authorize_content(self):
+        runs={'workflow_runs':[{'id':123456,'head_branch':'malicious','event':'workflow_dispatch','conclusion':'success'}]}
+        with patch('autonomous_operations_issue.github_request',return_value=runs):self.assertIsNone(a.read_feedback('fake-test-token'))
+        self.assertIsNone(a.read_feedback(''))
