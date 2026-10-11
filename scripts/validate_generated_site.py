@@ -10,6 +10,12 @@ import xml.etree.ElementTree as ET
 BASE = 'https://stusaurus.github.io/daily-cost-jp/'
 
 
+def has_one_ga4_config(text):
+    prefix = "gtag('config', 'G-GFVSZ8YDQ5'"
+    approved = (prefix + ")", prefix + ", window.dailyCostMeasurementContext())")
+    return text.count(prefix) == 1 and sum(text.count(call) for call in approved) == 1
+
+
 class Page(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -58,7 +64,7 @@ def validate(root=Path('site')):
         for schema in page.schema:
             try: json.loads(schema)
             except ValueError: errors.append(f'{rel}: invalid JSON-LD')
-        if text.count("gtag('config', 'G-GFVSZ8YDQ5')") != 1: errors.append(f'{rel}: missing/duplicate GA4 config')
+        if not has_one_ga4_config(text): errors.append(f'{rel}: missing/duplicate GA4 config')
         if 'data.operator_test = operator ?' not in text: errors.append(f'{rel}: missing explicit operator flag')
     rakuten = 0
     for rel, page in pages.items():
