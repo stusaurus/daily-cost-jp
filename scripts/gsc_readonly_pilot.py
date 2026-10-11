@@ -342,6 +342,11 @@ def fetch():
                                   if isinstance(error, ValueError) else "SEARCH_CONSOLE_UNAVAILABLE"))
         return
     report = build_report(today, aggregate_data, page_data, query_data)
+    # GET only, using the existing readonly scope; no submissions.
+    from step6_gsc_sitemaps import collect_sitemaps
+    report['sitemaps'] = collect_sitemaps(session)
+    from step6_effects import collect as collect_effects
+    report['seo_effects'] = collect_effects(session, today)
 
     # Supplemental, best-effort daily evidence. The existing site/per-page
     # GSC export must remain successful if a dated endpoint is unavailable.

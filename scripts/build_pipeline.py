@@ -45,6 +45,7 @@ STEPS = (
     'redesign_laboratory',
     'step4_automation',
     'step5_evaluation',
+    'step6_seo_content',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',

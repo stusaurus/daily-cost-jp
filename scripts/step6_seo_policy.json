@@ -1,0 +1,8 @@
+{
+  "version": "comparison-help-v1",
+  "pages": {
+    "laundry": false,
+    "tissue": false,
+    "toilet-paper": false
+  }
+}
