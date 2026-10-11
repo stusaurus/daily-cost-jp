@@ -43,11 +43,7 @@ jobs:
       - name: Apply unpublished recommendation layer
         run: |
           cp -R audit-results/step4-preview-before audit-results/step4-preview-after
-          PYTHONPATH=scripts python - <<'PY'
-          from pathlib import Path
-          from step4_recommendations import apply
-          apply(Path('audit-results/step4-preview-after'), enabled=True)
-          PY
+          python scripts/step4_prepare_candidate.py
       - name: Verify 18 pairs and protected product/analytics DOM
         run: node scripts/step4_browser_qa.cjs
       - name: Preserve review evidence (no search logs or credentials)

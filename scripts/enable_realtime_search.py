@@ -9,7 +9,8 @@ if not PAGE.exists():
 
 html = PAGE.read_text(encoding="utf-8")
 offer_guard = Path(__file__).with_name("offer_validation.js").read_text(encoding="utf-8")
-html = html.replace("</head>", '<script id="offer-validation">' + offer_guard + '</script>\n</head>', 1)
+diagnostics = Path(__file__).with_name("step4_search_diagnostics.js").read_text(encoding="utf-8")
+html = html.replace("</head>", '<script id="step4-search-diagnostics">' + diagnostics + '</script><script id="offer-validation">' + offer_guard + '</script>\n</head>', 1)
 
 # The static shell installs a result-click listener too. The realtime listener
 # below replaces it and retains the same event with verified shipping details.
@@ -142,6 +143,26 @@ script = f"""
     return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{displayImage ? `<img src="${{esc(displayImage)}}" alt="" width="128" height="128" loading="lazy" decoding="async">` : ''}}${{imageBadge}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
   }}
 
+  function recordSearchDiagnosis(phase, fetchStatus = 'OK') {{
+    const summary = window.dailyCostSearchDiagnostics.summarize(liveRows, fetchStatus);
+    status.dataset.searchDiagnosticStatus = summary.status;
+    status.dataset.searchDiagnosticCounts = JSON.stringify(summary.counts);
+    let diagnosis = document.getElementById('search-diagnostic-note');
+    if (!diagnosis) {{
+      diagnosis = document.createElement('p');
+      diagnosis.id = 'search-diagnostic-note';
+      diagnosis.className = 'realtime-note';
+      diagnosis.setAttribute('role', 'status');
+      status.insertAdjacentElement('afterend', diagnosis);
+    }}
+    diagnosis.textContent = summary.status === 'API_FETCH_FAILURE' ? '商品取得に失敗しました。商品0件とは異なります。' :
+      summary.status === 'API_RESPONSE_ZERO' ? 'APIから一致する候補を取得できませんでした。' :
+      summary.status === 'NO_SAFE_PRICED_CANDIDATES' ? `候補は${{summary.fetched_count}}件取得しましたが、安全な送料込み価格を確認できる候補は0件です。送料・数量・同一商品を確認できない理由も含みます。理由が返らない候補は不明として扱います。` :
+      summary.status === 'LOOKUPS_PENDING' ? '送料・同一商品を追加確認中です。未確認を商品なしとは扱いません。' :
+      '送料込み価格を確認できた候補があります。購入前に楽天で最新条件をご確認ください。';
+    if (typeof window.gtag === 'function') window.gtag('event', 'purchase_search_diagnostics', window.dailyCostSearchDiagnostics.eventPayload(summary, phase));
+  }}
+
   function updateStatus() {{
     const priced = liveRows.filter((p) => Number(p.shipping_included_price || 0) > 0).length;
     const pending = liveRows.filter((p) => p.shipping_lookup_pending).length;
@@ -193,7 +214,7 @@ script = f"""
           target.shipping_lookup_pending = false;
           patchCard(target.product_id);
         }}
-        console.warn('Shipping fallback failed', err);
+        console.warn('Shipping fallback failed');
       }}
       if (i < queue.length - 1) await wait(1150);
     }}
@@ -237,7 +258,10 @@ script = f"""
       liveRows = append ? liveRows.concat(rows) : rows;
       pageCount = Math.max(1, Number(data.page_count || 1));
       renderLive();
-      runFallbackLookups(generation);
+      recordSearchDiagnosis('initial');
+      runFallbackLookups(generation).then(() => {{
+        if (generation === searchGeneration) recordSearchDiagnosis('final');
+      }});
       if (typeof window.gtag === 'function') window.gtag('event', 'realtime_product_search', {{
         search_term: currentTerm,
         result_count: liveRows.length,
@@ -246,7 +270,8 @@ script = f"""
       }});
     }} catch (err) {{
       if (generation !== searchGeneration) return;
-      console.error('Realtime product search failed', err);
+      console.error('Realtime product search failed');
+      recordSearchDiagnosis('final', 'API_FAILURE');
       if (!append) {{
         status.textContent = '楽天のリアルタイム検索に接続できませんでした。';
         results.innerHTML = '<div class="empty">少し時間をおいて、もう一度検索してください。<br><button class="retry-btn" id="retryRealtime" type="button">もう一度検索</button></div>';
