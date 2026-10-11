@@ -10,6 +10,19 @@ spec.loader.exec_module(analytics)
 
 
 class AnalyticsBuildTests(unittest.TestCase):
+    def test_site_validator_accepts_one_approved_config_not_missing_or_duplicate(self):
+        import sys
+        sys.path.insert(0, str(ROOT / 'scripts'))
+        from validate_generated_site import has_one_ga4_config
+        old = "gtag('config', 'G-GFVSZ8YDQ5')"
+        new = "gtag('config', 'G-GFVSZ8YDQ5', window.dailyCostMeasurementContext())"
+        for valid in (old, new):
+            self.assertTrue(has_one_ga4_config(valid))
+        for invalid in ('', old + new, old + old, new + new,
+                        "gtag('config', 'G-GFVSZ8YDQ5', {})",
+                        "gtag('config', 'G-GFVSZ8YDQ5'"):
+            self.assertFalse(has_one_ga4_config(invalid))
+
     def test_rebuild_keeps_content_and_one_config(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'index.html'
