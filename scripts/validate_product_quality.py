@@ -12,12 +12,14 @@ from product_display import clean_display_name
 from comparison_units import comparison_unit
 from build_freshness import freshness_errors
 from candidate_acquisition import TARGET, MAX_REQUESTS, SUPPLEMENTAL_QUERIES
+from step4_recommendations import CATEGORIES, select_category, verified_purpose_candidates
 
 
 class Links(HTMLParser):
     def __init__(self):
         super().__init__()
         self.external, self.chips = [], []
+        self.external_contexts = []
         self.display_names, self._name_tag, self._name_parts = [], None, []
 
     def handle_starttag(self, tag, attrs):
@@ -26,6 +28,8 @@ class Links(HTMLParser):
             self._name_tag, self._name_parts = tag, []
         if tag == 'a' and (urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp'):
             self.external.append(a['href'])
+        if tag == 'a' and ((urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp') or 'data-purchase-purpose' in a):
+            self.external_contexts.append((a['href'], a.get('data-category-id'), a.get('data-purchase-purpose')))
         if tag == 'button' and 'chip' in a.get('class', '').split():
             self.chips.append(a.get('data-q'))
 
@@ -126,6 +130,18 @@ def validate_recommendations(payload, accepted):
     return errors
 
 
+def verified_purpose_links(payload):
+    """Only selected, revalidated supplementary offers in their declared slot."""
+    links = set()
+    for cid in CATEGORIES:
+        category = payload.get('categories', {}).get(cid)
+        safe_urls = {r['url'] for r in verified_purpose_candidates(cid, category)}
+        for purpose, row in select_category(cid, category)['slots'].items():
+            if row and row['offer']['url'] in safe_urls:
+                links.add((row['offer']['url'], cid, purpose))
+    return links
+
+
 def validate(root=Path('site'), report_path=Path('quality-report.json')):
     payload = json.loads((root / 'data.json').read_text(encoding='utf-8'))
     errors, accepted = validate_catalog(payload)
@@ -140,6 +156,7 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
         errors.append('Today and X have different product candidates')
     all_urls = {url for rows in accepted.values() for url in rows}
     today_urls = {row['url'] for row in today.get('items', [])}
+    purpose_links = verified_purpose_links(payload)
     # Includes top picks and product guides; general ranking has its own scope.
     for path in root.rglob('*.html'):
         rel = path.relative_to(root).as_posix()
@@ -154,13 +171,20 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
             allowed = set(accepted.get(rel.split('/')[1], {}))
         else:
             allowed = all_urls
-        if any(url not in allowed for url in page.external):
+        # Supplementary links are not ranking/today/social allowlist entries.
+        # Require the exact selected offer AND matching category/purpose attrs.
+        can_render_purpose = rel == 'index.html' or rel in {f'categories/{cid}/index.html' for cid in CATEGORIES}
+        category_scope = rel.split('/')[1] if rel.startswith('categories/') else None
+        if any(url not in allowed and not (can_render_purpose and
+               (url, cid, purpose) in purpose_links and (category_scope is None or cid == category_scope))
+               for url, cid, purpose in page.external_contexts):
             errors.append(f'{rel}: rendered Rakuten link outside verified selection')
     page = Links(); page.feed((root / 'products/index.html').read_text(encoding='utf-8'))
     if page.chips != [query for _, query, _ in checked_suggestions()]:
         errors.append('Search suggestions differ from checked daily-goods examples')
     return errors, {'categories': len(accepted), 'products': sum(map(len, accepted.values())),
-                    'today_picks': len(today.get('items', [])), 'search_examples': len(page.chips)}
+                    'today_picks': len(today.get('items', [])), 'search_examples': len(page.chips),
+                    'verified_selected_purpose_links': len(purpose_links)}
 
 
 if __name__ == '__main__':
