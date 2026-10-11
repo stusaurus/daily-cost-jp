@@ -61,6 +61,9 @@ def fetch_page(category, page):
         # Input flag means included-only. Still verify the response's flag in
         # normalize_item_with_correct_postage and the shared quality gate.
         params['postageFlag'] = 1
+    if category.get('_household'):
+        # Independent purpose pool favors payment total, not review-led bulk.
+        params['sort'] = '+itemPrice'
 
     url = core.API_URL + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
@@ -252,6 +255,12 @@ def build_site_improved():
             "items": ranked,
             "error": error,
         }
+        if category['id'] in ('tissue', 'toilet-paper', 'laundry') and not error:
+            from step5_household_candidates import acquire_household, attach
+            pool, household_report = acquire_household(category, ranked, fetch_page,
+                                                       core.normalize_item, time.sleep)
+            attach(serializable[category['id']], pool, household_report)
+            quality_report[category['id']]['household_acquisition'] = household_report
         if category["id"] == "tissue":
             # A separately validated small-pack alternative MUST NOT change
             # the established bulk unit-price ranking or its top-12 order.

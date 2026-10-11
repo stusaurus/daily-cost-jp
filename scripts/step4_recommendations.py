@@ -72,6 +72,9 @@ def select_category(cid, category):
     rows = category.get('items')
     if not isinstance(rows, list) or len(rows) > 100 or any(not isinstance(r, dict) for r in rows): return result
     candidates = filter_items(cid, rows)
+    purpose_rows = category.get('purpose_candidates', [])
+    if isinstance(purpose_rows, list) and len(purpose_rows) <= 30 and all(isinstance(r, dict) for r in purpose_rows):
+        candidates += filter_items(cid, purpose_rows)
     extra = category.get('small_pack_offer') if cid == 'tissue' else None
     if isinstance(extra, dict):
         candidates += filter_items(cid, [extra])
