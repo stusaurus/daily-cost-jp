@@ -224,6 +224,14 @@ class Measurement(unittest.TestCase):
     def test_invalid_release_ledger_rejected(self):
         with self.assertRaises(ValueError):e.releases('{"releases":[{"path":"/evil/"}]}')
 
+    def test_step6_seo_changes_trigger_pages_publication(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / '.github/workflows/deploy-pages.yml').read_text()
+        self.assertIn('  push:\n', workflow)
+        push = workflow.split('  push:\n', 1)[1].split('\npermissions:', 1)[0]
+        for source in ('scripts/step6_seo_policy.json', 'scripts/step6_seo_content.py'):
+            self.assertIn('      - "' + source + '"', push)
+
     def test_workflow_reuses_single_publisher_and_switch(self):
         root=Path(__file__).resolve().parents[1]
         text=(root/'.github/workflows/ga4-three-day-analysis.yml').read_text()
