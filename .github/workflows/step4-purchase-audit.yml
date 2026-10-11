@@ -44,7 +44,9 @@ jobs:
       - name: Read only the current public snapshot and record unknowns
         run: python3 scripts/step4_purchase_audit.py
       - name: Show report status but never publish or make a pull request
-        run: cat audit-results/step4-purchase-fitness.md >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          cat audit-results/step4-purchase-fitness.md
+          cat audit-results/step4-purchase-fitness.md >> "$GITHUB_STEP_SUMMARY"
       - name: Preserve read-only evidence without raw catalog URLs or search terms
         if: always()
         uses: actions/upload-artifact@v4
