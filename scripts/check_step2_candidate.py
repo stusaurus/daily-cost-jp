@@ -27,6 +27,15 @@ def main():
             raise ValueError('Candidate changed during testing')
         result = {'base_sha': plan['base_sha'], 'candidate_hash': plan['candidate_hash'], 'tests': 'PASS'}
         from autonomous_operations_step3 import RECIPE as ui_recipe
+        from step6_seo_content import TARGET as seo_target
+        if candidate_target(plan) == seo_target:
+            # Same real API/render path as production; no deployment stage.
+            subprocess.run(['python3','scripts/build_pipeline.py'], check=True)
+            from step6_verification import prepare, finish
+            prepare()
+            subprocess.run(['node','scripts/step4_browser_qa.cjs','audit-results/step6-before','audit-results/step6-after'],check=True)
+            finish(plan)
+            result['seo_verification_hash'] = digest(Path('audit-results/step6-verification.json').read_text())
         if plan['recipe'] == ui_recipe:
             command = ['node', 'scripts/step3_ui_audit.cjs', 'verify']
             if os.environ.get('STEP3_LOCAL_SNAPSHOT') == 'true':

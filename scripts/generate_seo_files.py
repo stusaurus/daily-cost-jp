@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from datetime import date
 from pathlib import Path
 from urllib.parse import quote
 import xml.etree.ElementTree as ET
@@ -28,11 +27,12 @@ for html in sorted(SITE_DIR.rglob("*.html")):
     url = SITE_URL + quote(path, safe="/-._~")
     urls.append(url)
 
-today = date.today().isoformat()
+# Rebuild time is not evidence of a significant page change. Omit optional
+# lastmod until trustworthy per-page content history is available.
 xml = ['<?xml version="1.0" encoding="UTF-8"?>',
        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
 for url in urls:
-    xml.append(f"  <url><loc>{url}</loc><lastmod>{today}</lastmod></url>")
+    xml.append(f"  <url><loc>{url}</loc></url>")
 xml.append("</urlset>")
 (SITE_DIR / "sitemap.xml").write_text("\n".join(xml) + "\n", encoding="utf-8")
 robots = f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}sitemap.xml\n"

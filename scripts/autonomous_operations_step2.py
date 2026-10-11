@@ -98,6 +98,21 @@ def prepare():
             target = css_path
             result.update(recipe=ui['recipe'], fingerprint=digest(ui['recipe'] + ':' + ui_target)[:24],
                           original_hash=digest(css), ui_evidence_hash=ui['evidence_hash'])
+    # SEO remains HUMAN_ONLY; propose one fixed source-policy diff through
+    # this publisher after the existing documentation/UI recipe priority.
+    if candidate is None:
+        from step6_seo_audit import candidate as seo_candidate
+        from step6_seo_content import TARGET as seo_target
+        seo_path = Path(seo_target)
+        if seo_path.is_symlink():
+            raise ValueError('Symlink SEO target forbidden')
+        seo_original = seo_path.read_text() if seo_path.is_file() else ''
+        seo = seo_candidate(read_optional('audit-results/step6-seo.json'), seo_original, result['base_sha'])
+        if seo:
+            original, candidate, target = seo_original, seo['candidate'], seo_path
+            result.update(recipe=seo['recipe'], fingerprint=digest(seo['recipe']+':'+seo_target)[:24],
+                          original_hash=digest(original), seo_evidence_hash=seo['evidence_hash'], seo_path=seo['path'])
+            result['decisions'].append({'code':'SEO_COMPARISON_HELP','path':seo['path'],'decision':'HUMAN_ONLY'})
     # STEP4 adds classifications only; it cannot propose or execute a code recipe.
     from step4_automation import feedback_valid
     control = read_optional('audit-results/step4-control.json')
@@ -118,6 +133,9 @@ def prepare():
 
 
 def candidate_target(plan):
+    from step6_seo_content import REGISTRY, TARGET as seo_target, recipe as seo_recipe
+    if plan.get('recipe') in {seo_recipe(c) for c in REGISTRY}:
+        return seo_target
     if plan.get('recipe') == RECIPE:
         return TARGET
     if plan.get('recipe') == VERIFY_RECIPE:
@@ -180,6 +198,8 @@ def publish(plan, receipt, token, env, request=github_request):
     verification = plan['recipe'] == VERIFY_RECIPE
     from autonomous_operations_step3 import RECIPE as ui_recipe, repair as ui_repair, ui_decisions
     ui = plan['recipe'] == ui_recipe
+    from step6_seo_content import TARGET as seo_target, repair as seo_repair
+    seo = target == seo_target
     if verification and not verification_authorized(env):
         raise ValueError('Verification cannot run from scheduled repair workflow')
     if plan['fingerprint'] != digest(plan['recipe'] + ':' + target)[:24]:
@@ -200,6 +220,12 @@ def publish(plan, receipt, token, env, request=github_request):
                 proof.get('differences_hash') != digest(difference_path.read_text(encoding='utf-8'))):
             raise ValueError('Missing exact UI browser proof')
         expected_receipt['ui_verification_hash'] = digest(proof_path.read_text(encoding='utf-8'))
+    if seo:
+        from step6_verification import validate_receipt
+        proof_path = Path('audit-results/step6-verification.json')
+        if not validate_receipt(read_optional(proof_path), plan):
+            raise ValueError('Complete SEO build/quality/browser proof missing')
+        expected_receipt['seo_verification_hash'] = digest(proof_path.read_text())
     if receipt != expected_receipt:
         raise ValueError('Missing exact-candidate test evidence')
     # git helper strips trailing whitespace; read exact bytes for deterministic comparison.
@@ -211,7 +237,13 @@ def publish(plan, receipt, token, env, request=github_request):
         original, expected = '', VERIFY_CONTENT
     else:
         original = subprocess.check_output(['git', 'show', sha + ':' + target]).decode('utf-8')
-        expected = ui_repair(original) if ui else repair(original)
+        expected = seo_repair(original, plan['recipe']) if seo else ui_repair(original) if ui else repair(original)
+        if seo:
+            from step6_seo_audit import candidate as seo_candidate
+            evidence = seo_candidate(read_optional('audit-results/step6-seo.json'), original, sha)
+            if (not evidence or evidence['recipe'] != plan['recipe'] or
+                    evidence['evidence_hash'] != plan.get('seo_evidence_hash')):
+                raise ValueError('SEO evidence not reproduced')
         if ui and ui_decisions(read_optional('audit-results/step3-ui/report.json'), original, sha).get('recipe') != ui_recipe:
             raise ValueError('UI cause not reproduced on exact source')
     if Path(target).is_symlink():
@@ -231,6 +263,8 @@ def publish(plan, receipt, token, env, request=github_request):
     for pr in all_prs(token, request):
         if marker in (pr.get('body') or '') or pr.get('head', {}).get('ref') == branch:
             return {'status': 'DUPLICATE_OR_DISMISSED', 'url': pr.get('html_url')}
+        if seo and pr.get('state') == 'open' and 'STEP6 SEO hypothesis' in (pr.get('body') or ''):
+            return {'status': 'OPEN_SEO_PROPOSAL_REQUIRES_REVIEW', 'url': pr.get('html_url')}
     run_id = env.get('GITHUB_RUN_ID', '')
     if not run_id.isdigit():
         raise ValueError('Invalid run identity')
@@ -257,6 +291,10 @@ def publish(plan, receipt, token, env, request=github_request):
         description = 'Restore the existing ranking link 44px tap area with one fixed CSS block. '
     scope = 'Only the approved CSS selector changes; no prices, product rules, URLs, SEO, tracking or feature code changes.' if ui else 'Only documentation changes; no product, SEO, analytics or site changes.'
     browser_note = 'PC/390px/320px: 18 before/after screens, protected DOM, search, compare and save checks PASS. Evidence screenshots and geometry differences are in the generating run artifact. ' if ui else 'PC/390px/320px QA not required for a documentation-only diff. '
+    if seo:
+        description = 'STEP6 SEO hypothesis: clarify comparison units and purchase quantities on ' + plan['seo_path'] + '. '
+        scope = 'One fixed FAQ/internal-link source policy change. HUMAN_ONLY; product, ranking, Rakuten URL and analytics rules remain protected. SEO/revenue effects are unverified. '
+        browser_note = 'Full production-equivalent real-data build, product/SEO/internal-link gates and 18 PC/390px/320px before/after pairs passed before this API write. '
     body = (marker + '\n\n' + description +
             scope + '\n\n'
             'Evidence: validated fixed candidate, recipe ' + plan['recipe'] + '.\n\n'
@@ -267,6 +305,8 @@ def publish(plan, receipt, token, env, request=github_request):
             'GITHUB_TOKEN PR event execution is not assumed; tests already ran in the generating job. '
             'No automatic merge or deployment. Related investigation: #74.')
     title = 'docs: restore automatic operations safety policy'
+    if seo:
+        title = 'seo: clarify comparison help on ' + plan['seo_path']
     if ui:
         title = 'fix: restore ranking link tap target (fixed STEP 3 recipe)'
     if verification:
