@@ -26,6 +26,8 @@ jobs:
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
+      - name: Validate real STEP5 purpose links in ACTIVE and fallback copies
+        run: python scripts/step5_verify_product_links.py
       - name: Verify search landing pages in desktop and mobile browsers
         run: |
           npx playwright install --with-deps chromium
@@ -55,6 +57,7 @@ jobs:
             lighthouse-reports/
             qa-search/
             site/
+            audit-results/step5-product-link-integration.json
           retention-days: 14
 
   validate:

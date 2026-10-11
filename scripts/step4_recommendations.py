@@ -65,6 +65,38 @@ def sale_band(cid, item, qty):
     return 'small' if qty <= small else 'bulk' if qty >= bulk else 'everyday'
 
 
+def specialized_household_use(cid, name):
+    return (bool(re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用|法人|企業.*限定|事業者.*限定', name)) or
+            cid == 'tissue' and bool(re.search(r'鼻セレブ|ローション|保湿|メントール', name)))
+
+
+def verified_purpose_candidates(cid, category):
+    """Revalidate the separate STEP5 pool; flags/reports never authorize URLs."""
+    if cid not in CATEGORIES or not isinstance(category, dict) or category.get('error'):
+        return []
+    ranked, rows = category.get('items'), category.get('purpose_candidates', [])
+    if (not isinstance(ranked, list) or len(ranked) > 100 or any(not isinstance(r, dict) for r in ranked) or
+        not isinstance(rows, list) or len(rows) > 30 or any(not isinstance(r, dict) for r in rows)):
+        return []
+    try:
+        safe_ranked, safe_rows = filter_items(cid, ranked), filter_items(cid, rows)
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return []
+    families = {u[0] for r in safe_ranked if (u := comparison_unit(cid, r))}
+    if len(families) != 1:
+        return []
+    family = next(iter(families))
+    safe = []
+    # Whole-group outliers must be removed before any per-offer checks.
+    for row in safe_rows:
+        qty, unit = parsed_quantity(cid, row['name']), comparison_unit(cid, row)
+        if (qty and unit and unit[0] == family and destination_matches(row) and
+            not specialized_household_use(cid, row['name']) and
+            sale_band(cid, row, qty['quantity']) in ('small', 'everyday')):
+            safe.append(row)
+    return safe
+
+
 def select_category(cid, category):
     empty = {p: None for p in PURPOSES}
     result = {'status': 'NO_VERIFIED_CANDIDATES', 'slots': empty, 'reasons': [], 'distinct_sku_count': None}
@@ -72,9 +104,7 @@ def select_category(cid, category):
     rows = category.get('items')
     if not isinstance(rows, list) or len(rows) > 100 or any(not isinstance(r, dict) for r in rows): return result
     candidates = filter_items(cid, rows)
-    purpose_rows = category.get('purpose_candidates', [])
-    if isinstance(purpose_rows, list) and len(purpose_rows) <= 30 and all(isinstance(r, dict) for r in purpose_rows):
-        candidates += filter_items(cid, purpose_rows)
+    candidates += verified_purpose_candidates(cid, category)
     extra = category.get('small_pack_offer') if cid == 'tissue' else None
     if isinstance(extra, dict):
         candidates += filter_items(cid, [extra])

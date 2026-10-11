@@ -1,0 +1,11 @@
+# STEP5：本番の追加推薦リンク検証を整合
+
+失敗run38135403875（main9986ef24、2026-10-11）ではACTIVEの推薦がpurpose_candidatesを表示した後、validate_product_quality.pyの原ランキング限定許可範囲によりトップとtissue/laundry/toilet-paperの4ページを停止した。Pages upload/deployはskipped。旧PR検証でACTIVEの実商品生成と最終リンク検査の組合せが不足していた。
+
+表示と最終リンク検査はverified_purpose_candidatesを共有。別プールの全群品質/外れ値判定、数量/支払総額/送料、商品IDと楽天宛先照合、用途、元ランキング比較family、固定small/everyday範囲を再検証。品質フラグ・取得成功報告・生URLを信用して許可しない。不正形式/未確認は空プールへ戻す。最終許可はそのうち実際に選択されたURL＋category＋purchase_purposeの一致だけ。用途属性なし・別カテゴリ・別目的・未選択URL・悪性宛先は拒否。原ランキング、today/socialの許可範囲には追加しない。
+
+7件の統合回帰は本番rendererと完全なvalidate_product_quality.validateを通す。旧許可範囲を模した場合に4ページ失敗を再現し、修正後は成功。全回帰に加え既存PRビルド後、実商品データの一時コピーでACTIVE/FALLBACK両方の全品質検査を強制実行し、カタログ/ランキングHTMLの不変を照合する。CI専用であり本番の承認・停止制御を変更/回避しない。報告はaudit-results/step5-product-link-integration.jsonに保存。既存STEP5実API/18組画面QA、STEP4回帰も実行する。
+
+GA4のpurchase_purpose・diagnostic_status・diagnostic_phaseはユーザーが登録操作完了済み。重複登録や設定変更は行わない。既存3日分析のstep5_evaluation.py --fetchはGA4 Data API metadataからこの3項目を含む登録反映を読み取り専用で確認しstep5-purpose-metrics.jsonへ記録する。実際の反映確認は本修正の人間によるマージ/本番修正後の認証済み3日分析で行う。PR offline/画面QAの成功をGA4受信確認と扱わない。
+
+独立Draft、人間承認待ち。自動マージ/本番公開/Pages・Worker構成変更/GA4設定変更なし。#77は変更しない。楽天確定成果未接続、収益改善未検証。
