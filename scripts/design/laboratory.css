@@ -259,3 +259,6 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .tissue-size-card .size-link.secondary:hover{background:var(--accent);color:var(--white)}
 .tissue-size-guide .purchase-note{margin-top:12px;font-size:11px;line-height:1.8;color:var(--muted)}
 @media(max-width:600px){.tissue-size-guide{margin:16px 0 22px;padding:17px}.tissue-size-guide>h2{font-size:24px}.tissue-size-cards{grid-template-columns:1fr;gap:12px;margin:15px 0}.tissue-size-card{padding:17px}.tissue-size-card h3{font-size:16px}.tissue-size-card p{font-size:13px}.tissue-size-card .size-link{min-height:48px;font-size:13px}}
+
+/* STEP3 home-ranking-link-tap-v1: restore the existing 44px interaction area. */
+#home-ranking-hero .home-rank-all{display:inline-flex;align-items:center;min-height:44px}
