@@ -76,5 +76,10 @@ class HouseholdTests(unittest.TestCase):
         pool,report,_=self.acquire([p],[bulk],'laundry')
         self.assertEqual(pool,[]);self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
 
+    def test_specialized_lotion_tissue_not_default_household_replacement(self):
+        p=offer(qty=20,title='ボックスティッシュ 鼻セレブ 保湿 200組 20箱')
+        pool,report,_=self.acquire([p])
+        self.assertEqual(pool,[]);self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
+
 
 if __name__=='__main__':unittest.main()

@@ -10,8 +10,8 @@ from comparison_units import comparison_unit
 from step4_recommendations import destination_matches, sale_band, select_category
 
 QUERIES = {
-    'tissue': {'small': ('ボックスティッシュ 200組 5箱', 'ボックスティッシュ 200組 10箱'),
-               'everyday': ('ボックスティッシュ 200組 15箱', 'ボックスティッシュ 200組 20箱')},
+    'tissue': {'small': ('ボックスティッシュ 5箱', 'ボックスティッシュ 10箱'),
+               'everyday': ('ボックスティッシュ 15箱', 'ボックスティッシュ 20箱')},
     'toilet-paper': {'small': ('トイレットペーパー シングル 12ロール', 'トイレットペーパー シングル 6ロール'),
                      'everyday': ('トイレットペーパー シングル 24ロール', 'トイレットペーパー シングル 36ロール')},
     'laundry': {'small': ('洗濯洗剤 詰め替え 400g', '洗濯洗剤 詰め替え 900g'),
@@ -56,7 +56,9 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                 continue
             for row in safe:
                 qty, unit = parsed_quantity(cid, row['name']), comparison_unit(cid, row)
-                reason = ('specialized_household_use_unconfirmed' if re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用', row['name']) else
+                specialized = (bool(re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用', row['name'])) or
+                               cid == 'tissue' and bool(re.search(r'鼻セレブ|ローション|保湿|メントール', row['name'])))
+                reason = ('specialized_household_use_unconfirmed' if specialized else
                           'item_identity_unconfirmed' if not destination_matches(row) else
                           'comparison_unit_unconfirmed' if not unit else
                           'incompatible_comparison_family' if unit[0] != family else
