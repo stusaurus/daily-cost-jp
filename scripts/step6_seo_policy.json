@@ -2,7 +2,7 @@
   "version": "comparison-help-v1",
   "pages": {
     "laundry": false,
-    "tissue": false,
+    "tissue": true,
     "toilet-paper": false
   }
 }
