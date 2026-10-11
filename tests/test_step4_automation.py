@@ -48,6 +48,10 @@ class AutomationTests(unittest.TestCase):
         c=a.diagnose(catalog(),True,now=NOW)
         self.assertTrue(a.feedback_valid(c,now=NOW));self.assertFalse(a.feedback_valid(c,now=NOW+dt.timedelta(days=5)))
         self.assertFalse(a.feedback_valid({**c,'source':'injected'},now=NOW))
+    def test_report_text_cannot_authorize_code_or_paths(self):
+        c=a.diagnose(catalog(),True,now=NOW)
+        c['decisions']=[{'path':'../../secret','code':'RUN_SHELL','classification':'AUTO_CONTENT'}]
+        self.assertFalse(a.feedback_valid(c,now=NOW))
     def test_existing_queue_integrates_once_max20(self):
         c=a.diagnose(catalog(),True)
         queue={'source':'daily-cost autonomous operations triage v1','findings':[],'summary':{}}
