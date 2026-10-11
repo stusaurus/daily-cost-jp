@@ -21,3 +21,10 @@ test('UI proof rejects incomplete matrices and source/destination/appearance cha
  check(a=>a[0].protected_hash='changed');check(a=>a[0].target.href='https://evil.test');check(a=>a[0].target.color='red');check(a=>a[0].target.rect.height=43);check(a=>a[1].dom.documentWidth=500);check(a=>a[2].issues.push({code:'SCRIPT',selector:'#new'}));check(a=>a[3].status='UNAVAILABLE');
  assert.throws(()=>s.compare(before.slice(1),after,css,candidate));
 });
+
+test('request policy permits images and fixed site only; never affiliate navigation or Google',()=>{
+ assert.equal(s.requestPolicy('https://thumbnail.image.rakuten.co.jp/a.jpg','image'),'image');
+ for(const url of ['https://thumbnail.image.rakuten.co.jp/a.jpg','https://hb.afl.rakuten.co.jp/hgc/id','https://www.google-analytics.com/g/collect','https://evil.test/data','http://stusaurus.github.io/daily-cost-jp/'])assert.equal(s.requestPolicy(url,'document'),'block');
+ assert.equal(s.requestPolicy('https://daily-cost-api.kiyo0625puma.workers.dev/api/product-search?q=test','fetch'),'mock');
+ assert.equal(s.requestPolicy('https://stusaurus.github.io/daily-cost-jp/','document'),'site');
+});

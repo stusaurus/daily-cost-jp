@@ -15,6 +15,13 @@ function repair(css){
  if(!css.includes('.lab-masthead')||!css.includes('.lab-section-head'))return null;
  return css+BLOCK;
 }
+function requestPolicy(value,type){
+ const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return 'block';
+ if(u.hostname==='thumbnail.image.rakuten.co.jp'&&type==='image')return 'image';
+ if(['daily-cost-api.kiyo0625puma.workers.dev','daily-cost-api.stuffedsaurus.workers.dev'].includes(u.hostname)&&['/api/product-search','/api/shipping-lookup'].includes(u.pathname))return 'mock';
+ if(u.origin===new URL(SITE).origin&&u.pathname.startsWith('/daily-cost-jp/')&&!u.pathname.includes('..'))return 'site';
+ return 'block';
+}
 function contrast(a,b){const luminance=c=>c.map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4}).reduce((s,n,i)=>s+n*[.2126,.7152,.0722][i],0);const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
 function assess(dom){
  const out=[];const add=(code,selector,evidence)=>out.push({code,selector,evidence});
@@ -77,25 +84,25 @@ async function interactions(page,pathname){
 }
 async function observe(browser,pathname,width,outDir,override=null,snapshot=false){
  const context=await browser.newContext({viewport:{width,height:900},locale:'ja-JP',reducedMotion:'reduce'});
- let cssHash=null,htmlHash=null;
+ let cssHash=null,htmlHash=null,closing=false;const networkErrors=[];
  await context.route('**/*',async route=>{
-  const u=new URL(route.request().url());
-  if(/googletagmanager|google-analytics|doubleclick|rakuten\.co\.jp/.test(u.hostname))return route.abort();
-  if(u.hostname.endsWith('.workers.dev'))return route.fulfill({json:{products:[],page_count:1},headers:{'access-control-allow-origin':'*'}});
-  if(u.origin!==new URL(SITE).origin||!u.pathname.startsWith('/daily-cost-jp/'))return route.abort();
-  let rel=u.pathname.slice('/daily-cost-jp/'.length);if(!rel||rel.endsWith('/'))rel+='index.html';
-  if(rel.includes('..'))return route.abort();
-  let response,body;
-  if(snapshot){const f=path.join('audit-results/step3-snapshot',rel);if(!fs.existsSync(f))return route.abort();body=fs.readFileSync(f);}
-  else{response=await route.fetch({timeout:20000});if(response.status()!==200)return route.fulfill({response});body=await response.body();}
-  if(rel==='assets/laboratory.css'){cssHash=sha(body);if(override!==null)body=Buffer.from(override);}
-  if(rel===pathname.slice(1)+'index.html')htmlHash=sha(body);
-  return response?route.fulfill({response,body}):route.fulfill({body,contentType:rel.endsWith('.css')?'text/css':rel.endsWith('.js')?'text/javascript':rel.endsWith('.json')?'application/json':'text/html'});
+  try{
+   const u=new URL(route.request().url()),policy=requestPolicy(u.href,route.request().resourceType());
+   if(policy==='block')return await route.abort();
+   if(policy==='mock')return await route.fulfill({json:{products:[],page_count:1},headers:{'access-control-allow-origin':'*'}});
+   if(policy==='image')return snapshot?await route.abort():await route.continue();
+   let rel=u.pathname.slice('/daily-cost-jp/'.length);if(!rel||rel.endsWith('/'))rel+='index.html';
+   if(snapshot){const f=path.join('audit-results/step3-snapshot',rel);if(!fs.existsSync(f))return await route.abort();let body=fs.readFileSync(f);if(rel==='assets/laboratory.css'){cssHash=sha(body);if(override!==null)body=Buffer.from(override);}return await route.fulfill({body,contentType:rel.endsWith('.css')?'text/css':rel.endsWith('.js')?'text/javascript':rel.endsWith('.json')?'application/json':'text/html'});}
+   if(rel!=='assets/laboratory.css')return await route.continue();
+   const response=await route.fetch({timeout:20000});if(response.status()!==200){networkErrors.push('CSS_HTTP_UNAVAILABLE');return await route.fulfill({response});}
+   let body=await response.body();cssHash=sha(body);if(override!==null)body=Buffer.from(override);return await route.fulfill({response,body});
+  }catch(_){if(!closing)networkErrors.push('ROUTE_UNAVAILABLE');try{await route.abort();}catch(_){} }
  });
  const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message.slice(0,100)));page.setDefaultTimeout(10000);
  const record={path:pathname,viewport:width,url:SITE+pathname.slice(1)+'?test=1',status:'UNAVAILABLE',css_hash:null,issues:[],screenshot:null,reproduction:['Open URL with ?test=1','Set viewport width','Inspect DOM rectangle and computed CSS; no affiliate navigation']};
  try{
-  const response=await page.goto(record.url,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForTimeout(300);
+  const response=await page.goto(record.url,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForTimeout(300);htmlHash=sha(await response.body());
+  if(!snapshot)await page.waitForFunction(()=>[...document.images].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0&&e.currentSrc;}).every(e=>e.complete&&e.naturalWidth>0),{},{timeout:10000});
   const dom=await page.evaluate(measure);dom.text.forEach(e=>{e.contrast=e.fg&&e.bg?contrast(e.fg,e.bg):null;delete e.fg;delete e.bg;});
   record.http_status=response?.status();record.css_hash=cssHash;record.html_hash=htmlHash;record.protected_hash=sha(JSON.stringify(dom.protectedState));delete dom.protectedState;
   record.dom={width:dom.width,documentWidth:dom.documentWidth,h1Count:dom.h1Count,overflow:dom.overflow,controls_examined:dom.controls.length,text_nodes_examined:dom.text.length};record.issues=assess(dom);record.target=dom.target;record.keyboard=[];
@@ -106,9 +113,9 @@ async function observe(browser,pathname,width,outDir,override=null,snapshot=fals
   for(let i=0;i<record.issues.length;i++){const issue=record.issues[i];issue.url=record.url;issue.viewport=width;issue.reproduction=['Open URL with ?test=1','Set viewport to '+width+'px','Scroll to '+issue.selector,'Inspect DOM rectangle/computed CSS'];const image='issue-'+name.replace('.png','')+'-'+i+'.png';try{await page.locator(issue.selector).first().screenshot({path:path.join(outDir,image),timeout:3000});issue.screenshot=image;}catch(_){issue.screenshot=name;issue.screenshot_scope='viewport; element capture unavailable';}}
   if(pathname==='/'&&dom.target){await page.locator(TARGET).screenshot({path:path.join(outDir,'target-'+width+'.png')});record.target_screenshot='target-'+width+'.png';record.target_screenshot_hash=sha(fs.readFileSync(path.join(outDir,record.target_screenshot)));}
   record.interactions=await interactions(page,pathname);
-  if(record.http_status!==200||dom.h1Count!==1||errors.length||!cssHash)throw Error('HTTP/heading/script/stylesheet validation failed');
+  if(record.http_status!==200||dom.h1Count!==1||errors.length||networkErrors.length||!cssHash)throw Error('HTTP/heading/script/stylesheet validation failed');
   record.status='PASS';
- }catch(error){record.error=error.message.slice(0,180);}finally{record.page_errors=errors;await context.close();}
+ }catch(error){record.error=error.message.slice(0,180);}finally{record.page_errors=errors;record.network_errors=networkErrors;closing=true;await context.unrouteAll({behavior:'ignoreErrors'});await context.close();}
  return record;
 }
 function compare(before,after,original,candidate){
@@ -155,5 +162,5 @@ async function main(){
   }else if(report.status!=='PASS')throw Error('UI data unavailable; never considered healthy');
  }finally{await browser.close();}
 }
-module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,sha,repair,contrast,assess,compare};
+module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,sha,repair,requestPolicy,contrast,assess,compare};
 if(require.main===module)main().catch(e=>{console.error('STEP3 audit stopped: '+e.message);process.exitCode=1});
