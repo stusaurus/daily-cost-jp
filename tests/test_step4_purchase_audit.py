@@ -89,7 +89,7 @@ class PurchaseFitTests(unittest.TestCase):
             item["item_code"] = "shop:" + field + str(value)
             bad.append(item)
         for name in ("ボックスティッシュ 5箱〜60箱から選べる",
-                     "ボックスティッシュ 5箱 10ロール",
+                     "ボックスティッシュ 5箱 10パック",
                      "ボックスティッシュ 容量不明"):
             item = dict(base)
             item["name"] = name
