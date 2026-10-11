@@ -2,6 +2,7 @@
 from collections import Counter
 import copy
 import json
+import re
 from pathlib import Path
 
 from product_quality import filter_items, parsed_quantity
@@ -14,7 +15,7 @@ QUERIES = {
     'toilet-paper': {'small': ('トイレットペーパー シングル 12ロール', 'トイレットペーパー シングル 6ロール'),
                      'everyday': ('トイレットペーパー シングル 24ロール', 'トイレットペーパー シングル 36ロール')},
     'laundry': {'small': ('洗濯洗剤 詰め替え 400g', '洗濯洗剤 詰め替え 900g'),
-                'everyday': ('洗濯洗剤 詰め替え 1500g', '洗濯洗剤 詰め替え 2000g')},
+                'everyday': ('アタック 洗濯洗剤 詰め替え', 'アリエール 洗濯洗剤 詰め替え')},
 }
 MAX_REQUESTS = 4
 MAX_CANDIDATES = 30
@@ -55,7 +56,8 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                 continue
             for row in safe:
                 qty, unit = parsed_quantity(cid, row['name']), comparison_unit(cid, row)
-                reason = ('item_identity_unconfirmed' if not destination_matches(row) else
+                reason = ('specialized_household_use_unconfirmed' if re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用', row['name']) else
+                          'item_identity_unconfirmed' if not destination_matches(row) else
                           'comparison_unit_unconfirmed' if not unit else
                           'incompatible_comparison_family' if unit[0] != family else
                           'requested_purpose_mismatch' if not qty or sale_band(cid, row, qty['quantity']) != purpose else None)

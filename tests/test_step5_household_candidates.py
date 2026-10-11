@@ -70,5 +70,11 @@ class HouseholdTests(unittest.TestCase):
             slots=select_category('tissue',{'items':[],'purpose_candidates':pool})['slots']
             self.assertTrue(all(v is None for v in slots.values()))
 
+    def test_workwear_specific_product_not_everyday_household(self):
+        p=offer('laundry',20,'100g',title='洗濯洗剤 作業着専用 詰め替え 2000g')
+        bulk=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本')
+        pool,report,_=self.acquire([p],[bulk],'laundry')
+        self.assertEqual(pool,[]);self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
+
 
 if __name__=='__main__':unittest.main()
