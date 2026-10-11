@@ -1,7 +1,7 @@
 {
   "version": "comparison-help-v1",
   "pages": {
-    "laundry": false,
+    "laundry": true,
     "tissue": true,
     "toilet-paper": false
   }
