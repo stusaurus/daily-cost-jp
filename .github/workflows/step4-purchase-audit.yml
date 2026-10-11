@@ -1,0 +1,56 @@
+name: STEP 4 Purchase Fitness Read-Only Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 11:13 JST daily, after the existing 06:00 JST Pages refresh.
+    - cron: '13 2 * * *'
+  pull_request:
+    paths:
+      - '.github/workflows/step4-purchase-audit.yml'
+      - 'scripts/step4_purchase_audit.py'
+      - 'tests/test_step4_purchase_audit.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: step4-purchase-audit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    name: Verify buyer-fit evidence without changing the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run complete Python and JavaScript regression suites
+        run: |
+          python3 -m unittest discover -s tests
+          python3 -m compileall -q scripts
+          npm ci --ignore-scripts
+          npm test
+          node --check cloudflare-api/src/safe-index.js
+      - name: Read only the current public snapshot and record unknowns
+        run: python3 scripts/step4_purchase_audit.py
+      - name: Show report status but never publish or make a pull request
+        run: cat audit-results/step4-purchase-fitness.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve read-only evidence without raw catalog URLs or search terms
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step4-purchase-fitness
+          path: |
+            audit-results/step4-purchase-fitness.json
+            audit-results/step4-purchase-fitness.md
+          if-no-files-found: warn
+          retention-days: 30
