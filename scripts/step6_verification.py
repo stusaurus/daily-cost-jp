@@ -15,9 +15,12 @@ AFTER = Path('audit-results/step6-after')
 
 def prepare(site=Path('site'), quality=Path('quality-report.json'), exercise=False):
     cfg = policy(Path(TARGET).read_text())
+    baseline_cfg = policy(subprocess.check_output(['git','show','HEAD:'+TARGET],text=True))
     if exercise:
-        # CI exercises the first fixed hypothesis, never commits/enables it.
-        cfg['pages']['laundry'] = True
+        # CI exercises one pending fixed hypothesis, never commits/enables it.
+        cid = next((c for c,v in cfg['pages'].items() if not v), None)
+        if cid:
+            cfg['pages'][cid] = True
     for root in (BEFORE, AFTER):
         if root.is_symlink():
             raise ValueError('Symlink QA directory')
@@ -41,6 +44,9 @@ def prepare(site=Path('site'), quality=Path('quality-report.json'), exercise=Fal
         if MARKER in text and text.count(block) != 1:
             raise ValueError('Unknown SEO block shape')
         path.write_text(text.replace(block, ''))
+    # Already-approved help stays in the baseline. One new policy flag must
+    # not make a second page look like a simultaneous experiment.
+    apply(BEFORE, baseline_cfg)
     shutil.copytree(BEFORE, AFTER, dirs_exist_ok=True)
     apply(AFTER, cfg)
     for root in (BEFORE, AFTER):

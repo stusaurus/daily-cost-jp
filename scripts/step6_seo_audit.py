@@ -275,6 +275,8 @@ def analyze(technical, gsc, config_text, base_sha, now=None):
             'policy_hash': digest(config_text), 'technical': technical,
             'windows': gsc.get('windows') if valid else None,
             'site_aggregates': gsc.get('site_aggregates') if valid else None,
+            'page_row_coverage': gsc.get('page_row_coverage', {'status':'UNKNOWN'}) if valid else None,
+            'query_coverage': 'PRIVACY_FILTERED_OR_UNAVAILABLE_NOT_ZERO',
             'daily_coverage': {'observed_site_days': gsc.get('daily_series', {}).get('site_dates_observed'),
                                'absent_days_are_unknown': True} if valid else None,
             'gsc_sitemaps': gsc.get('sitemaps', {'status': 'NOT_COLLECTED'}) if valid else {'status': 'UNCONFIRMED'},
