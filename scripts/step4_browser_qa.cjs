@@ -71,7 +71,8 @@ async function inspect(browser,root,route,width,phase){
 (async()=>{
  fs.mkdirSync('audit-results/step4-qa',{recursive:true});
  const before=process.argv[2]||'audit-results/step4-preview-before',after=process.argv[3]||'audit-results/step4-preview-after';
- assert.equal(sha(fs.readFileSync(path.join(before,'data.json'))),sha(fs.readFileSync(path.join(after,'data.json'))));
+ function protectedCatalog(root){const d=JSON.parse(fs.readFileSync(path.join(root,'data.json')));if(process.env.STEP5_CANDIDATE_MODE==='1')for(const cid of ['tissue','laundry','toilet-paper'])for(const k of ['purpose_candidates','household_acquisition'])delete d.categories[cid][k];return sha(JSON.stringify(d));}
+ assert.equal(protectedCatalog(before),protectedCatalog(after));
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_EXECUTABLE||undefined,args:['--no-sandbox']});
  const rows=[];
  try{for(const route of pages)for(const width of widths){const a=await inspect(browser,before,route,width,'before'),b=await inspect(browser,after,route,width,'after');assert.equal(a.protected_hash,b.protected_hash,'Protected DOM changed');rows.push({before:a,after:b});console.log(route||'home',width,'PASS');}}

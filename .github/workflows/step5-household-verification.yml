@@ -1,0 +1,63 @@
+name: STEP5 Household Verification (no publishing)
+on:
+  pull_request:
+    paths:
+      - 'scripts/step5*'
+      - 'tests/*step5*'
+      - 'scripts/step4_recommendations.py'
+      - 'scripts/build_site_entry.py'
+      - '.github/workflows/step5-household-verification.yml'
+permissions:
+  contents: read
+concurrency:
+  group: step5-household-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: All regressions
+        run: |
+          python -m pip install -r requirements-render.txt
+          python -m unittest discover -s tests
+          python -m compileall -q scripts
+          npm ci --ignore-scripts
+          npm test
+      - name: Browser and Japanese fonts
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Capture current production without purchase clicks
+        run: python scripts/step4_prepare_preview.py
+      - name: Real household acquisition with existing credentials, no deployment
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+        run: python scripts/step5_prepare_preview.py
+      - name: Verify all 18 pairs, search compare save and protected ranking
+        env:
+          STEP5_CANDIDATE_MODE: '1'
+        run: node scripts/step4_browser_qa.cjs
+      - name: Retain review evidence, no raw search or secret logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step5-household-verification
+          path: |
+            audit-results/step5-acquisition-verification.json
+            audit-results/step4-qa/
+            audit-results/step4-preview-after/purchase-recommendations.json
+            audit-results/step4-preview-after/step4-content-state.json
+          retention-days: 30
