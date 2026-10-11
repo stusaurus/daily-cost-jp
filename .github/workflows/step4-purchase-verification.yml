@@ -1,0 +1,61 @@
+name: STEP 4 Purchase Layer Verification
+on:
+  pull_request:
+    paths:
+      - 'scripts/step4*'
+      - 'tests/*step4*'
+      - 'docs/step4*'
+      - '.github/workflows/step4-purchase-verification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: step4-verification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Complete regressions and syntax
+        run: |
+          python -m pip install -r requirements-render.txt
+          python -m unittest discover -s tests
+          python -m compileall -q scripts
+          npm ci --ignore-scripts
+          npm test
+          node --check cloudflare-api/src/safe-index.js
+      - name: Prepare faithful browser rendering
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Capture real first-party pages without purchase clicks
+        run: python scripts/step4_prepare_preview.py
+      - name: Apply unpublished recommendation layer
+        run: |
+          cp -R audit-results/step4-preview-before audit-results/step4-preview-after
+          PYTHONPATH=scripts python - <<'PY'
+          from pathlib import Path
+          from step4_recommendations import apply
+          apply(Path('audit-results/step4-preview-after'), enabled=True)
+          PY
+      - name: Verify 18 pairs and protected product/analytics DOM
+        run: node scripts/step4_browser_qa.cjs
+      - name: Preserve review evidence (no search logs or credentials)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step4-purchase-verification
+          path: |
+            audit-results/step4-qa/
+            audit-results/step4-preview-after/purchase-recommendations.json
+          retention-days: 30
