@@ -82,6 +82,8 @@ on:
       - "scripts/validate_generated_site.py"
       - "scripts/add_search_landing_pages.py"
       - "scripts/generate_seo_files.py"
+      - "scripts/step6_seo_policy.json"
+      - "scripts/step6_seo_content.py"
       - "googlef35e71acece62b67.html"
       - ".github/workflows/deploy-pages.yml"
 
