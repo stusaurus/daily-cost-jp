@@ -81,5 +81,12 @@ class HouseholdTests(unittest.TestCase):
         pool,report,_=self.acquire([p])
         self.assertEqual(pool,[]);self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
 
+    def test_business_only_offer_not_recommended_to_households(self):
+        for title in ('ボックスティッシュ 220組 20箱 法人・企業様限定販売',
+                      'ボックスティッシュ 200組 20箱 事業者限定'):
+            pool,report,_=self.acquire([offer(qty=20,title=title)])
+            self.assertEqual(pool,[])
+            self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
+
 
 if __name__=='__main__':unittest.main()

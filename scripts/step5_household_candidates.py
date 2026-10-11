@@ -56,7 +56,7 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                 continue
             for row in safe:
                 qty, unit = parsed_quantity(cid, row['name']), comparison_unit(cid, row)
-                specialized = (bool(re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用', row['name'])) or
+                specialized = (bool(re.search(r'作業着|作業服|作業衣|ユニフォーム|業務用|工業用|医療用|施設用|法人|企業.*限定|事業者.*限定', row['name'])) or
                                cid == 'tissue' and bool(re.search(r'鼻セレブ|ローション|保湿|メントール', row['name'])))
                 reason = ('specialized_household_use_unconfirmed' if specialized else
                           'item_identity_unconfirmed' if not destination_matches(row) else
