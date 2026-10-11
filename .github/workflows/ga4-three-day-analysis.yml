@@ -324,7 +324,23 @@ jobs:
         run: |
           python3 -m pip install -r requirements-render.txt
           npm ci --ignore-scripts
-      - name: Classify findings and apply only the approved documentation recipe
+      - name: Read this run's funnel baseline without new Google permissions
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ga4-three-day-report
+          path: audit-results
+      - name: Prepare browser for fixed UI diagnostics (failure remains unknown)
+        continue-on-error: true
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Collect UI and feature evidence without affiliate or Google requests
+        continue-on-error: true
+        run: node scripts/step3_ui_audit.cjs audit
+      - name: Record STEP 3 classifications and measurement baseline
+        run: python3 scripts/autonomous_operations_step3.py
+      - name: Classify findings and apply at most one approved fixed recipe
         run: |
           python3 scripts/autonomous_operations_step2.py prepare
           cat audit-results/step2-plan.md >> "$GITHUB_STEP_SUMMARY"
@@ -350,5 +366,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: autonomous-operations-step2
-          path: audit-results/step2-*
+          path: |
+            audit-results/step2-*
+            audit-results/step3-*
           retention-days: 30

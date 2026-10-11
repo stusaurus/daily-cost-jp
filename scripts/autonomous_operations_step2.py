@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic, docs-only approved recipe. Never execute report/issue text."""
+"""Deterministic fixed recipes. Never execute report/issue text."""
 import argparse
 import datetime as dt
 import hashlib
@@ -84,15 +84,28 @@ def prepare():
     result['base_sha'] = git('rev-parse', 'HEAD')
     result['original_hash'] = digest(original)
     candidate = result.pop('candidate')
+    if candidate is None:
+        from autonomous_operations_step3 import ui_decisions, TARGET as ui_target
+        css_path = Path(ui_target)
+        if css_path.is_symlink():
+            raise ValueError('Symlink UI target forbidden')
+        css = css_path.read_text(encoding='utf-8')
+        ui = ui_decisions(read_optional('audit-results/step3-ui/report.json'), css, result['base_sha'])
+        result['decisions'].extend(ui['decisions'])
+        if ui['recipe']:
+            original, candidate = css, ui['candidate']
+            target = css_path
+            result.update(recipe=ui['recipe'], fingerprint=digest(ui['recipe'] + ':' + ui_target)[:24],
+                          original_hash=digest(css), ui_evidence_hash=ui['evidence_hash'])
     result['candidate_hash'] = digest(candidate) if candidate is not None else None
     if result['recipe']:
-        target.write_text(repair(original))
+        target.write_text(candidate, encoding='utf-8')
     root = Path('audit-results')
     root.mkdir(exist_ok=True)
     (root / 'step2-plan.json').write_text(json.dumps(result, indent=2))
     (root / 'step2-plan.md').write_text('# STEP 2 safety decisions\n\n' + '\n'.join(
         '- ' + d['decision'] + ': ' + d['code'] + ' ' + d['path'] for d in result['decisions']) +
-        '\n\nOnly the approved documentation recipe can produce a Draft PR. No site changes.\n')
+        '\n\nOnly fixed recipes can produce one tested Draft PR. Human approval required; no automatic publish.\n')
     print('STEP 2: ' + ('candidate prepared' if result['recipe'] else 'no safe fix; no PR'))
 
 
@@ -102,6 +115,9 @@ def candidate_target(plan):
         return TARGET
     if plan.get('recipe') == VERIFY_RECIPE:
         return VERIFY_TARGET
+    from autonomous_operations_step3 import RECIPE as ui_recipe, TARGET as ui_target
+    if plan.get('recipe') == ui_recipe:
+        return ui_target
     raise ValueError('Unapproved recipe')
 
 
@@ -155,6 +171,8 @@ def publish(plan, receipt, token, env, request=github_request):
         return {'status': 'NO_SAFE_FIX'}
     target = candidate_target(plan)
     verification = plan['recipe'] == VERIFY_RECIPE
+    from autonomous_operations_step3 import RECIPE as ui_recipe, repair as ui_repair, ui_decisions
+    ui = plan['recipe'] == ui_recipe
     if verification and not verification_authorized(env):
         raise ValueError('Verification cannot run from scheduled repair workflow')
     if plan['fingerprint'] != digest(plan['recipe'] + ':' + target)[:24]:
@@ -162,7 +180,20 @@ def publish(plan, receipt, token, env, request=github_request):
     sha = plan['base_sha']
     if not isinstance(sha, str) or not re.fullmatch(r'[a-f0-9]{40}', sha) or git('rev-parse', 'HEAD') != sha:
         raise ValueError('Invalid or changed base commit')
-    if receipt != {'base_sha': sha, 'candidate_hash': plan['candidate_hash'], 'tests': 'PASS'}:
+    expected_receipt = {'base_sha': sha, 'candidate_hash': plan['candidate_hash'], 'tests': 'PASS'}
+    if ui:
+        proof_path = Path('audit-results/step3-ui/verification.json')
+        report_path = Path('audit-results/step3-ui/report.json')
+        difference_path = Path('audit-results/step3-ui/differences.json')
+        proof = read_optional(proof_path)
+        if (not proof or proof.get('status') != 'PASS' or proof.get('mode') != 'live' or
+                proof.get('screens') != 18 or proof.get('base_sha') != sha or
+                proof.get('candidate_hash') != plan['candidate_hash'] or
+                proof.get('report_hash') != digest(report_path.read_text(encoding='utf-8')) or
+                proof.get('differences_hash') != digest(difference_path.read_text(encoding='utf-8'))):
+            raise ValueError('Missing exact UI browser proof')
+        expected_receipt['ui_verification_hash'] = digest(proof_path.read_text(encoding='utf-8'))
+    if receipt != expected_receipt:
         raise ValueError('Missing exact-candidate test evidence')
     # git helper strips trailing whitespace; read exact bytes for deterministic comparison.
     if verification:
@@ -173,7 +204,9 @@ def publish(plan, receipt, token, env, request=github_request):
         original, expected = '', VERIFY_CONTENT
     else:
         original = subprocess.check_output(['git', 'show', sha + ':' + target]).decode('utf-8')
-        expected = repair(original)
+        expected = ui_repair(original) if ui else repair(original)
+        if ui and ui_decisions(read_optional('audit-results/step3-ui/report.json'), original, sha).get('recipe') != ui_recipe:
+            raise ValueError('UI cause not reproduced on exact source')
     if Path(target).is_symlink():
         raise ValueError('Symlink candidate forbidden')
     candidate = Path(target).read_text(encoding='utf-8')
@@ -213,16 +246,22 @@ def publish(plan, receipt, token, env, request=github_request):
     request('/git/refs/heads/' + branch, token, 'PATCH', {'sha': commit['sha'], 'force': False})
     description = ('Create the fixed manual token-verification document. DO NOT MERGE. ' if verification else
                    'Restore the missing, predefined safety policy under the unique documentation anchor. ')
+    if ui:
+        description = 'Restore the existing ranking link 44px tap area with one fixed CSS block. '
+    scope = 'Only the approved CSS selector changes; no prices, product rules, URLs, SEO, tracking or feature code changes.' if ui else 'Only documentation changes; no product, SEO, analytics or site changes.'
+    browser_note = 'PC/390px/320px: 18 before/after screens, protected DOM, search, compare and save checks PASS. Evidence screenshots and geometry differences are in the generating run artifact. ' if ui else 'PC/390px/320px QA not required for a documentation-only diff. '
     body = (marker + '\n\n' + description +
-            'Only documentation changes; no product, SEO, analytics or site changes.\n\n'
-            'Evidence: validated fixed documentation candidate, recipe ' + plan['recipe'] + '.\n\n'
+            scope + '\n\n'
+            'Evidence: validated fixed candidate, recipe ' + plan['recipe'] + '.\n\n'
             'Before PR creation: complete Python and JavaScript unit/regression suites and syntax checks passed '
             'on candidate hash `' + plan['candidate_hash'] + '`.\n\n'
-            'Test run: https://github.com/' + REPO + '/actions/runs/' + run_id + '\n\n'
-            'PC/390px/320px QA not required for a documentation-only diff. Human review required. '
+            'Test run: https://github.com/' + REPO + '/actions/runs/' + run_id + '\n\n' +
+            browser_note + 'Human review required. '
             'GITHUB_TOKEN PR event execution is not assumed; tests already ran in the generating job. '
             'No automatic merge or deployment. Related investigation: #74.')
     title = 'docs: restore automatic operations safety policy'
+    if ui:
+        title = 'fix: restore ranking link tap target (fixed STEP 3 recipe)'
     if verification:
         title = '[DO NOT MERGE] STEP 2 workflow token verification'
         body = marker + '\n\nMANUAL TOKEN VERIFICATION — DO NOT MERGE.\n\n' + body.split('\n\n', 1)[1]

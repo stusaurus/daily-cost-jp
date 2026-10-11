@@ -1,0 +1,59 @@
+name: STEP 3 UI verification (no publish)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/step3-ui-verification.yml'
+      - '.github/workflows/ga4-three-day-analysis.yml'
+      - 'scripts/autonomous_operations_step*.py'
+      - 'scripts/check_step2_candidate.py'
+      - 'scripts/step3_ui_audit.cjs'
+      - 'scripts/design/laboratory.css'
+      - 'tests/test_autonomous_operations_step3.py'
+      - 'tests/step3_ui_audit.test.cjs'
+permissions:
+  contents: read
+concurrency:
+  group: step3-ui-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install existing dependencies
+        run: |
+          python3 -m pip install -r requirements-render.txt
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-noto-cjk
+      - name: Complete fixed regression suite
+        run: python3 scripts/check_step2_candidate.py
+      - name: Mock the fixed recipe at all three widths
+        run: node scripts/step3_ui_audit.cjs mock
+      - name: Read production UI and verify CSS changes without publishing
+        env:
+          STEP3_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if git diff --quiet "$STEP3_BASE_SHA" HEAD -- scripts/design/laboratory.css; then
+            node scripts/step3_ui_audit.cjs audit
+          else
+            node scripts/step3_ui_audit.cjs verify
+          fi
+          python3 scripts/autonomous_operations_step3.py
+      - name: Preserve complete UI and mock evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: step3-ui-verification
+          path: audit-results/step3-*
+          retention-days: 30
