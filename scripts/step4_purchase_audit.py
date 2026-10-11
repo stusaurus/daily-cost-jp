@@ -116,7 +116,9 @@ def inspect_category(category_id, category):
         return {"status": "UNAVAILABLE", "codes": ["CATEGORY_FETCH_ERROR"], "offers": [],
                 "coverage": None, "reject_reasons": None}
     raw = category.get("items")
-    if not isinstance(raw, list) or len(raw) > MAX_ITEMS_PER_CATEGORY:
+    if (not isinstance(raw, list) or len(raw) > MAX_ITEMS_PER_CATEGORY or
+            any(not isinstance(row, dict) or not isinstance(row.get("name"), str)
+                for row in raw)):
         return {"status": "UNAVAILABLE", "codes": ["INVALID_CATEGORY_ITEMS"], "offers": [],
                 "coverage": None, "reject_reasons": None}
     # filter_items is the same existing strict quality and price-outlier gate.
