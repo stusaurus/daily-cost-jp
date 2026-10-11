@@ -86,6 +86,7 @@ on:
       - ".github/workflows/deploy-pages.yml"
 
 permissions:
+  actions: read
   contents: read
   pages: write
   id-token: write

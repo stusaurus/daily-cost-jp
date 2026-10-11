@@ -60,7 +60,7 @@ async function inspect(browser,root,route,width,phase){
    assert(links.every(e=>e.height>=44&&e.name));
    for(const e of links.filter(e=>e.href.includes('rakuten.co.jp'))){const u=new URL(e.href);assert(u.protocol==='https:'&&u.hostname.endsWith('.rakuten.co.jp'));}
    const target=page.locator('.step4-recommendations').first();await target.scrollIntoViewIfNeeded();
-   await target.screenshot({path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}-recommendations.png`});
+   await target.screenshot({style:'.lab-masthead,.lab-bottom-nav,.back-to-top{visibility:hidden!important}',path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}-recommendations.png`});
   }
   await page.screenshot({path:`audit-results/step4-qa/${phase}-${route.replaceAll('/','-')||'home'}-${width}.png`,fullPage:true});
   return {route,width,phase,status:'PASS',protected_hash:protect,document_width:beforeWidth,operations:'search or compare/save/reload',affiliate_navigation:'BLOCKED',google_requests:'BLOCKED'};

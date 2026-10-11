@@ -131,12 +131,13 @@ def block(cid, result, name):
         else:
             p = r['offer']
             unit_label = LABELS.get(p['metric'], p['metric'])
-            qty_label = f'{r["quantity"]:g}' + {'box':'箱','roll':'ロール','100g':'×100g','100ml':'×100ml'}.get(p['metric'],'')
+            qty_label = (f'{r["quantity"]*100:g}g' if p['metric']=='100g' else f'{r["quantity"]*100:g}ml' if p['metric']=='100ml' else f'{r["quantity"]:g}' + {'box':'箱','roll':'ロール'}.get(p['metric'],''))
+            normalized = f' · ¥{r["unit"][1]:,.2f}／{esc(r["unit"][0])}' if r['unit'][0] != unit_label else ''
             image = p.get('image','')
             photo = f'<img src="{esc(image)}" alt="" loading="lazy" width="96" height="96">' if isinstance(image,str) and image.startswith('https://') else ''
             content = (photo + f'<h4>{esc(clean_display_name(p["name"]))}</h4><p>確認できた総数量：{esc(qty_label)}</p>'
                        f'<p>支払総額 <strong>¥{p["price"]:,.0f}</strong>（送料込み）</p>'
-                       f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)} · ¥{r["unit"][1]:,.2f}／{esc(r["unit"][0])}</p>'
+                       f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)}{normalized}</p>'
                        f'<p class="step4-reason">{esc(label)}：' + ('この数量区分の確認済み候補から同じ比較単位の単価を重視。保管場所もご確認ください。' if purpose=='bulk' else 'この数量区分の確認済み候補から支払総額を重視。用途・ブランドもご確認ください。') + '</p>'
                        f'<a class="buy-button" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener" data-conversion-source="category" data-category-id="{cid}" data-id="{esc(r["spec_ref"])}" data-purchase-purpose="{purpose}" data-shipping-price="{p["price"]}">楽天でこの商品を確認する ↗</a>')
         parts.append(f'<article class="step4-purpose" data-purpose="{purpose}"><h3>{label}</h3>{content}</article>')

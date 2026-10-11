@@ -178,6 +178,8 @@ jobs:
         run: |
           python scripts/search_affiliate_joint_report.py
           cat audit-results/search-affiliate-joint.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Read aggregate STEP4 purchase events using existing Google credentials
+        run: python scripts/step4_measurement.py --fetch
       - name: Preserve machine-readable report
         if: always()
         uses: actions/upload-artifact@v4
@@ -194,6 +196,8 @@ jobs:
             audit-results/gsc-daily-search-change.md
             audit-results/search-affiliate-joint.json
             audit-results/search-affiliate-joint.md
+            audit-results/step4-events-*.json
+            audit-results/step4-measurement.*
           if-no-files-found: warn
           retention-days: 30
 
@@ -279,6 +283,20 @@ jobs:
         run: |
           python3 scripts/autonomous_operations_triage.py
           cat audit-results/autonomous-operations.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Diagnose purchase fit and append to the existing bounded queue
+        env:
+          STEP4_ENABLE_CONTENT: ${{ vars.STEP4_ENABLE_CONTENT }}
+          STEP4_PAUSE_CONTENT: ${{ vars.STEP4_PAUSE_CONTENT }}
+        run: |
+          python3 scripts/step4_purchase_audit.py
+          python3 scripts/step4_automation.py diagnose
+          cat audit-results/step4-control.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve exact-main feedback for the existing daily build
+        uses: actions/upload-artifact@v4
+        with:
+          name: step4-operations-feedback
+          path: audit-results/step4-control.json
+          retention-days: 14
       - name: Update only one rolling GitHub issue for material problems
         continue-on-error: true
         env:
@@ -293,6 +311,7 @@ jobs:
             audit-results/autonomous-operations.json
             audit-results/autonomous-operations.md
             audit-results/health.json
+            audit-results/step4-*
           if-no-files-found: warn
           retention-days: 30
 
