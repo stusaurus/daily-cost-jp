@@ -23,9 +23,9 @@ def main(root=Path('audit-results/step4-preview-before')):
         markup=list(pool.map(lambda rel:fetch(rel,root).decode(),PAGES))
     assets={'assets/comparison-catalog.json','assets/purchase-tools.js','assets/laboratory.css'}
     for page in markup:
-        for target in re.findall(r'(?:src|href)=["\']([^"\']+)',page):
-            path=urlsplit(target).path
-            if path.startswith('/daily-cost-jp/assets/'):assets.add(path[len('/daily-cost-jp/'):])
+        # Include picture/srcset and preload references, not only src/href.
+        for path in re.findall(r"/daily-cost-jp/(assets/[A-Za-z0-9_./-]+)",page):
+            assets.add(path)
     if len(assets)>60:raise ValueError('Unexpected asset count')
     with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:list(pool.map(lambda rel:fetch(rel,root),sorted(assets)))
     snapshot=load_live();(root/'data.json').write_text(json.dumps(snapshot,ensure_ascii=False))
