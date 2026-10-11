@@ -101,7 +101,10 @@
       data.operator_test = operator ? '1' : '0';
       data.site_id = 'daily-cost-jp';
       data.page_path = location.pathname;
-      data.page_location = location.href;
+      data.page_location = name.startsWith('purchase_') ? location.origin + location.pathname : location.href;
+      if (name === 'purchase_search_diagnostics') {
+        delete data.search_term; delete data.query; delete data.product_name; delete data.product_id; delete data.link_url;
+      }
       data.traffic_environment = location.hostname === 'stusaurus.github.io' && location.pathname.startsWith(ROOT) ? 'production' : 'development';
       if (name === 'product_result_click') data.conversion_source = resultSource;
       if (name === 'same_product_rakuten_click') data.conversion_source = 'same_product_compare';
@@ -218,6 +221,7 @@
       rank: link.dataset.rank || readText(card?.querySelector('.rank-badge, .deal-rank, .rank b')),
       unit_price_label: (link.dataset.unitPriceLabel || readText(card?.querySelector('.unit-price, .lab-buy-mode-price'))).slice(0, 50),
       search_term: link.matches('.product-result-link') ? resultTerm.slice(0, 100) : '',
+      ...( ['small','everyday','bulk'].includes(link.dataset.purchasePurpose) ? {purchase_purpose:link.dataset.purchasePurpose} : {} ),
       shipping_included_price: Number(link.dataset.shippingPrice || 0),
       link_url: link.href, page_path: location.pathname,
       transport_type: 'beacon'

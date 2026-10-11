@@ -1,6 +1,7 @@
 /* Saved IDs are resolved against the current catalog; stale prices/links are never reused. */
 (() => {
   const ROOT = '/daily-cost-jp/';
+  function measure(name) { if (typeof window.gtag === 'function') window.gtag('event',name,{}); }
   const KEY = 'daily_cost_saved_products_v1';
   const selected = new Set();
   let saved = new Set();
@@ -70,8 +71,8 @@
     clear.addEventListener('click',()=>{set.clear();if(mode==='saved')persist();sync();show();});panel.append(clear);
     const close=node('button','比較・保存の一覧を閉じる');close.type='button';close.addEventListener('click',()=>{panel.hidden=true;});panel.append(close);
   }
-  document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
-  document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
+  document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';measure('purchase_saved_open');show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
+  document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';measure('purchase_comparison_open');show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
   fetch(ROOT+'assets/comparison-catalog.json', {cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('catalog');return r.json();}).then(data=>{
     catalog = data;
     document.querySelectorAll('.product-card, .deal-card').forEach(card=>{
@@ -88,7 +89,7 @@
         button.addEventListener('click',()=>{
           const set=kind==='save'?saved:selected;
           if(set.has(p.key))set.delete(p.key);
-          else {if(set.size>=(kind==='save'?50:4)){status.textContent=kind==='save'?'保存は50商品までです。':'一度に比較できるのは4商品までです。';return;}set.add(p.key);}
+          else {if(set.size>=(kind==='save'?50:4)){status.textContent=kind==='save'?'保存は50商品までです。':'一度に比較できるのは4商品までです。';return;}set.add(p.key);measure(kind==='save'?'purchase_save_add':'purchase_compare_add');}
           const ok=kind==='save'?persist():true;sync();if(ok)status.textContent=kind==='save'?'保存一覧を更新しました。':'比較候補を更新しました。「比較を見る」で確認できます。';
           if(!panel.hidden)show();
         });tools.append(button);

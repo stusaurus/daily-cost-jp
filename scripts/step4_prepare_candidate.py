@@ -1,0 +1,28 @@
+"""Apply only reviewable STEP4 presentation/measurement code to a captured preview."""
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+from step4_recommendations import apply
+from add_analytics import inject_file
+
+def main(site=Path('audit-results/step4-preview-after')):
+    # Reuse the existing production renderer and strictly offline API fixture.
+    markup=subprocess.check_output([sys.executable,'tests/render_analytics_fixture.py'],text=True)
+    from bs4 import BeautifulSoup
+    fixture=BeautifulSoup(markup,'html.parser')
+    new_script=next(s for s in fixture.find_all('script') if 'const API =' in s.get_text())
+    diagnostic=fixture.select_one('#step4-search-diagnostics')
+    page=site/'products/index.html';old=page.read_text()
+    scripts=list(re.finditer(r'<script\b[^>]*>.*?</script>',old,re.S))
+    target=[m for m in scripts if 'const API =' in m.group()]
+    if len(target)!=1:raise ValueError('Expected exactly one realtime search script')
+    m=target[0];old=old[:m.start()]+str(new_script)+old[m.end():]
+    if 'id="step4-search-diagnostics"' not in old:old=old.replace('</head>',str(diagnostic)+'</head>',1)
+    page.write_text(old)
+    (site/'assets/purchase-tools.js').write_text(Path('scripts/purchase_tools.js').read_text())
+    for path in site.rglob('index.html'):inject_file(path,'G-GFVSZ8YDQ5')
+    apply(site,enabled=True)
+    print('Applied unpublished STEP4 candidate; pricing/URLs/catalog retained')
+if __name__=='__main__':main()

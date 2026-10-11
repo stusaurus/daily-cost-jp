@@ -8,7 +8,7 @@ const BASE='https://stusaurus.github.io/daily-cost-jp/';
 const pages=['','categories/laundry/','categories/tissue/','categories/toilet-paper/','products/','today/'];
 const widths=[1440,390,320];
 function protectedState(){
- return {head:[...document.querySelectorAll('title,meta,link[rel=canonical],script')].map(e=>e.outerHTML),
+ return {head:[...document.querySelectorAll('title,meta,link[rel=canonical]')].map(e=>e.outerHTML),
  cards:[...document.querySelectorAll('.product-card,.lab-archive-row,.deal-card')].map(e=>e.outerHTML),
  ranking:[...document.querySelectorAll('#home-ranking-hero,.lab-unit-groups,#normalized-comparison')].map(e=>e.outerHTML)};
 }
@@ -38,6 +38,11 @@ async function inspect(browser,root,route,width,phase){
    await page.locator('#q').fill('アリエール');await page.locator('#searchBtn').click();
    await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('候補：0件'));
    assert.equal(await page.locator('#searchBtn').isDisabled(),false);
+   if(phase==='after') {
+     assert.equal(await page.locator('#status').getAttribute('data-search-diagnostic-status'),'API_RESPONSE_ZERO');
+     const diagnostics=await page.evaluate(()=>[...window.dataLayer].filter(e=>e[1]==='purchase_search_diagnostics').map(e=>e[2]));
+     assert(diagnostics.length>=2);assert(diagnostics.every(e=>e.operator_test==='1'&&!JSON.stringify(e).includes('アリエール')));
+   }
   }else{
    await page.locator('[data-product-tool=compare]').first().waitFor();
    const compares=page.locator('[data-product-tool=compare]');assert(await compares.count()>=2);
@@ -47,6 +52,7 @@ async function inspect(browser,root,route,width,phase){
    await page.locator('[data-product-tool=save][aria-pressed=true]').first().waitFor();
    await page.locator('#show-saved').click();assert(await page.locator('#purchase-tool-panel a').count()>0);
    await page.locator('#purchase-tool-panel button').last().click();
+   if(phase==='after')assert(await page.evaluate(()=>window.dataLayer.some(e=>e[1]==='purchase_saved_open'&&e[2].operator_test==='1')));
   }
   if(phase==='after'&& !['products/','today/'].includes(route)){
    assert(await page.locator('.step4-recommendations').count()>0);
