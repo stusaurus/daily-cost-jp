@@ -8,6 +8,8 @@ on:
     paths:
       - '.github/workflows/ga4-three-day-analysis.yml'
       - 'scripts/step6*'
+      - 'scripts/gsc_url_inspection.py'
+      - 'tests/test_gsc_url_inspection.py'
       - 'tests/test_step6*'
   schedule:
     # 10:27 JST each day; a date gate below allows the authenticated run every 3 days.
@@ -21,6 +23,8 @@ on:
       - 'scripts/gsc_readonly_pilot.py'
       - 'tests/test_gsc_readonly_pilot.py'
       - 'scripts/gsc_daily_search.py'
+      - 'scripts/gsc_url_inspection.py'
+      - 'tests/test_gsc_url_inspection.py'
       - 'tests/test_gsc_daily_search.py'
       - 'scripts/search_affiliate_joint_report.py'
       - 'scripts/autonomous_operations_triage.py'
@@ -51,6 +55,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_url_inspection.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
           python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
           python3 -m unittest discover -s tests -p 'test_step7_revenue.py'
@@ -145,6 +150,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_ga4_page_diagnostics.py'
           python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_url_inspection.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
           python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
           python3 -m unittest discover -s tests -p 'test_step7_revenue.py'
@@ -172,6 +178,13 @@ jobs:
           python scripts/gsc_readonly_pilot.py
           if [ -f audit-results/gsc-search-pilot.md ]; then
             cat audit-results/gsc-search-pilot.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Read-only Google URL Inspection of three high-priority pages
+        continue-on-error: true
+        run: |
+          python scripts/gsc_url_inspection.py
+          if [ -f audit-results/gsc-url-inspection.md ]; then
+            cat audit-results/gsc-url-inspection.md >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Investigate daily search impressions on key categories (read-only)
         continue-on-error: true
@@ -207,6 +220,8 @@ jobs:
             audit-results/ga4-page-diagnostics.md
             audit-results/gsc-search-pilot.json
             audit-results/gsc-search-pilot.md
+            audit-results/gsc-url-inspection.json
+            audit-results/gsc-url-inspection.md
             audit-results/gsc-daily-search-change.json
             audit-results/gsc-daily-search-change.md
             audit-results/search-affiliate-joint.json
