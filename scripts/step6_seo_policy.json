@@ -3,6 +3,6 @@
   "pages": {
     "laundry": true,
     "tissue": true,
-    "toilet-paper": false
+    "toilet-paper": true
   }
 }
