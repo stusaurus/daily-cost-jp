@@ -202,7 +202,11 @@ script = f"""
     const cardEl = results.querySelector(`[data-product-id="${{CSS.escape(productId)}}"]`);
     if (!p || !cardEl) return;
     cardEl.outerHTML = liveCard(p);
-    updateStatus();
+    // Apply the existing verified-price-first grouping as soon as a safe
+    // offer arrives, rather than keeping it below unverified cards until all
+    // other lookups finish. No new ranking/selection policy is introduced.
+    if (Number(p.shipping_included_price || 0) > 0) renderLive();
+    else updateStatus();
   }}
 
   async function runFallbackLookups(generation) {{

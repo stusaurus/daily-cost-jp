@@ -85,3 +85,18 @@ test('short query invalidates a previous in-flight product response',async()=>{
  assert.equal(w.dataLayer.filter(e=>e[1]==='realtime_product_search').length,0);
  dom.window.close();
 });
+
+test('verified offer becomes visible first while other lookups are still pending',async()=>{
+ const products=[{...product,product_id:'refill',name:'検証用洗剤 詰め替え 2600g'},{...product,product_id:'bottle'}];
+ const dom=new JSDOM(html,{url:'https://stusaurus.github.io/daily-cost-jp/products/?test=1',runScripts:'dangerously',beforeParse(w){w.CSS={escape:s=>s};w.fetch=async url=>{
+  if(url.includes('product-search'))return{ok:true,json:async()=>({products})};
+  if(decodeURIComponent(url).includes('本体'))return{ok:true,json:async()=>({found:true,shipping_included_price:1376,shipping_included_url:'https://item.rakuten.co.jp/fixture/verified/',shipping_match_name:product.name})};
+  return new Promise(()=>{});
+ };}});
+ const w=dom.window,q=w.document.querySelector('#q');q.value='検証用';q.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));await flush();
+ assert.equal(w.document.querySelector('.card').dataset.productId,'bottle');
+ assert.equal(w.document.querySelector('.product-result-link').dataset.shippingPrice,'1376');
+ assert.equal(JSON.parse(w.document.querySelector('#status').dataset.searchDiagnosticCounts).PENDING,1);
+ assert.equal(w.dataLayer.filter(e=>e[1]==='purchase_search_diagnostics').length,1);
+ dom.window.close();
+});
