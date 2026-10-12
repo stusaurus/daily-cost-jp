@@ -90,6 +90,8 @@ jobs:
       - name: Install rendering dependencies
         run: python -m pip install --quiet -r requirements-render.txt
 
+      - name: Reject private financial artifacts in the public tree
+        run: python scripts/check_step7_public_boundary.py
       - name: Test sale quantity parsing
         run: python -m unittest discover -s tests -v
 
