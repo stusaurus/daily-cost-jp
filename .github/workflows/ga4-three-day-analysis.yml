@@ -53,6 +53,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
           python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
+          python3 -m unittest discover -s tests -p 'test_step7_revenue.py'
           node --test tests/ga4_live_cta_audit.test.cjs
 
 
@@ -146,6 +147,7 @@ jobs:
           python3 -m unittest discover -s tests -p 'test_gsc_daily_search.py'
           python3 -m unittest discover -s tests -p 'test_search_affiliate_joint_report.py'
           python3 -m unittest discover -s tests -p 'test_autonomous_operations_triage.py'
+          python3 -m unittest discover -s tests -p 'test_step7_revenue.py'
       - name: Authenticate to Google using OIDC
         uses: google-github-actions/auth@v2
         with:
@@ -190,6 +192,9 @@ jobs:
         run: python scripts/step4_measurement.py --fetch
       - name: Read STEP5 dimension registration and anonymous purpose counts
         run: python scripts/step5_evaluation.py --fetch
+      - name: Export Google calendar-month aggregates only (no financial inputs)
+        continue-on-error: true
+        run: python scripts/step7_google_monthly.py
       - name: Preserve machine-readable report
         if: always()
         uses: actions/upload-artifact@v4
@@ -210,6 +215,7 @@ jobs:
             audit-results/step4-measurement.*
             audit-results/step5-*.json
             audit-results/step5-*.md
+            audit-results/step7-google-monthly.json
           if-no-files-found: warn
           retention-days: 30
 

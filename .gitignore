@@ -5,3 +5,12 @@ site-live/
 .previous-observations.json
 quality-report.json
 quality-monitor-report.json
+
+# STEP7: financial inputs and reports belong outside every Git checkout.
+*.csv
+*.sqlite
+*.sqlite3
+*.db
+.step7-private/
+monthly-report.json
+monthly-report.md

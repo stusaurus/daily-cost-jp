@@ -11,6 +11,12 @@
       "recipe": "comparison-help-v1:laundry",
       "published_on": "2026-10-11",
       "commit": "8ba6adce5c840dcabd5079ac53c145a1960d9cd9"
+    },
+    {
+      "path": "/categories/toilet-paper/",
+      "recipe": "comparison-help-v1:toilet-paper",
+      "published_on": "2026-10-11",
+      "commit": "be10487ca396089bf4da99aa15e3db9a4fa11944"
     }
   ],
   "calendar": "America/Los_Angeles"
