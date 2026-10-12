@@ -23,6 +23,7 @@ async function capture(){
     return route.continue();
    });
    const page=await context.newPage();page.setDefaultTimeout(15000);
+   page.on('pageerror',error=>{report.page_errors??=[];report.page_errors.push({width,route,message:error.message});});
    if(!report.publication){
     const response=await context.request.get(SITE+'build-info.json');
     if(response.status()!==200)throw Error('Public build manifest unavailable');
