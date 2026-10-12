@@ -58,6 +58,8 @@ class PrivateRevenue(unittest.TestCase):
         totals=r.aggregate(raw,m,MONTH);self.assertEqual(totals['order_status_yen']['pending'],10)
         self.assertIsNone(totals['order_status_yen']['discarded'])
         with self.assertRaises(r.PrivateError):r.aggregate(raw+b'2026-09-01,20,\xe7\xa2\xba\xe5\xae\x9a,SYNTHETIC-1,x\n',m,MONTH)
+        with self.assertRaises(r.PrivateError):
+            r.aggregate(raw+'2026-09-01,10,未確定,SYNTHETIC-1,別の架空商品\n'.encode(),m,MONTH)
         r.ingest(self.conn,raw,m,'main',MONTH,STAMP)
         payload=' '.join(str(row) for row in self.conn.execute('SELECT * FROM snapshots'))
         self.assertNotIn('SYNTHETIC-1',payload);self.assertNotIn('架空のテスト商品',payload)

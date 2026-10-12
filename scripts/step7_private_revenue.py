@@ -93,7 +93,7 @@ def aggregate(raw, mapping, expected_month):
                 if mapping['row_format']=='detail':
                     identity = row[cols['row_id']].strip()
                     if not identity or len(identity)>256: reject('MISSING_DETAIL_ID')
-                    signature = (key,state,amount)
+                    signature = hashlib.sha256(json.dumps(row,sort_keys=True).encode()).hexdigest()
                     if identity in seen:
                         if seen[identity] != signature: reject('CONFLICTING_DETAIL_ID')
                         continue
