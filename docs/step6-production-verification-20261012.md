@@ -11,7 +11,7 @@
 
 ## 認証済み分析と運用
 
-最新mainの https://github.com/stusaurus/daily-cost-jp/actions/runs/38185397794 は成功。OIDC/GA4/GSC、STEP4/5診断、STEP6、Issue #74更新、固定候補検証、既存publisherからのDraft #92作成が実行された。一度の分析でDraftは1件。追加の手動分析は不要だった。
+最新mainの https://github.com/stusaurus/daily-cost-jp/actions/runs/38185397794 は成功。OIDC/GA4/GSC、STEP4/5診断、STEP6、Issue #74更新、固定候補検証、既存publisherからのDraft #92作成が実行された。一度の分析でDraftは1件。追加の手動分析は不要だった。Issue本文に残っていた「PR自動許可はまだ有効化していない」という古い定型文は、書込状態を断定せず同runのpublisher結果を案内する表現へ修正する。
 
 既存日次buildは06:00 JST、3日分析のゲートは10:27 JST。品質・数量・送料・URL検証を通した更新だけを公開し、STEP4の停止と既存STEP2のPR書込停止スイッチを維持する。安全な商品選択のAUTO_CONTENTと、コード/SEO/品質ルールのHUMAN_ONLYを混同しない。#77は触らない。
 
