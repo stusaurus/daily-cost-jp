@@ -224,6 +224,34 @@ class Measurement(unittest.TestCase):
     def test_invalid_release_ledger_rejected(self):
         with self.assertRaises(ValueError):e.releases('{"releases":[{"path":"/evil/"}]}')
 
+    def test_release_calendar_cannot_mix_ga4_jst_with_search_pt(self):
+        with self.assertRaises(ValueError):
+            e.releases('{"calendar":"Asia/Tokyo","releases":[]}')
+
+    def test_all_released_pages_are_evaluated_with_bounded_queries(self):
+        rows=[{'path':f'/categories/{cid}/','recipe':c.recipe(cid),
+               'published_on':'2026-08-01','commit':SHA} for cid in c.REGISTRY]
+        session=Mock();session.post.return_value.status_code=200
+        session.post.return_value.json.return_value={'rows':[{'clicks':1,'impressions':10,'ctr':.1,'position':12}]}
+        with patch.object(Path,'read_text',return_value=json.dumps({'releases':rows})):
+            out=e.collect(session,NOW.date())
+        self.assertEqual({r['path'] for r in out['releases']},{r['path'] for r in rows})
+        self.assertEqual(session.post.call_count,12)
+        self.assertTrue(all(r['comparisons']['28']['status']=='LOW_SAMPLE' for r in out['releases']))
+
+    def test_newer_release_does_not_starve_completed_older_windows(self):
+        rows=[{'path':f'/categories/{cid}/','recipe':c.recipe(cid),
+               'published_on':day,'commit':SHA} for cid,day in
+              [('tissue','2026-08-01'),('laundry',NOW.date().isoformat())]]
+        session=Mock();session.post.return_value.status_code=200
+        session.post.return_value.json.return_value={}
+        with patch.object(Path,'read_text',return_value=json.dumps({'releases':rows})):
+            out=e.collect(session,NOW.date())
+        self.assertEqual(session.post.call_count,4)
+        statuses={r['path']:r['comparisons']['28']['status'] for r in out['releases']}
+        self.assertEqual(statuses['/categories/laundry/'],'WAIT_FOR_COMPLETE_WINDOW')
+        self.assertEqual(statuses['/categories/tissue/'],'MISSING_ROWS_UNKNOWN')
+
     def test_step6_seo_changes_trigger_pages_publication(self):
         root = Path(__file__).resolve().parents[1]
         workflow = (root / '.github/workflows/deploy-pages.yml').read_text()

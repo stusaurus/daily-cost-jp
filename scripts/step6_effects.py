@@ -15,6 +15,8 @@ from step6_seo_content import REGISTRY, recipe
 def releases(text):
     obj=json.loads(text)
     rows=obj.get('releases') if isinstance(obj,dict) else None
+    if isinstance(obj,dict) and obj.get('calendar','America/Los_Angeles')!='America/Los_Angeles':
+        raise ValueError('Release calendar must match Search Analytics PT dates')
     if not isinstance(rows,list) or len(rows)>30:raise ValueError('Invalid release ledger')
     seen=set()
     for row in rows:
@@ -40,9 +42,11 @@ def collect(session, today):
     try:ledger=releases(Path('docs/step6-release-ledger.json').read_text())
     except (OSError,ValueError,TypeError):return {'status':'LEDGER_UNKNOWN','evaluation':'評価保留'}
     result={'status':'NO_CONFIRMED_PUBLICATION' if not ledger else 'OBSERVING',
-            'evaluation':'評価保留','sales_status':'NOT_CONNECTED','cross_source_user_join':False,'releases':[]}
-    # One latest approved experiment per cycle; at most four readonly queries.
-    for entry in sorted(ledger,key=lambda r:r['published_on'],reverse=True)[:1]:
+            'evaluation':'評価保留','sales_status':'NOT_CONNECTED','cross_source_user_join':False,
+            'calendar':'America/Los_Angeles','releases':[]}
+    # The registry/unique-recipe guard permits at most three releases: twelve
+    # readonly queries. A newer release must not starve earlier page evaluations.
+    for entry in sorted(ledger,key=lambda r:(r['published_on'],r['path']),reverse=True):
         row={**entry,'comparisons':{}}
         for length in (7,28):
             bounds=windows(entry,today,length)

@@ -28,6 +28,33 @@ def click(date, url=TISSUE, flag="0", count=1):
 
 
 class DiagnosticsTests(unittest.TestCase):
+    def test_old_unknown_clicks_are_dated_but_not_reclassified(self):
+        report = module.make_report([click(DATES[-25], flag='(not set)', count=4)],
+                                   view_records(), TODAY, True)
+        page = report['pages'][0]
+        timeline = page['operator_timeline']
+        self.assertEqual(timeline['status'], 'OLDER_UNKNOWN_ROWS_ONLY')
+        self.assertEqual(timeline['last_unknown_date'], DATES[-25].isoformat())
+        self.assertEqual(timeline['last_7_unknown_clicks_returned'], 0)
+        self.assertEqual(page['action_code'], 'CHECK_UNKNOWN_TEST_EVENTS')
+        self.assertEqual(page['periods']['last_28']['clicks']['production_unknown'], 4)
+        self.assertIn('過去の不明クリックは不明のまま保持', module.markdown_report(report))
+
+    def test_recent_unknown_events_remain_attention_required(self):
+        report = module.make_report([click(DATES[-1], flag='', count=2)],
+                                   view_records(), TODAY, True)
+        timeline = report['pages'][0]['operator_timeline']
+        self.assertEqual(timeline['status'], 'RECENT_UNKNOWN_ROWS')
+        self.assertEqual(timeline['last_7_unknown_clicks_returned'], 2)
+        self.assertFalse(timeline['historical_clicks_reclassified'])
+
+    def test_missing_dimension_and_rows_are_not_tracking_success(self):
+        report = module.make_report([], view_records(), TODAY, False)
+        timeline = report['pages'][0]['operator_timeline']
+        self.assertEqual(timeline['status'], 'OPERATOR_DIMENSION_UNAVAILABLE')
+        self.assertIsNone(timeline['last_unknown_date'])
+        self.assertTrue(timeline['absent_rows_are_not_proof_of_complete_tracking'])
+
     def test_exact_dates_allow_two_day_reporting_delay(self):
         self.assertEqual(DATES[-1], dt.date(2026, 10, 8))
         self.assertEqual(DATES[-28], dt.date(2026, 9, 11))

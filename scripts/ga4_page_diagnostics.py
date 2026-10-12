@@ -98,6 +98,26 @@ def period_totals(page, views, clicks, dates):
     return result
 
 
+def operator_timeline(page, clicks, dates, registered):
+    """Date/count aggregates only; old unknown clicks never become users."""
+    keys = [d.isoformat() for d in dates[-28:]]
+    unknown = [(d, clicks[page].get(d, {}).get('production_unknown', 0)) for d in keys]
+    observed = [(d, n) for d, n in unknown if n > 0]
+    recent = sum(n for d, n in observed if d in keys[-7:])
+    return {
+        'status': ('OPERATOR_DIMENSION_UNAVAILABLE' if not registered else
+                   'RECENT_UNKNOWN_ROWS' if recent else
+                   'OLDER_UNKNOWN_ROWS_ONLY' if observed else 'NO_UNKNOWN_ROWS_RETURNED'),
+        'period': [keys[0], keys[-1]],
+        'first_unknown_date': observed[0][0] if observed else None,
+        'last_unknown_date': observed[-1][0] if observed else None,
+        'unknown_clicks_returned': sum(n for _, n in observed),
+        'last_7_unknown_clicks_returned': recent,
+        'absent_rows_are_not_proof_of_complete_tracking': True,
+        'historical_clicks_reclassified': False,
+    }
+
+
 def diagnose(stats, operator_registered, recent_days_observed, prior_days_observed):
     """Conservative investigation hypotheses; unobserved days need not be outages."""
     recent = stats["last_28"]
@@ -147,6 +167,7 @@ def make_report(click_rows, view_rows, today, operator_registered):
         recent_clicks = stats["last_28"]["clicks"]
         candidates.append({
             "page": page, "periods": stats, "priority": priority,
+            "operator_timeline": operator_timeline(page, clicks, dates, operator_registered),
             "action_code": action, "hypothesis": reason,
             "provisional_clicks_per_100_pageviews": (
                 round(100 * recent_clicks["production_non_operator"] / denom, 2)
@@ -209,6 +230,16 @@ def markdown_report(report):
             "| " + page + " | " + last7 + " | " + prev7 + " | " +
             last28 + " | " + prev28 + " | " + click_text + " | " + reason + " |"
         )
+    lines.extend(['', '### テスト区分不明の発生期間（取得行のみ）', '',
+                  '| ページ | 状態 | 最後の不明日 | 28日不明クリック | 直近7日不明クリック |',
+                  '|---|---|---|---:|---:|'])
+    for candidate in report['top_investigations']:
+        timeline = candidate['operator_timeline']
+        lines.append('| ' + candidate['page'].replace('|', '%7C').replace('\n', '') +
+                     ' | ' + timeline['status'] + ' | ' + str(timeline['last_unknown_date'] or '未観測') +
+                     ' | ' + str(timeline['unknown_clicks_returned']) + ' | ' +
+                     str(timeline['last_7_unknown_clicks_returned']) + ' |')
+    lines.append('過去の不明クリックは不明のまま保持。直近の取得行が0でも、計測の完全性や一般利用者の有無を保証しません。')
     if not report["top_investigations"]:
         lines.append("| データなし | — | — | — | — | — | 計測状況を確認 |")
     lines += [

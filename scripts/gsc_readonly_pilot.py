@@ -346,7 +346,7 @@ def fetch():
     from step6_gsc_sitemaps import collect_sitemaps
     report['sitemaps'] = collect_sitemaps(session)
     from step6_effects import collect as collect_effects
-    report['seo_effects'] = collect_effects(session, today)
+    report['seo_effects'] = collect_effects(session, dt.datetime.now(ZoneInfo('America/Los_Angeles')).date())
 
     # Supplemental, best-effort daily evidence. The existing site/per-page
     # GSC export must remain successful if a dated endpoint is unavailable.
