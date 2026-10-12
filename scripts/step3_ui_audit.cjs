@@ -59,7 +59,7 @@ function measure(){
 }
 async function interactions(page,pathname){
  const results=[];
- if(pathname==='/'&&await page.locator('#judge-category').count()){await page.locator('#judge-category').scrollIntoViewIfNeeded();await page.locator('#judge-category').selectOption('tissue');if(!/箱/.test(await page.locator('#judge-unit').innerText()))throw Error('Category unit selection failed: '+await page.locator('#judge-unit').innerText());await page.locator('#judge-button').click();if(!/入力してください/.test(await page.locator('#judge-result').innerText()))throw Error('Judge empty-input validation failed');results.push('category-selector-and-empty-price-validation');}
+ if(pathname==='/'&&await page.locator('#judge-category').count()){await page.locator('#judge-category').scrollIntoViewIfNeeded();await page.locator('#judge-category').selectOption('tissue');await page.waitForFunction(()=>document.querySelector('#judge-unit')?.textContent.includes('箱'));if(!/箱/.test(await page.locator('#judge-unit').textContent()))throw Error('Category unit selection failed');await page.locator('#judge-button').click();if(!/入力してください/.test(await page.locator('#judge-result').innerText()))throw Error('Judge empty-input validation failed');results.push('category-selector-and-empty-price-validation');}
  if(pathname==='/products/'){
   const field=page.locator('#q');if(await field.count()!==1)throw Error('Search input missing');
   await field.fill('x');await page.locator('#searchBtn').click();

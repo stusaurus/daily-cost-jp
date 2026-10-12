@@ -50,6 +50,7 @@ async function capture(){
     await page.locator('#back-to-top').waitFor({state:'visible'});
     await page.locator('#back-to-top').click();await page.waitForFunction(()=>scrollY===0);
     await page.locator('#back-to-top').waitFor({state:'hidden'});
+    report.last_context=await page.evaluate(()=>({unitText:document.querySelector('#judge-unit')?.textContent,unitHTML:document.querySelector('#judge-unit')?.outerHTML,selected:document.querySelector('#judge-category')?.value,measurementContext:typeof window.dailyCostMeasurementContext}));
     const operations=await interactions(page,route);
     checks.push({width,route,...initial,operations,status:'PASS',clickReturnsToTop:true});
   }finally{await context.close();}

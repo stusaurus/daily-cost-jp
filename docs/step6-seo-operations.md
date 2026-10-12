@@ -25,7 +25,7 @@
 
 ## 7日・28日の評価
 
-公開確認後、人間が `docs/step6-release-ledger.json` に **実際の公開日**、対象path、recipe、commitを記録する。マージ日やビルド予定日を公開日と推定しない。初期は空であり `NO_CONFIRMED_PUBLICATION`。例の架空公開日を運用データへ入れない。
+公開確認後、人間が `docs/step6-release-ledger.json` に **実際の公開日（Search Analytics APIと同じPacific日付）**、対象path、recipe、commitを記録する。ledgerのcalendarはAmerica/Los_Angeles。JST表示の公開時刻は証拠文書に併記する。マージ日やビルド予定日を公開日と推定しない。初期は空であり `NO_CONFIRMED_PUBLICATION`。例の架空公開日を運用データへ入れない。
 
 各分析では登録済みの全3ページの確認済み変更について、公開日を除外した前後同じ長さの7日／28日を、GSC `dataState=final`・3日の待機期間で取得する（最大12件の読み取りクエリ。未完了窓はAPI取得しない）。表示・クリック・CTR・平均順位、期間と欠測を保存する。行欠落を0とせず、表示200未満またはクリック20未満の比較はLOW_SAMPLEで評価保留。十分なサンプルでも相関から因果的なSEO成功を断定しない。複数変更が重なった場合は人間が交絡を確認する。
 
@@ -50,3 +50,5 @@ GA4の既存operator_test区分、未知イベント、購入目的を保持し�
 | トイレットペーパー | 79 | 1 | 1.2658% | 11.97 |
 
 公開可能なクエリ行はなし。クエリ自体が存在しないという意味ではない。GA4のpurchase_purpose・diagnostic_status・diagnostic_phaseは最新のData API metadataで登録済みを確認（再登録しない）。確定報酬は未接続。取得結果とこの過去基準を毎回区別する。
+
+日付仕様の一次資料: https://developers.google.com/webmaster-tools/v1/searchanalytics/query （startDate/endDateはPT）。公開日の一部が前期間へ入らないよう、JSTの日付をそのままAPIへ渡さない。

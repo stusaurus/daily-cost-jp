@@ -6,7 +6,7 @@
 - #90 のpush条件追加後、#91で本番build/deployが起動・成功した。
 - 洗濯洗剤: https://github.com/stusaurus/daily-cost-jp/actions/runs/38185397797 。公開 `build-info.json` のcommit/runと公開HTMLのSTEP6ブロックを直接取得して照合した。
 - ティッシュの初回公開: https://github.com/stusaurus/daily-cost-jp/actions/runs/38184001532 （#90のcommit `b0ec675e379166e8b47207a54606df932e39ded4`）。#88のmerge時はpush条件不足で公開されず、公開日をmerge時刻から推定していない。
-- 両方の実公開日は **2026-10-12（JST）**。release ledgerには公開されたbuildのcommitを記録。トイレットペーパーは未公開のため記録しない。
+- 両方の実公開日は **2026-10-12（JST）/2026-10-11（GSCのPacific日付）**。release ledgerのpublished_onはAPI比較のPacific日付、calendarはAmerica/Los_Angelesと明示し、公開されたbuildのcommitを記録。トイレットペーパーは未公開のため記録しない。
 - #91同時起動のSEO監査はdeploy完了前だったため洗濯洗剤の新ブロックを未検出だった。その後の公開HTMLでは反映を確認。CI成功だけを公開確認に使わない。
 
 ## 認証済み分析と運用
@@ -46,7 +46,7 @@
 
 旧評価処理は最新1ページのみを評価し、先行ページが永続的に評価されない可能性があった。登録済み全3ページを毎分析で対象にし、完了窓だけを取得する（最大12読み取りクエリ）。公開日を除外、前後同期間、3日の待機、欠落は不明、低サンプルはLOW_SAMPLE、十分でも人間レビューを維持。
 
-今回2ページの7日窓は10月13〜19日/10月5〜11日、28日窓は10月13〜11月9日/9月14〜10月11日。未完了はWAIT_FOR_COMPLETE_WINDOW。ledger変更はDraft承認後のみ本番へ反映。今後の公開でも実日付とcommitを確認し、承認用PRで記録する。
+今回2ページの7日窓は10月12〜18日/10月4〜10日、28日窓は10月12〜11月8日/9月13〜10月10日（すべてGSCのPacific日付）。未完了はWAIT_FOR_COMPLETE_WINDOW。ledger変更はDraft承認後のみ本番へ反映。今後の公開でも実日付とcommitを確認し、承認用PRで記録する。
 
 ## 人間が行うこと
 

@@ -224,6 +224,10 @@ class Measurement(unittest.TestCase):
     def test_invalid_release_ledger_rejected(self):
         with self.assertRaises(ValueError):e.releases('{"releases":[{"path":"/evil/"}]}')
 
+    def test_release_calendar_cannot_mix_ga4_jst_with_search_pt(self):
+        with self.assertRaises(ValueError):
+            e.releases('{"calendar":"Asia/Tokyo","releases":[]}')
+
     def test_all_released_pages_are_evaluated_with_bounded_queries(self):
         rows=[{'path':f'/categories/{cid}/','recipe':c.recipe(cid),
                'published_on':'2026-08-01','commit':SHA} for cid in c.REGISTRY]
