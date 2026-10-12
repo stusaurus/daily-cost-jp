@@ -60,6 +60,7 @@ script = f"""
   const SHIPPING_API = API.replace('/api/product-search', '/api/shipping-lookup');
   const VERIFIED_SHIPPING_FALLBACK = 'https://daily-cost-api.stuffedsaurus.workers.dev/api/shipping-lookup';
   const FALLBACK_LIMIT = 20;
+  const LOOKUP_BUDGET_MS = 90000;
   let currentTerm = '';
   let currentPage = 1;
   let pageCount = 1;
@@ -77,6 +78,12 @@ script = f"""
   note.className = 'realtime-note';
   note.textContent = '表示価格は、楽天市場で「送料込み／送料無料」と確認できた同一商品の候補だけを表示します。価格確認済みの商品は、実際にリンクする楽天市場の購入候補画像を表示します。まとめ検索で確認できない商品は、JANコードなどを使って順番に追加確認します。';
   status.insertAdjacentElement('afterend', note);
+  const recovery = document.createElement('section');
+  recovery.id = 'search-recovery';
+  recovery.className = 'realtime-note';
+  recovery.hidden = true;
+  recovery.innerHTML = '<strong>商品名をもう少し詳しくする</strong><p>容量・個数・本体／詰め替えを追加して再検索できます。買う量や単価から選びたい場合は、掲載中の比較ページへ進めます。ブランド・容量は各商品でご確認ください。</p><nav aria-label="買う量から比較する" class="lab-actions"><a class="lab-button secondary" href="../categories/laundry/">洗濯洗剤を比較</a><a class="lab-button secondary" href="../categories/tissue/">ティッシュを比較</a><a class="lab-button secondary" href="../categories/toilet-paper/">トイレットペーパーを比較</a></nav>';
+  note.insertAdjacentElement('afterend', recovery);
 
   function setBusy(on) {{
     document.getElementById('searchBtn').disabled = on;
@@ -84,31 +91,47 @@ script = f"""
   }}
 
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  async function fetchSearchJson(url, timeoutMs) {{
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {{
+      const response = await fetch(url, {{method:'GET',mode:'cors',signal:controller.signal}});
+      if (!response.ok) throw new Error('API_UNAVAILABLE');
+      return await response.json();
+    }} finally {{ clearTimeout(timer); }}
+  }}
 
   async function fetchPage(term, page) {{
     const searchTerm = term.replace(/ティッシュペーパー|ティシュー/g, 'ティッシュ');
     const url = `${{API}}?q=${{encodeURIComponent(searchTerm)}}&page=${{page}}&hits=30`;
-    const response = await fetch(url, {{ method: 'GET', mode: 'cors' }});
-    if (!response.ok) throw new Error(`HTTP ${{response.status}}`);
-    return response.json();
+    return fetchSearchJson(url, 20000);
   }}
 
-  async function fetchShippingFallback(p) {{
+  async function fetchShippingFallback(p, deadline) {{
     const params = new URLSearchParams();
     if (p.product_code) params.set('code', p.product_code);
     if (p.name) params.set('name', p.name);
     if (p.brand) params.set('brand', p.brand);
     // Keep the working legacy product API and its priced offers as primary.
     // The corrected matcher is consulted only when no verified offer exists.
+    let normalResponse = false;
+    let rejectedOffer = null;
     for (const endpoint of [SHIPPING_API, VERIFIED_SHIPPING_FALLBACK]) {{
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) return {{found:false,lookup_status:'TIME_LIMIT'}};
       try {{
-        const response = await fetch(`${{endpoint}}?${{params.toString()}}`, {{ method: 'GET', mode: 'cors' }});
-        if (!response.ok) continue;
-        const data = await response.json();
-        if (data?.found && Number(data.shipping_included_price || 0) > 0) return data;
+        const data = await fetchSearchJson(`${{endpoint}}?${{params.toString()}}`, Math.min(12000,remaining));
+        if (!data || typeof data.found !== 'boolean' || data.error) continue;
+        if (data.found && Number.isFinite(Number(data.shipping_included_price)) && Number(data.shipping_included_price)>0 && data.shipping_included_url) {{
+          const verified = window.dailyCostVerifiedOffer({{...p,...data,shipping_lookup_pending:false}});
+          if (window.dailyCostSearchDiagnostics.reason(verified)==='PRICED_SAFE') return {{...data,...verified}};
+          rejectedOffer = {{offer_type_mismatch:verified.offer_type_mismatch,offer_needs_selection:verified.offer_needs_selection,offer_rejected:window.dailyCostSearchDiagnostics.reason(verified)==='DANGEROUS_EXCLUDED'}};
+          normalResponse = true;
+        }}
+        if (data.found === false) normalResponse = true;
       }} catch (err) {{ console.warn('Shipping endpoint unavailable'); }}
     }}
-    return {{found:false}};
+    return {{found:false,...rejectedOffer,lookup_status:Date.now()>=deadline?'TIME_LIMIT':normalResponse?'UNVERIFIED':'API_FAILURE'}};
   }}
 
   function liveCard(p) {{
@@ -136,14 +159,14 @@ script = f"""
       button = '楽天で価格を確認';
     }} else {{
       priceHtml = '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
-      detail = `<div class="shipping-price-note">${{p.offer_type_mismatch ? '用途・タイプが一致する購入候補を確認できないため、価格を表示していません' : p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : '価格は楽天サイトでご確認ください'}}</div>`;
+      detail = `<div class="shipping-price-note">${{p.offer_type_mismatch ? '用途・タイプが一致する購入候補を確認できないため、価格を表示していません' : p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : p.shipping_lookup_status==='API_FAILURE' ? '送料確認APIに接続できませんでした。時間をおいて再検索してください' : p.shipping_lookup_status==='TIME_LIMIT' ? '追加確認が時間内に完了しませんでした。商品がないという意味ではありません' : p.shipping_lookup_status==='UNVERIFIED' ? 'APIは応答しましたが、同一商品の送料込み出品を確認できませんでした' : '価格は楽天サイトでご確認ください'}}</div>`;
       button = '楽天で容量と価格を確認';
     }}
 
     return `<article class="card" data-product-id="${{esc(p.product_id)}}"><div class="img">${{displayImage ? `<img src="${{esc(displayImage)}}" alt="" width="128" height="128" loading="lazy" decoding="async">` : ''}}${{imageBadge}}</div><div><div class="brand">${{esc(p.brand || '')}}</div><div class="name">${{esc(p.name)}}</div><div class="price">${{priceHtml}}</div>${{detail}}<div class="meta">${{esc(avg)}} ・ ${{esc(sellers)}}<br>${{esc(review)}}${{p.product_code ? `<br>JAN: ${{esc(p.product_code)}}` : ''}}</div><a class="btn product-result-link" data-id="${{esc(p.product_id)}}" data-shipping-price="${{includedPrice || ''}}" href="${{esc(targetUrl)}}" target="_blank" rel="nofollow sponsored noopener">${{button}}</a></div></article>`;
   }}
 
-  function recordSearchDiagnosis(phase, fetchStatus = 'OK') {{
+  function recordSearchDiagnosis(phase, fetchStatus = 'OK', emitEvent = true) {{
     const summary = window.dailyCostSearchDiagnostics.summarize(liveRows, fetchStatus);
     status.dataset.searchDiagnosticStatus = summary.status;
     status.dataset.searchDiagnosticCounts = JSON.stringify(summary.counts);
@@ -155,12 +178,9 @@ script = f"""
       diagnosis.setAttribute('role', 'status');
       status.insertAdjacentElement('afterend', diagnosis);
     }}
-    diagnosis.textContent = summary.status === 'API_FETCH_FAILURE' ? '商品取得に失敗しました。商品0件とは異なります。' :
-      summary.status === 'API_RESPONSE_ZERO' ? 'APIから一致する候補を取得できませんでした。' :
-      summary.status === 'NO_SAFE_PRICED_CANDIDATES' ? `候補は${{summary.fetched_count}}件取得しましたが、安全な送料込み価格を確認できる候補は0件です。送料・数量・同一商品を確認できない理由も含みます。理由が返らない候補は不明として扱います。` :
-      summary.status === 'LOOKUPS_PENDING' ? '送料・同一商品を追加確認中です。未確認を商品なしとは扱いません。' :
-      '送料込み価格を確認できた候補があります。購入前に楽天で最新条件をご確認ください。';
-    if (typeof window.gtag === 'function') window.gtag('event', 'purchase_search_diagnostics', window.dailyCostSearchDiagnostics.eventPayload(summary, phase));
+    diagnosis.textContent = window.dailyCostSearchDiagnostics.explanation(summary);
+    recovery.hidden = summary.safe_priced_count > 0;
+    if (emitEvent && typeof window.gtag === 'function') window.gtag('event', 'purchase_search_diagnostics', window.dailyCostSearchDiagnostics.eventPayload(summary, phase));
   }}
 
   function updateStatus() {{
@@ -182,19 +202,34 @@ script = f"""
     const cardEl = results.querySelector(`[data-product-id="${{CSS.escape(productId)}}"]`);
     if (!p || !cardEl) return;
     cardEl.outerHTML = liveCard(p);
-    updateStatus();
+    // Apply the existing verified-price-first grouping as soon as a safe
+    // offer arrives, rather than keeping it below unverified cards until all
+    // other lookups finish. No new ranking/selection policy is introduced.
+    if (Number(p.shipping_included_price || 0) > 0) renderLive();
+    else updateStatus();
   }}
 
   async function runFallbackLookups(generation) {{
-    const queue = liveRows.filter((p) => p.shipping_lookup_pending).slice(0, FALLBACK_LIMIT);
+    const deadline = Date.now() + LOOKUP_BUDGET_MS;
+    // Only lookup order changes. Result order and matching rules are unchanged.
+    // Explicit bottles are checked before bulk/refill offers in broad searches.
+    const queue = liveRows.filter((p) => p.shipping_lookup_pending)
+      .sort((a,b) => Number(/本体/.test(b.name||''))-Number(/本体/.test(a.name||'')))
+      .slice(0, FALLBACK_LIMIT);
     for (let i = 0; i < queue.length; i += 1) {{
       if (generation !== searchGeneration) return;
       const p = queue[i];
       try {{
-        const data = await fetchShippingFallback(p);
+        const data = await fetchShippingFallback(p, deadline);
         if (generation !== searchGeneration) return;
         const target = liveRows.find((row) => row.product_id === p.product_id);
         if (!target) continue;
+        target.shipping_lookup_status = data.lookup_status || '';
+        if (!data.found) {{
+          for (const flag of ['offer_type_mismatch','offer_needs_selection','offer_rejected']) {{
+            if (data[flag] === true) target[flag] = true;
+          }}
+        }}
         if (data && data.found && Number(data.shipping_included_price || 0) > 0) {{
           target.shipping_included_price = Number(data.shipping_included_price);
           target.shipping_included_url = data.shipping_included_url || target.url;
@@ -207,16 +242,18 @@ script = f"""
         }}
         target.shipping_lookup_pending = false;
         patchCard(target.product_id);
+        recordSearchDiagnosis('initial', 'OK', false);
       }} catch (err) {{
         if (generation !== searchGeneration) return;
         const target = liveRows.find((row) => row.product_id === p.product_id);
         if (target) {{
           target.shipping_lookup_pending = false;
+          target.shipping_lookup_status = 'API_FAILURE';
           patchCard(target.product_id);
         }}
         console.warn('Shipping fallback failed');
       }}
-      if (i < queue.length - 1) await wait(1150);
+      if (i < queue.length - 1 && Date.now()<deadline) await wait(Math.min(1150,deadline-Date.now()));
     }}
   }}
 
@@ -224,9 +261,16 @@ script = f"""
     term = String(term || '').trim();
     q.blur();
     if (term.length < 2) {{
+      searchGeneration += 1;
+      setBusy(false);
       status.textContent = '2文字以上で検索してください。';
       results.innerHTML = '';
       loadMore.style.display = 'none';
+      recovery.hidden = true;
+      delete status.dataset.searchDiagnosticCounts;
+      delete status.dataset.searchDiagnosticStatus;
+      const oldDiagnosis = document.getElementById('search-diagnostic-note');
+      if (oldDiagnosis) oldDiagnosis.textContent = '2文字以上で検索してください。';
       return;
     }}
 
@@ -238,6 +282,11 @@ script = f"""
       status.textContent = `「${{term}}」の送料込み価格までまとめて確認中…`;
       results.innerHTML = '';
       loadMore.style.display = 'none';
+      recovery.hidden = true;
+      delete status.dataset.searchDiagnosticCounts;
+      delete status.dataset.searchDiagnosticStatus;
+      const oldDiagnosis = document.getElementById('search-diagnostic-note');
+      if (oldDiagnosis) oldDiagnosis.textContent = '送料・同一商品を確認中です。';
     }} else {{
       status.textContent = `「${{currentTerm}}」の追加候補を確認中…`;
     }}
@@ -254,7 +303,7 @@ script = f"""
       rows = rows.map((p) => {{
         const needsFallback = !Number(p.shipping_included_price || 0) && fallbackCount < FALLBACK_LIMIT;
         if (needsFallback) fallbackCount += 1;
-        return {{ ...p, shipping_lookup_pending: needsFallback }};
+        return {{ ...p, shipping_lookup_pending: needsFallback, shipping_lookup_status: !Number(p.shipping_included_price||0)&&!needsFallback?'NOT_ATTEMPTED':'' }};
       }});
       liveRows = append ? liveRows.concat(rows) : rows;
       pageCount = Math.max(1, Number(data.page_count || 1));

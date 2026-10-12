@@ -71,5 +71,6 @@ const assert=require('node:assert/strict');
    console.log(JSON.stringify({cid,width,candidates:links.length,overflow:false,affiliate_events:1}));
    await page.close();
   }
+  await require('./first_revenue_search_qa.cjs')(browser,`http://127.0.0.1:${server.address().port}`);
  }finally{await browser?.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
