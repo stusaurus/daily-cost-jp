@@ -76,12 +76,18 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Inspect existing categories without affiliate clicks or GA4 access
         run: node scripts/ga4_live_cta_audit.cjs --extra-category /categories/bath-cleaner/
+      - name: Verify published revision, approved SEO content and purchase features
+        env:
+          EXPECTED_PUBLIC_COMMIT: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/capture_qa_viewports.cjs
       - name: Save independent, reviewable evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr-live-cta-qa
-          path: audit-results/live-cta-qa/
+          path: |
+            audit-results/live-cta-qa/
+            qa-viewports/
           if-no-files-found: warn
           retention-days: 7
       - name: Add Japanese summary to PR checks

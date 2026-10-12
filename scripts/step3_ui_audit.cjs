@@ -162,5 +162,5 @@ async function main(){
   }else if(report.status!=='PASS')throw Error('UI data unavailable; never considered healthy');
  }finally{await browser.close();}
 }
-module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,sha,repair,requestPolicy,contrast,assess,compare};
+module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,sha,repair,requestPolicy,contrast,assess,compare,interactions};
 if(require.main===module)main().catch(e=>{console.error('STEP3 audit stopped: '+e.message);process.exitCode=1});

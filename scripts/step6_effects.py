@@ -41,8 +41,9 @@ def collect(session, today):
     except (OSError,ValueError,TypeError):return {'status':'LEDGER_UNKNOWN','evaluation':'評価保留'}
     result={'status':'NO_CONFIRMED_PUBLICATION' if not ledger else 'OBSERVING',
             'evaluation':'評価保留','sales_status':'NOT_CONNECTED','cross_source_user_join':False,'releases':[]}
-    # One latest approved experiment per cycle; at most four readonly queries.
-    for entry in sorted(ledger,key=lambda r:r['published_on'],reverse=True)[:1]:
+    # The registry/unique-recipe guard permits at most three releases: twelve
+    # readonly queries. A newer release must not starve earlier page evaluations.
+    for entry in sorted(ledger,key=lambda r:(r['published_on'],r['path']),reverse=True):
         row={**entry,'comparisons':{}}
         for length in (7,28):
             bounds=windows(entry,today,length)
