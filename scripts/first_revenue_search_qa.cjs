@@ -35,7 +35,12 @@ module.exports=async function(browser,localOrigin){
      const taps=await page.locator('#search-recovery a').evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));assert(taps.every(h=>h>=44));
      for(const href of await page.locator('#search-recovery a').evaluateAll(es=>es.map(e=>e.getAttribute('href'))))assert(fs.existsSync('site/'+href.replace('../','')+'index.html'));
     }
-   }else assert.equal(priced,0);
+   }else {
+    // The live baseline already contains PR #95. Verified fallback prices are
+    // therefore expected for the rejected-primary fixture on BOTH revisions.
+    // Unverified and API-failed candidates must still never show a price.
+    assert.equal(priced,scenario==='rejected-primary'?10:0);
+   }
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+2),'horizontal overflow');
    const events=await page.evaluate(()=>window.dataLayer.filter(e=>e[1]==='purchase_search_diagnostics').map(e=>e[2]));
    assert.equal(events.length,2);assert(events.every(e=>e.operator_test==='1'&&!JSON.stringify(e).includes('検証用')));
