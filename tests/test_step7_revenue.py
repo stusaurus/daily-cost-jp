@@ -52,6 +52,12 @@ class PrivateRevenue(unittest.TestCase):
         self.assertIsNone(result['daily_cost_confirmed_reward_yen'])
         self.assertEqual(result['priorities'][0]['code'],'VERIFY_SITE_ATTRIBUTION')
 
+    def test_incomplete_month_exports_cannot_be_presented_as_final(self):
+        with self.assertRaisesRegex(r.PrivateError,'EXPORT_BEFORE_COMPLETE_MONTH'):
+            r.ingest(self.conn,'期間,値\n2026-09,123\n'.encode(),mapping(),'main',MONTH,'2026-09-15T00:00:00Z')
+        out=g.empty(dt.date(2026,9,1),dt.date(2026,9,30));out['generated_at_utc']='2026-09-15T00:00:00+00:00'
+        with self.assertRaises(ValueError):g.validate(out)
+
     def test_detail_duplicates_and_conflicting_identity_fail_closed(self):
         m=mapping('order_status','detail',True)
         raw='期間,値,状態,明細ID,商品名\n2026-09-01,10,未確定,SYNTHETIC-1,架空のテスト商品\n2026-09-01,10,未確定,SYNTHETIC-1,架空のテスト商品\n'.encode()

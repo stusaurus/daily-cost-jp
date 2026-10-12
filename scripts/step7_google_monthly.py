@@ -103,7 +103,9 @@ def validate(obj):
     start=dt.date.fromisoformat(obj['month']+'-01');end=start.replace(day=calendar.monthrange(start.year,start.month)[1])
     if obj['period']!=[start.isoformat(),end.isoformat()] or end>=dt.datetime.now(ZoneInfo('Asia/Tokyo')).date().replace(day=1):raise ValueError('Incomplete month')
     stamp=dt.datetime.fromisoformat(obj['generated_at_utc'])
-    if stamp.tzinfo is None or stamp>dt.datetime.now(dt.timezone.utc)+dt.timedelta(minutes=5):raise ValueError('Unknown export time')
+    if (stamp.tzinfo is None or stamp.utcoffset()!=dt.timedelta(0) or
+        stamp>dt.datetime.now(dt.timezone.utc)+dt.timedelta(minutes=5) or
+        stamp.astimezone(ZoneInfo('Asia/Tokyo')).date()<=end):raise ValueError('Unknown export time')
     gsc=obj['gsc'];ga=obj['ga4']
     if set(gsc)!={'status','calendar','metrics','observed_days'} or set(ga)!={'status','calendar','pageviews_observed','observed_days','operator_dimension_registered','affiliate_clicks_observed'}:raise ValueError('Unknown metric fields')
     if gsc['calendar']!='America/Los_Angeles' or ga['calendar']!='Asia/Tokyo':raise ValueError('Calendar mismatch')

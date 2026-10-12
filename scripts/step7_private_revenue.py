@@ -161,6 +161,9 @@ def database(root):
 def ingest(conn, raw, mapping, account, period, exported_at, replace=False):
     if not re.fullmatch('[a-z0-9-]{1,40}',account): reject('INVALID_ACCOUNT_ALIAS')
     result=aggregate(raw,mapping,period);stamp=timestamp(exported_at);kind=mapping['kind']
+    year,mo=map(int,period.split('-'));end=dt.date(year,mo,calendar.monthrange(year,mo)[1])
+    if dt.datetime.fromisoformat(stamp).astimezone(ZoneInfo('Asia/Tokyo')).date()<=end:
+        reject('EXPORT_BEFORE_COMPLETE_MONTH')
     digest=hashlib.sha256((json.dumps(result,sort_keys=True)+stamp).encode()).hexdigest()
     with conn:
         # Serialize check+replacement, including two simultaneous imports.
