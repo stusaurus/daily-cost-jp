@@ -17,11 +17,25 @@ PROMO = re.compile(
 DATE = re.compile(
     r'(?:\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日)'
     r'(?:から\d{1,2}日)?(?:限定|限り)?')
+CAMPAIGN_DATE_RANGE = re.compile(
+    r'\\d{1,2}(?:/\\d{1,2}|月\\d{1,2}日)'
+    r'(?:\\s*\\d{1,2}(?::\\d{2}|時(?:\\d{1,2}分)?)?)?'
+    r'\\s*[~〜～]\\s*'
+    r'(?:\\d{1,2}(?:/\\d{1,2}|月\\d{1,2}日)|\\d{1,2}日)'
+    r'(?:\\s*\\d{1,2}(?::\\d{2}|時(?:\\d{1,2}分)?)?)?(?:迄|まで)?'
+)
 LEADING_LABEL = re.compile(r'^\s*(?:【([^】]+)】|\[([^\]]+)\]|＼([^／]+)／)\s*')
 BARE_PROMO = re.compile(
     r'^\s*(?:高評価(?:人気商品)?|(?:\d{4}年(?:間)?)?(?:楽天)?ランキング\d+位(?:受賞)?'
     r'|レビュー記入で[\d,]+円クーポンプレゼント)'
     r'[\s★☆彡!！+＋・♪／/、。~〜～:：%％-]*', re.I)
+BARE_ENTRY_PROMO = re.compile(
+    r'^\\s*エントリーで(?:全品)?(?:ポイント|P)\\s*\\d+\\s*倍'
+    r'[\\s★☆彡!！+＋・♪／/、。:：-]*'
+    r'(?:\\d{1,2}日\\s*\\d{1,2}(?::\\d{2}|時(?:\\d{1,2}分)?)'
+    r'\\s*[~〜～]\\s*\\d{1,2}日\\s*\\d{1,2}(?::\\d{2}|時(?:\\d{1,2}分)?)'
+    r'(?:迄|まで)?)?'
+    r'[\\s★☆彡!！+＋・♪／/、。:：-]*', re.I)
 BARE_DATE_TIME = re.compile(
     r'^\s*(?:\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日)(?:限定|限り)?'
     r'(?:\s*\d{1,2}:\d{2}(?:迄|まで)?)?\s*')
@@ -31,7 +45,9 @@ def promotion_only(label):
     text = unicodedata.normalize('NFKC', label)
     if not (PROMO.search(text) or re.search(r'(?:\d{1,2}/\d{1,2}|\d{1,2}月\d{1,2}日)限定', text)):
         return False
-    rest = DATE.sub('', PROMO.sub('', text))
+    rest = PROMO.sub('', text)
+    rest = CAMPAIGN_DATE_RANGE.sub('', rest)
+    rest = DATE.sub('', rest)
     rest = re.sub(r'(?:[~〜～]\s*)?\d{1,2}日(?=\d{1,2}:\d{2})|\d{1,2}:\d{2}(?:迄|まで)?', '', rest)
     # Any remaining word, number, brand, capacity, count or type keeps the label.
     return not re.sub(r'[\s★☆彡!！+＋・＼\\／/、。~〜～:：%％-]', '', rest)
@@ -50,6 +66,12 @@ def clean_display_name(name):
                     text = remainder
                     removed_promotion = True
                     continue
+        if match := BARE_ENTRY_PROMO.match(text):
+            remainder = text[match.end():].lstrip()
+            if remainder:
+                text = remainder
+                removed_promotion = True
+                continue
         if match := BARE_PROMO.match(text):
             remainder = text[match.end():].lstrip()
             if remainder:
