@@ -101,6 +101,25 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertIn('| 日用品 | 28日 |', rendered)
         self.assertIn('前28日：2026-08-17〜2026-09-13', rendered)
 
+    def test_invalid_metrics_diagnostics_are_aggregate_only_and_fail_closed(self):
+        class InvalidSession(FakeSession):
+            def post(self, url, json=None, timeout=None):
+                return Response(payload={'rows': [{
+                    'clicks': 0, 'impressions': 1, 'ctr': 0, 'position': 0,
+                    'private_query': 'must never escape',
+                }]})
+        site = g.SITES[3][1]
+        result = g.analyze_site(InvalidSession(), '食品', site,
+                               g.date_windows(dt.date(2026, 10, 14)),
+                               {site: 'siteRestrictedUser'})
+        self.assertEqual(result['status'], 'NOT_CONNECTED')
+        self.assertEqual(result['reason'], 'INVALID_API_RESPONSE')
+        self.assertEqual(result['diagnostic'], {'stage': 'last_7', 'metrics': {
+            'clicks': 0, 'impressions': 1, 'ctr': 0, 'position': 0}})
+        self.assertEqual(result['windows'], {})
+        self.assertNotIn('private_query', str(result))
+        self.assertNotIn('must never escape', str(result))
+
 
 if __name__ == "__main__":
     unittest.main()

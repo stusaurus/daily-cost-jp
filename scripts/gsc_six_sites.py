@@ -22,6 +22,13 @@ OUTPUT = Path("audit-results")
 AUTHORIZED_LEVELS = {"siteOwner", "siteFullUser", "siteRestrictedUser"}
 
 
+class InvalidMetrics(ValueError):
+    """Only approved finite aggregate numbers may enter diagnostics."""
+    def __init__(self, values):
+        super().__init__("invalid metrics values")
+        self.metrics = dict(zip(("clicks", "impressions", "ctr", "position"), values))
+
+
 def date_windows(today):
     """Exclude the most recent three Pacific calendar days for GSC final data."""
     end = today - dt.timedelta(days=3)
@@ -48,7 +55,7 @@ def safe_metrics(row):
     if (clicks < 0 or impressions < 0 or int(clicks) != clicks
             or int(impressions) != impressions or not 0 <= ctr <= 1
             or position < 1 or clicks > impressions):
-        raise ValueError("invalid metrics values")
+        raise InvalidMetrics(values)
     return {
         "clicks": int(clicks),
         "impressions": int(impressions),
@@ -150,9 +157,13 @@ def analyze_site(session, name, site, windows, permissions):
     if permissions.get(site) not in AUTHORIZED_LEVELS:
         result["reason"] = "PROPERTY_ACCESS_MISSING"
         return result
+    stage = "aggregate"
     try:
-        aggregates = {key: aggregate(query(session, site, value))
-                      for key, value in windows.items()}
+        aggregates = {}
+        for key, value in windows.items():
+            stage = key
+            aggregates[key] = aggregate(query(session, site, value))
+        stage = "top_pages"
         pages = page_summary(query(session, site, windows["last_28"], ["page"]), site)
         result.update({
             "status": "OBSERVED" if any(x["status"] == "OBSERVED" for x in aggregates.values())
@@ -165,8 +176,12 @@ def analyze_site(session, name, site, windows, permissions):
                 "month": change(aggregates["last_28"]["metrics"], aggregates["prior_28"]["metrics"]),
             },
         })
+    except InvalidMetrics as error:
+        result["reason"] = "INVALID_API_RESPONSE"
+        result["diagnostic"] = {"stage": stage, "metrics": error.metrics}
     except (ValueError, KeyError, TypeError):
         result["reason"] = "INVALID_API_RESPONSE"
+        result["diagnostic"] = {"stage": stage}
     except Exception:
         result["reason"] = "SEARCH_CONSOLE_API_UNAVAILABLE"
     return result
