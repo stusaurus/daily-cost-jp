@@ -1,0 +1,54 @@
+# STEP6：検索流入の監査と人間承認型改善
+
+## 実行と停止
+
+既存 `ga4-three-day-analysis.yml` が毎日10:27 JSTに起動し、既存日付ゲートに従って3日ごとに分析する。手動実行も既存workflow_dispatchを使う。新しい自動公開ジョブ、Google権限、外部AI、課金APIは追加しない。
+
+1. 既存OIDC/readonly scopeでGSCの7日・28日／直前同期間とGA4を取得。
+2. GSC sitemap listをGET。登録・Googleの取得日時はページのインデックス登録完了を意味しない。
+3. 公開sitemap/robots、30ページ前後のHTTP、canonical、noindex、title/meta重複、H1、viewport、内部ページ／アンカーを監査。
+4. 実績・公開内容・根拠不足を `step6-seo.json/.md` に記録し、既存Issue #74に固定の要調査項目を追加。
+5. 既存STEP2のドキュメント／STEP3レシピを優先し、余り枠でSEOを最大1件だけ準備。SEOは **HUMAN_ONLY**。
+6. 全Python/JS、同一本番ビルド、商品品質、SEO/内部リンク、18組の1440/390/320画面と検索・比較・保存を検証してから同じpublisherでDraftを作る。GITHUB_TOKENのPRイベントが起動するとは仮定しない。
+
+`STEP2_ENABLE_PR_WRITES != true` なら既存どおりPR発行を停止。今回この変数・権限は変更しない。監査だけ続けられる。承認済み公開変更の停止・ロールバックは、対象policyをfalseへ戻すレビュー済みPRで行う。商品・価格の古い値へ戻してはならない。STEP4の停止制御は独立して維持する。
+
+## 固定の提案範囲
+
+初期 `scripts/step6_seo_policy.json` は3ページともfalseであり、実装PRだけのマージではFAQ導線を一律公開しない。検索表示50以上・平均順位5〜20のページを調査対象にする閾値は、SEO成功の統計的な判定条件ではない。
+
+公開技術監査がPASSで、既存FAQ／比較単位が確認でき、FAQにランキング・説明・商品検索の導線がそろっていないとき、1ページの固定説明・内部リンクレシピをDraft候補にする。利用者がFAQ読了後に比較を再開しやすいか、という仮説をレビューする。価格、商品名、検索語を文章へ自動挿入しない。title/meta/H1は検索意図を検証できないとき保留する。既存FAQの同じ説明を増やす目的ではない。
+
+実装先はビルド終盤の `step6_seo_content.py`。policyを承認すると翌日の通常ビルドでも維持される。HTMLを直接編集しない。新しいコピー／CSS／レシピは別の人間レビューが必要。レシピにない任意コード生成・Issue本文の実行は不可。
+
+同じレシピ・ページのfingerprintで全状態のPR履歴を調べ、閉じた／却下したPRも再作成しない。既存ブランチとの衝突・main更新・別の未レビューSEO Draftがあれば停止する。失敗した品質／テスト／画面検証ではPR APIへ進まない。承認済みレシピがすでにtrueなら同じ変更は生成しない。新レシピ版を追加するには人間のコード承認が必要。
+
+## 7日・28日の評価
+
+公開確認後、人間が `docs/step6-release-ledger.json` に **実際の公開日（Search Analytics APIと同じPacific日付）**、対象path、recipe、commitを記録する。ledgerのcalendarはAmerica/Los_Angeles。JST表示の公開時刻は証拠文書に併記する。マージ日やビルド予定日を公開日と推定しない。初期は空であり `NO_CONFIRMED_PUBLICATION`。例の架空公開日を運用データへ入れない。
+
+各分析では登録済みの全3ページの確認済み変更について、公開日を除外した前後同じ長さの7日／28日を、GSC `dataState=final`・3日の待機期間で取得する（最大12件の読み取りクエリ。未完了窓はAPI取得しない）。表示・クリック・CTR・平均順位、期間と欠測を保存する。行欠落を0とせず、表示200未満またはクリック20未満の比較はLOW_SAMPLEで評価保留。十分なサンプルでも相関から因果的なSEO成功を断定しない。複数変更が重なった場合は人間が交絡を確認する。
+
+GA4の既存operator_test区分、未知イベント、購入目的を保持し、GSC検索クリックと楽天クリックは独立した時系列として見る。GSCとGA4から同一利用者の成約率を算出しない。楽天確定報酬はNOT_CONNECTEDであり、売上0円とも改善成功とも断定しない。
+
+## lastmod と未確認項目
+
+以前のサイトマップは全URLに毎ビルド当日付を付与していた。意味のある変更日の履歴を検証できないため、任意項目lastmodを省略する。HTMLや商品値の更新時刻を一律lastmodに転用しない。Google公式の説明： https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap
+
+公開ページ数はサイトマップと内部リンクの一致を検査するが、リンクされずサイトマップにもない未知ページをHTTPだけで全列挙することはできない。本番相当ビルドの既存validate_generated_siteが全生成HTMLとの一致を検証する。実画面は18組の独立Playwright証拠で確認する。外部楽天URLのHTTP遷移・実アフィリエイトクリックは実行しない。商品の厳格なURL検証とDOM検査を維持する。
+
+新しいGSC sitemap/effect取得は、実装の人間承認後にmainの既存認証済み3日分析で初回確認する。未マージPRのGoogle認証権限は拡張しない。URL Inspection APIは追加していないため、ページ単位のインデックス状態は未確認。送信・再送信は行わない。
+
+## 実装前の認証済み基準
+
+取得: https://github.com/stusaurus/daily-cost-jp/actions/runs/38145657813 （2026-10-11 23:04 JST）。GSC final期間2026-09-11〜10-08。全体331表示・5検索クリック・CTR1.5106%・平均11.78。前28日70表示・5クリック。直近7日8表示・0クリック、前7日26表示・1クリック。低サンプルで成否を判定しない。
+
+| ページ | 28日表示 | クリック | CTR | 平均順位 |
+|---|---:|---:|---:|---:|
+| 洗濯洗剤 | 114 | 2 | 1.7544% | 12.93 |
+| ティッシュ | 114 | 2 | 1.7544% | 11.53 |
+| トイレットペーパー | 79 | 1 | 1.2658% | 11.97 |
+
+公開可能なクエリ行はなし。クエリ自体が存在しないという意味ではない。GA4のpurchase_purpose・diagnostic_status・diagnostic_phaseは最新のData API metadataで登録済みを確認（再登録しない）。確定報酬は未接続。取得結果とこの過去基準を毎回区別する。
+
+日付仕様の一次資料: https://developers.google.com/webmaster-tools/v1/searchanalytics/query （startDate/endDateはPT）。公開日の一部が前期間へ入らないよう、JSTの日付をそのままAPIへ渡さない。

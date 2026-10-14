@@ -1,0 +1,977 @@
+[
+  {
+    "category": "toilet-paper",
+    "approved": false,
+    "item": {
+      "name": "《最大180円OFFクーポン★24日9:59迄》【32個】トイレットペーパー 2倍巻き 1.5倍巻き 芯あり 8ロール×4個パック 32ロール ダブル シングル シャワートイレ 無香料 コンパクト 長持ち トイレットロール 家庭紙 ペーパー 紙 2倍巻き シャワートイレ 送料無料【D】[G0]",
+      "price": 2280,
+      "unit_price": 71.25,
+      "metric": "roll",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-paper/0"
+    }
+  },
+  {
+    "category": "toilet-paper",
+    "approved": false,
+    "item": {
+      "name": "【48ロール】2倍巻トイレットペーパー ダブル シングル 業務用 コアレックス 120m 6ロール×8P アイリスオーヤマトイレットペーパー トイレットロール コアレックス CORELEX 倍巻 再生紙 シングル",
+      "price": 4780,
+      "unit_price": 99.58333333333333,
+      "metric": "roll",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-paper/1"
+    }
+  },
+  {
+    "category": "toilet-paper",
+    "approved": true,
+    "item": {
+      "name": "トイレットペーパー シングル 芯なし 業務用 150m 48ロール(6ロール×8パック) コアレス ロング『送料無料（一部地域除く）』",
+      "price": 4972,
+      "unit_price": 103.58333333333333,
+      "metric": "roll",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-paper/2"
+    }
+  },
+  {
+    "category": "toilet-paper",
+    "approved": true,
+    "item": {
+      "name": "春日製紙 コア・ユース 無包装170m 48ロール K-S170",
+      "price": 5135,
+      "unit_price": 106.97916666666667,
+      "metric": "roll",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-paper/3"
+    }
+  },
+  {
+    "category": "toilet-paper",
+    "approved": true,
+    "item": {
+      "name": "【送料無料】業務用トイレットペーパー ワンタッチコアレス 150m シングル 1ケース[48ロール入(6ロール×8パック)] 【コアレス】【芯なし】【業務用】【再生紙100%】",
+      "price": 5480,
+      "unit_price": 114.16666666666667,
+      "metric": "roll",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-paper/4"
+    }
+  },
+  {
+    "category": "tissue",
+    "approved": true,
+    "item": {
+      "name": "スコッティ ティッシュペーパー 200組5箱×12パック(60箱) ティシュペーパー まとめ買い ケース販売 ボックスティッシュ 日用品 ティッシュ 日本製紙クレシア 【送料無料】",
+      "price": 5499,
+      "unit_price": 91.65,
+      "metric": "box",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/tissue/0"
+    }
+  },
+  {
+    "category": "tissue",
+    "approved": true,
+    "item": {
+      "name": "【セール中 9/28 23:59迄】スコッティ ティッシュペーパー フラワーボックス 500枚(250組)5箱×12パック(60箱)scottie ティッシュ ティシュー ボックスティッシュ 箱ティッシュ 大容量 長持ち コンパクト 日本製 日本製紙クレシア 【送料無料】",
+      "price": 7699,
+      "unit_price": 128.31666666666666,
+      "metric": "box",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/tissue/1"
+    }
+  },
+  {
+    "category": "laundry",
+    "approved": true,
+    "item": {
+      "name": "アタック抗菌EX 部屋干し用 洗濯洗剤 液体 じめじめ密集干しでも強力消臭 つめかえ用 2380g ×6個セット 4901301452146 /",
+      "price": 7980,
+      "unit_price": 55.882352941176464,
+      "metric": "100g",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry/0"
+    }
+  },
+  {
+    "category": "laundry",
+    "approved": true,
+    "item": {
+      "name": "【6個】さらさ 洗剤 詰め替え 超ジャンボ 1490g 洗濯洗剤 液体 詰替 送料無料 衣料用洗剤 液体洗剤 しっかり洗浄 植物由来成分 赤ちゃん すすぎ1回 無添加 ペット 柑橘系の香り つめかえ用 P&G",
+      "price": 8280,
+      "unit_price": 92.61744966442953,
+      "metric": "100g",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry/1"
+    }
+  },
+  {
+    "category": "laundry",
+    "approved": true,
+    "item": {
+      "name": "【6個セット】 さらさ 洗濯洗剤 液体 詰め替え 超ジャンボ 1490g 衣料用洗剤 液体洗剤 しっかり洗浄 植物由来成分 赤ちゃん すすぎ1回 無添加 ペット 柑橘系の香り つめかえ用 P&G",
+      "price": 8280,
+      "unit_price": 92.61744966442953,
+      "metric": "100g",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry/2"
+    }
+  },
+  {
+    "category": "laundry",
+    "approved": true,
+    "item": {
+      "name": "【公式】ファーファ フリー＆(フリーアンド)超コンパクト液体洗剤　無香料 大容量 詰め替え4.5kg 業務用サイズ【すすぎ1回 中性の洗濯用洗剤】香料 着色料 けい光剤 漂白剤　Free& 香りのない 無臭 消臭 つわり ペット 犬 猫 620109A",
+      "price": 4356,
+      "unit_price": 96.8,
+      "metric": "100g",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry/3"
+    }
+  },
+  {
+    "category": "laundry",
+    "approved": true,
+    "item": {
+      "name": "善玉バイオ浄 JOE抗菌プラス エコプラッツ 粉末 エコ 洗濯洗剤 無香料 無リン 無蛍光 無漂白剤 1.3kg×4袋セット（詰替容器スプーンなし）",
+      "price": 6380,
+      "unit_price": 122.6923076923077,
+      "metric": "100g",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry/4"
+    }
+  },
+  {
+    "category": "dish",
+    "approved": true,
+    "item": {
+      "name": "【レビュー投稿でプレゼント！】キッチン用 低刺激 (業務 詰替) 厨房用 中性洗剤 食器用 洗剤 ヤシ 台所 天然 洗剤 自然 エコ キッチン 無香料 無添加 野菜 哺乳瓶 環境 やさしい 手荒れ 手肌 ストック 備蓄 大容量 ジョリーブココ 台所洗剤 10L 業務用 送料無料",
+      "price": 7980,
+      "unit_price": 79.8,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/dish/0"
+    }
+  },
+  {
+    "category": "water",
+    "approved": true,
+    "item": {
+      "name": "水 ミネラルウォーター 熊野古道水 2L 12本 送料無料 天然水 軟水『送料無料（一部地域除く）』",
+      "price": 1918,
+      "unit_price": 79.91666666666667,
+      "metric": "1L",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/water/0"
+    }
+  },
+  {
+    "category": "water",
+    "approved": true,
+    "item": {
+      "name": "国産 ミネラルウォーター 自然の恵み 天然水 2L×12本 水 2リットル",
+      "price": 1948,
+      "unit_price": 81.16666666666667,
+      "metric": "1L",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/water/1"
+    }
+  },
+  {
+    "category": "water",
+    "approved": true,
+    "item": {
+      "name": "【365日最短当日出荷！】水想い ナチュラルミネラルウォーター 2L×9本 ラベルレス 水 2リットル 天然水 軟水 ローリングストック 防災 備蓄 水 国産 日本製 送料無料",
+      "price": 1480,
+      "unit_price": 82.22222222222223,
+      "metric": "1L",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/water/2"
+    }
+  },
+  {
+    "category": "water",
+    "approved": true,
+    "item": {
+      "name": "クリスタルガイザー エコボトル 正規輸入品( 500ml×48本入)【slide_2】【slide_6】【クリスタルガイザー(Crystal Geyser)】[PFAS（PFOS・PFOA） 水 ミネラルウォーター]",
+      "price": 3549,
+      "unit_price": 147.875,
+      "metric": "1L",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/water/3"
+    }
+  },
+  {
+    "category": "water",
+    "approved": true,
+    "item": {
+      "name": "クリスタルガイザー エコボトル 正規輸入品( 500ml×48本入)【イチオシ】【クリスタルガイザー(Crystal Geyser)】[PFAS（PFOS・PFOA） 水 ミネラルウォーター]",
+      "price": 3599,
+      "unit_price": 149.95833333333334,
+      "metric": "1L",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/water/4"
+    }
+  },
+  {
+    "category": "coffee",
+    "approved": true,
+    "item": {
+      "name": "送料無料 コーヒー豆 コーヒー 2kg 怒涛の珈琲豆　粉 (G500×4) 加藤珈琲/グルメコーヒー豆専門加藤珈琲店　スペシャルティ",
+      "price": 5398,
+      "unit_price": 269.9,
+      "metric": "100g",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/coffee/0"
+    }
+  },
+  {
+    "category": "coffee",
+    "approved": true,
+    "item": {
+      "name": "送料無料 コーヒー コーヒー豆 コーヒー粉 1.5kg 自慢のブレンド 飲み比べ 珈道の極み ブレンドコーヒー 500g×3 150杯 香り豊か 香り高い ポイント消化 drip coffee ゴールド珈琲 新鮮 大容量 珈琲職人 逸品 おしゃれ 香り高い おいしい おうちカフェ",
+      "price": 4860,
+      "unit_price": 324.0,
+      "metric": "100g",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/coffee/1"
+    }
+  },
+  {
+    "category": "coffee",
+    "approved": true,
+    "item": {
+      "name": "全国送料無料 コーヒー コーヒー豆 コーヒー粉 お試し 飲み比べ 香り豊か ベーシックセット 400g 100g×4 40杯 drip ポスト投函 ポイント消化 ゴールド珈琲 お手軽 浅煎り 中煎り 深煎り 新鮮 ゴールド珈琲 香り高い プレゼント おしゃれ おうちカフェ",
+      "price": 1998,
+      "unit_price": 499.5,
+      "metric": "100g",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/coffee/2"
+    }
+  },
+  {
+    "category": "coffee",
+    "approved": true,
+    "item": {
+      "name": "ブラジル 400g コーヒー豆 粉 送料無料 深煎り コーヒー豆 フレンチ ドリップ ドリップコーヒー 珈琲豆 コーヒー粉 自家焙煎 コーヒー 珈琲 送料無料 コーヒー ギフト アイスコーヒー おしゃれ おすすめ お試し プレゼント ブラックフライデー",
+      "price": 2200,
+      "unit_price": 550.0,
+      "metric": "100g",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/coffee/3"
+    }
+  },
+  {
+    "category": "coffee",
+    "approved": true,
+    "item": {
+      "name": "エチオピア イルガチェフェ G2 モカ 浅煎り 400g ドリップ 豆 粉 コーヒー豆 珈琲豆 コーヒー粉 珈琲粉 自家焙煎 コーヒー 珈琲 送料無料 人気 ギフト アイスコーヒー おしゃれ おすすめ お試し ギフト プレゼント フルーティー テレワーク ドリップコーヒー",
+      "price": 2350,
+      "unit_price": 587.5,
+      "metric": "100g",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/coffee/4"
+    }
+  },
+  {
+    "category": "softener",
+    "approved": true,
+    "item": {
+      "name": "【6個セット】 さらさ 柔軟剤 詰め替え 超ジャンボ 1350ml 送料無料 柔軟剤 衣料用 ふんわり 植物由来成分 赤ちゃん やわらか 着色料無添加 防臭 ピュアソープの香り つめかえ用 P&G",
+      "price": 6440,
+      "unit_price": 79.50617283950618,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/softener/0"
+    }
+  },
+  {
+    "category": "softener",
+    "approved": true,
+    "item": {
+      "name": "さらさ 柔軟剤 詰め替え 超ジャンボ 1350ml×6袋",
+      "price": 6978,
+      "unit_price": 86.14814814814815,
+      "metric": "100ml",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/softener/1"
+    }
+  },
+  {
+    "category": "softener",
+    "approved": false,
+    "item": {
+      "name": "シャボン玉スノール液体タイプ 5L 業務用 大容量 つめかえ用 スノール 液体 柔軟剤不要 無香料 洗濯用 洗剤 石けん ベビー服 おしゃれ着 蛍光増白剤不使用 酸化防止剤不使用 着色料不使用 シャボン玉石けん 【送料無料】",
+      "price": 4510,
+      "unit_price": 90.2,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/softener/2"
+    }
+  },
+  {
+    "category": "softener",
+    "approved": true,
+    "item": {
+      "name": "【まとめ買いお得 】ランキング1位受賞 フレアフレグランス iroka イロカ ネイキッドリリーの香り 洗濯柔軟剤 詰替用 大容量 1200ml(約2.7倍)×6袋セット",
+      "price": 8980,
+      "unit_price": 124.72222222222223,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/softener/3"
+    }
+  },
+  {
+    "category": "softener",
+    "approved": true,
+    "item": {
+      "name": "【最大P15倍】ラボン 柔軟剤 ラグジュアリーリラックス 詰め替え 2倍サイズ 960ml 5個セット | 詰替用 詰め替え用 液体 まとめ買い 植物由来 オーガニック 防臭 抗菌 花粉対策 天然 部屋干し 植物エキス 赤ちゃん フレグランス 送料無料 大容量",
+      "price": 6325,
+      "unit_price": 131.77083333333334,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/softener/4"
+    }
+  },
+  {
+    "category": "shampoo",
+    "approved": true,
+    "item": {
+      "name": "ディアテック カウンセリング プレシャンプー 1000mL リフィル サロン専売品 シャンプー 美容室 詰め替え 大容量 ワンシャン 洗髪 さらさら サラサラ シャンプー メンズ レディース 男性 女性 対応 送料無料",
+      "price": 2090,
+      "unit_price": 209.0,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/shampoo/0"
+    }
+  },
+  {
+    "category": "shampoo",
+    "approved": true,
+    "item": {
+      "name": "馬油シャンプー 詰め替え用 10%OFF 馬油 1000ml アズマ商事 旅美人 馬油 レディース メンズ 子供 ばゆ ばーゆ シャンプー アズマ商事シャンプー 詰替 旅美人 馬油 シャンプー バーユ アズマ商事馬油シャンプー 乾燥肌 フケ かゆみ 敏感肌 あす楽 送料無料",
+      "price": 2574,
+      "unit_price": 257.4,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/shampoo/1"
+    }
+  },
+  {
+    "category": "shampoo",
+    "approved": true,
+    "item": {
+      "name": "【赤】【シャンプー詰替2個・メール便発送】コラージュフルフルネクストシャンプー 280mL×2個 ＜うるおいなめらかタイプ＞（つめかえ用）【医薬部外品】",
+      "price": 3580,
+      "unit_price": 639.2857142857143,
+      "metric": "100ml",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/shampoo/2"
+    }
+  },
+  {
+    "category": "shampoo",
+    "approved": true,
+    "item": {
+      "name": "【青】【シャンプー詰替2個・メール便発送】コラージュフルフルネクストシャンプー 280mL×2個 ＜すっきりさらさらタイプ＞（つめかえ用）【医薬部外品】",
+      "price": 3580,
+      "unit_price": 639.2857142857143,
+      "metric": "100ml",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/shampoo/3"
+    }
+  },
+  {
+    "category": "conditioner",
+    "approved": true,
+    "item": {
+      "name": "【9/19 20時〜9/24 1:59迄＼当選確率2分の1／最大100%ポイントバック】デミ ミレアム コンディショナー 1800mL （詰替） ／ DEMI MILLEUM サロン専売品 ヘアケア",
+      "price": 2399,
+      "unit_price": 133.27777777777777,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/conditioner/0"
+    }
+  },
+  {
+    "category": "conditioner",
+    "approved": false,
+    "item": {
+      "name": "公式 シャンプーボトル 詰め替え用ボトル (600ml) 3本セット Pecolo ペコロ ディスペンサー シャンプー コンディショナー ボディソープ 3点 セット 詰替ボトル バスグッズ 浴室 日本製 ギフト プレゼント かわいい 大容量 ボトル 送料無料 丸栄日産 シャンプーボトルおしゃれ",
+      "price": 2640,
+      "unit_price": 146.66666666666666,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/conditioner/1"
+    }
+  },
+  {
+    "category": "body-soap",
+    "approved": true,
+    "item": {
+      "name": "【バーユ 馬油 ボディソープシリーズ】馬油 ボディソープ詰替え用 1000ml旅美人　馬油　ボディソープ アズマ商事 旅美人b01 送料無料　あす楽対応",
+      "price": 2574,
+      "unit_price": 257.4,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/body-soap/0"
+    }
+  },
+  {
+    "category": "body-soap",
+    "approved": true,
+    "item": {
+      "name": "【アズマ商事　柿渋　ボディソープ】柿渋　シリーズ柿渋　ボディソープつめかえ用　1000ml柿渋シリーズ柿渋旅美人　ボディソープ　　アズマ商事　旅美人　送料無料",
+      "price": 2574,
+      "unit_price": 257.4,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/body-soap/1"
+    }
+  },
+  {
+    "category": "body-soap",
+    "approved": false,
+    "item": {
+      "name": "【バーユ 馬油 シリーズ 馬油トリートメント】馬油 シリーズトリートメント詰替え用 1000ml馬油 トリートメント 旅美人 シリーズ馬油トリートメント詰替え用 アズマ商事 馬油 ボディソープシリーズb01送料無料　あす楽対応",
+      "price": 4059,
+      "unit_price": 405.9,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/body-soap/2"
+    }
+  },
+  {
+    "category": "bath-cleaner",
+    "approved": true,
+    "item": {
+      "name": "[12個]ルックプラス バスタブクレンジング 銀イオンプラス つめかえ用大サイズ 800mlお風呂用洗剤 バスタブ こすらずに洗える こすらない シャワーで流すだけ ピンク汚れ 銀イオン 除菌 予防 ライオン [2609SE]",
+      "price": 5760,
+      "unit_price": 60.0,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/bath-cleaner/0"
+    }
+  },
+  {
+    "category": "bath-cleaner",
+    "approved": true,
+    "item": {
+      "name": "【12個セット】 洗剤 ルックプラス バスタブクレンジング 銀イオンプラス つめかえ用大サイズ 800mlお風呂用洗剤 バスタブ こすらずに洗える こすらない シャワーで流すだけ ピンク汚れ 銀イオン 除菌 予防 ライオン[2609SO]",
+      "price": 5760,
+      "unit_price": 60.0,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/bath-cleaner/1"
+    }
+  },
+  {
+    "category": "bath-cleaner",
+    "approved": true,
+    "item": {
+      "name": "【6個セット】ルックプラス バスタブクレンジング 銀イオンプラス つめかえ用大サイズ 800ml お風呂用洗剤 バスタブ こすらずに洗える こすらない シャワーで流すだけ ピンク汚れ 銀イオン 除菌 予防 ライオン【D】[G0]",
+      "price": 2981,
+      "unit_price": 62.104166666666664,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/bath-cleaner/2"
+    }
+  },
+  {
+    "category": "bath-cleaner",
+    "approved": true,
+    "item": {
+      "name": "[6個] ルックプラス バスタブクレンジング 銀イオンプラス つめかえ用大サイズ 800mlお風呂用洗剤 バスタブ こすらずに洗える こすらない シャワーで流すだけ ピンク汚れ 銀イオン 除菌 予防 ライオン",
+      "price": 2981,
+      "unit_price": 62.104166666666664,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/bath-cleaner/3"
+    }
+  },
+  {
+    "category": "bath-cleaner",
+    "approved": true,
+    "item": {
+      "name": "[3個]ルックプラス バスタブクレンジング 銀イオンプラス つめかえ用大サイズ 800ml お風呂用洗剤 バスタブ こすらずに洗える こすらない シャワーで流すだけ ピンク汚れ 銀イオン 除菌 予防 ライオン",
+      "price": 1720,
+      "unit_price": 71.66666666666667,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/bath-cleaner/4"
+    }
+  },
+  {
+    "category": "toilet-cleaner",
+    "approved": true,
+    "item": {
+      "name": "【4個】ライオン ルック まめピカ トイレクリーナー つめかえ用 190ml トイレ用洗剤",
+      "price": 1080,
+      "unit_price": 142.10526315789474,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-cleaner/0"
+    }
+  },
+  {
+    "category": "toilet-cleaner",
+    "approved": false,
+    "item": {
+      "name": "セール大盛況御礼！送料無料 業務用 トイレ 洗剤 トイレ用洗剤 撥水コーティング剤 お掃除と同時に水垢や尿石予防 汚れを防ぐコーティング 壁面 トイレ洗剤 撥水スプレー 便座 便器 コーティング 新築 新居 リフォーム後 水滴コロコロ キープシャイン トイレ用 詰め替え 1L",
+      "price": 2199,
+      "unit_price": 219.9,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toilet-cleaner/1"
+    }
+  },
+  {
+    "category": "laundry-bleach",
+    "approved": true,
+    "item": {
+      "name": "《セット販売》　ライオン ブライト ストロング STRONG 漂白＆抗菌ジェル つめかえ用 (900mL)×12個セット 詰め替え用 衣料用漂白剤　【送料無料】　【smtb-s】",
+      "price": 5098,
+      "unit_price": 47.2037037037037,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry-bleach/0"
+    }
+  },
+  {
+    "category": "laundry-bleach",
+    "approved": true,
+    "item": {
+      "name": "【送料無料】花王　ワイドハイターEX　業務用サイズ　4．5Lボトル×4本 衣料用漂白剤",
+      "price": 10197,
+      "unit_price": 56.65,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry-bleach/1"
+    }
+  },
+  {
+    "category": "laundry-bleach",
+    "approved": true,
+    "item": {
+      "name": "【衣料用漂白剤・4本セット】ワイドハイターEXパワー 4.5L × 4本 1ケース 詰め替え（ワイドハイターex・抗菌・衣料用・漂白剤・詰め替え用・つめかえ・洗濯洗剤・業務用洗剤）花王",
+      "price": 10450,
+      "unit_price": 58.05555555555556,
+      "metric": "100ml",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry-bleach/2"
+    }
+  },
+  {
+    "category": "laundry-bleach",
+    "approved": true,
+    "item": {
+      "name": "【★送料無料！】【衣料用漂白剤】花王 ワイドハイターEXパワー 4.5L【★同梱不可】",
+      "price": 2673,
+      "unit_price": 59.4,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry-bleach/3"
+    }
+  },
+  {
+    "category": "laundry-bleach",
+    "approved": true,
+    "item": {
+      "name": "ワイドハイター 詰め替え 業務用 ワイドハイターEX パワー4.5L 衣料用漂白剤 ハイター EXパワー 業務用 Kao 花王 ワイドハイターEXパワー 酵素系 洗濯用品 液体タイプ 清掃用品 洗濯用品",
+      "price": 2830,
+      "unit_price": 62.888888888888886,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/laundry-bleach/4"
+    }
+  },
+  {
+    "category": "mouthwash",
+    "approved": true,
+    "item": {
+      "name": "薬用リステリン トータルケアプラス クリーンミント味 マウスウォッシュ(1000ml*6個セット)【q7y】【LISTERINE(リステリン)】[マウスウォッシュ 口臭ケア 子供 液体歯磨き]",
+      "price": 5965,
+      "unit_price": 99.41666666666667,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mouthwash/0"
+    }
+  },
+  {
+    "category": "mouthwash",
+    "approved": true,
+    "item": {
+      "name": "薬用リステリン トータルケアゼロプラス ノンアルコール クリーンミント味(1000ml*6個セット)【q7y】【LISTERINE(リステリン)】[マウスウォッシュ 口臭ケア 子供 液体歯磨き]",
+      "price": 5965,
+      "unit_price": 99.41666666666667,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mouthwash/1"
+    }
+  },
+  {
+    "category": "mouthwash",
+    "approved": true,
+    "item": {
+      "name": "薬用リステリン トータルケアゼロプラス ノンアルコール クリーンミント味(1000ml*4本セット)【LISTERINE(リステリン)】[マウスウォッシュ 口臭ケア 子供 液体歯磨き]",
+      "price": 3980,
+      "unit_price": 99.5,
+      "metric": "100ml",
+      "confidence": 0.94,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mouthwash/2"
+    }
+  },
+  {
+    "category": "mouthwash",
+    "approved": true,
+    "item": {
+      "name": "＼先着100本限定SALE／【薬用】ナタデウォッシュ 500ml 1本【20％OFF】【送料無料】【ポイント10倍】口臭予防 口臭対策 口臭ケア 歯周炎予防 マウスウォッシュ 口臭 汚れが見える 洗口液 デンタルリンス",
+      "price": 2260,
+      "unit_price": 452.0,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mouthwash/3"
+    }
+  },
+  {
+    "category": "mouthwash",
+    "approved": true,
+    "item": {
+      "name": "【30％OFFクーポン：19日(土)20：00～】ホワイトニング マウスウォッシュ [歯を白くする 口臭予防 虫歯予防 歯周炎予防 歯肉炎予防 口内浄化] アップルミント味 500ml 医薬部外品 OraLuLu オーラルル",
+      "price": 2280,
+      "unit_price": 456.0,
+      "metric": "100ml",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mouthwash/4"
+    }
+  },
+  {
+    "category": "paper-towel",
+    "approved": true,
+    "item": {
+      "name": "業務用 ペーパータオル 小判 ピュアソフトECO 200枚×40袋 8000枚/バージンパルプ",
+      "price": 5060,
+      "unit_price": 0.6325,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/paper-towel/0"
+    }
+  },
+  {
+    "category": "paper-towel",
+    "approved": true,
+    "item": {
+      "name": "【目玉商品！楽天最安値に挑戦】太洋紙業 ペーパータオル レナージュ レギュラー 200枚×30パック 中判 業務用 ペーパーハンドタオル タオルペーパー 手拭きペーパー トイレ 紙タオル 手拭き ペーパー 洗面所 キッチン まとめ買い 大容量 箱売り 箱買い 中判タイプ 送料無料",
+      "price": 4400,
+      "unit_price": 0.7333333333333333,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/paper-towel/1"
+    }
+  },
+  {
+    "category": "garbage-bag-45l",
+    "approved": true,
+    "item": {
+      "name": "エントリーでP10倍★19日20:00〜24日1:59まで ごみ袋 45リットル 半透明 65x80cm 0.015mm厚 10枚x100冊 KN-53 ポリ袋 ゴミ袋 エコ袋 平袋 袋 45l 薄手 サンキョウプラテック 送料無料 即納 即日発送",
+      "price": 7500,
+      "unit_price": 7.5,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/garbage-bag-45l/0"
+    }
+  },
+  {
+    "category": "garbage-bag-45l",
+    "approved": true,
+    "item": {
+      "name": "エントリーでP10倍★19日20:00〜24日1:59まで ごみ袋 箱タイプ 45リットル 半透明 65x80cm 0.015mm厚 100枚x2小箱 BX-530-2kobako/ポリ袋 ゴミ袋 エコ袋 袋 平袋 エコ袋BOX BOXタイプ 小箱 箱 45l サンキョウプラテック 即納 即日発送",
+      "price": 2020,
+      "unit_price": 10.1,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/garbage-bag-45l/1"
+    }
+  },
+  {
+    "category": "mask",
+    "approved": true,
+    "item": {
+      "name": "高評価 春 99% マスク 不織布マスク 大容量51枚 血色マスク 不織布 カラー カラーマスク 子供 快適 不織布マスク 耳が痛くない プリーツ 大きめ 小さめ 小顔マスク くちばし 送料無料 cicibella シシベラ マスク 花粉 マスク",
+      "price": 420,
+      "unit_price": 8.235294117647058,
+      "metric": "sheet",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mask/0"
+    }
+  },
+  {
+    "category": "mask",
+    "approved": true,
+    "item": {
+      "name": "高評価＼★2022年間ランキング1位受賞!／【先着限定クーポンで最安1箱151円】9/23 23:59迄 マスク 51枚 大容量 立体マスク 4層構造 プリーツマスク バイカラーマスク 不織布マスク 血色マスク 3Dマスク 子供用 小顔マスク cicibella シシベラ 秋用マスク 花粉 マスク",
+      "price": 450,
+      "unit_price": 8.823529411764707,
+      "metric": "sheet",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mask/1"
+    }
+  },
+  {
+    "category": "mask",
+    "approved": false,
+    "item": {
+      "name": "【9/25限定☆先着クーポンで66円！】＼ランキング1位／冷感マスク 大容量 100 80 50 20枚 不織布マスク 血色マスク 高性能フィルター バイカラーマスク プリーツマスク 立体マスク 子供用 大人用 小さめ 大きめ 使い捨てマスク かわいい おしゃれ 耳痛くならない 耳紐 平ゴム",
+      "price": 263,
+      "unit_price": 13.15,
+      "metric": "sheet",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mask/2"
+    }
+  },
+  {
+    "category": "mask",
+    "approved": true,
+    "item": {
+      "name": "【9/25限定☆先着クーポンで69円！】＼ランキング1位／高評価 接触冷感 マスク 不織布 花粉対策 20枚 3D構造 バイカラーマスク おしゃれ 3Dマスク 立体マスク 不織布マスク 小さめ ふつう 大きめ 高性能フィルター 使い捨てマスク 血色マスク 耳紐 平ゴム 耳痛くならない",
+      "price": 328,
+      "unit_price": 16.4,
+      "metric": "sheet",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mask/3"
+    }
+  },
+  {
+    "category": "mask",
+    "approved": false,
+    "item": {
+      "name": "高評価 小顔マスク 20枚 不織布マスク 大容量51枚 1箱 立体マスク 20枚 ×1箱 血色マスク cicibella シシベラ マスク 3Dマスク 20枚 ×1袋 バイカラーマスク 不織布 子供 カラーマスク 耳が痛くならない 4層構造 プリーツ くちばし マスク 99% 春夏マスク 花粉 マスク",
+      "price": 398,
+      "unit_price": 19.9,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/mask/4"
+    }
+  },
+  {
+    "category": "toothbrush",
+    "approved": true,
+    "item": {
+      "name": "歯科医院用歯ブラシ 40本入り 子供用 ( ふつう ) 歯ブラシ 個包装 ハブラシ 子ども用歯ブラシ 子供用歯ブラシ 日本製 歯科医 歯科用 歯科 歯科医院専用 歯科専売 子供 子ども 幼児 キッズ 歯ブラシセット 大量 業務用 まとめ買い ストック コンパクト歯ブラシ 送料無料",
+      "price": 2640,
+      "unit_price": 66.0,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toothbrush/0"
+    }
+  },
+  {
+    "category": "toothbrush",
+    "approved": true,
+    "item": {
+      "name": "歯科医院用歯ブラシ 20本入り 子供用 ( ふつう ) 歯ブラシ 日本製 歯科 専売品 子供用歯ブラシ 小学生 幼児 歯科医院専用 歯科医 歯科用 ジュニア キッズ 子ども 子供 こども 仕上げ 磨き はぶらし ハブラシ こども用 歯医者 子ども用歯ブラシ 歯科専売 子どもハブラシ",
+      "price": 1408,
+      "unit_price": 70.4,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toothbrush/1"
+    }
+  },
+  {
+    "category": "toothbrush",
+    "approved": true,
+    "item": {
+      "name": "ナノ歯ブラシ やわらかめ 6本セット 【歯茎を傷つけないナノ歯ブラシ】 ハブラシ ＼薄型ヘッドに改良！／ ワイド歯ブラシ 超極細毛 歯ブラシ おすすめ 歯ブラシセット 大人用 家庭用 家族 業務用 くすみ 送料無料 【楽天1位】",
+      "price": 690,
+      "unit_price": 115.0,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toothbrush/2"
+    }
+  },
+  {
+    "category": "toothbrush",
+    "approved": true,
+    "item": {
+      "name": "奇跡の歯ブラシ ポケットイン 10本セット 正規品 すき間にフィット 【ネコポス送料無料】",
+      "price": 3990,
+      "unit_price": 399.0,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toothbrush/3"
+    }
+  },
+  {
+    "category": "toothbrush",
+    "approved": true,
+    "item": {
+      "name": "奇跡の歯ブラシ クリアブラック 3本セット 正規品 歯ブラシ 虫歯予防 口臭予防 口臭ケア 歯垢除去 ホワイトニング 歯間 オーラルケア 日本製 HaRENO ハレノ 公式",
+      "price": 1860,
+      "unit_price": 620.0,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/toothbrush/4"
+    }
+  },
+  {
+    "category": "cotton-swab",
+    "approved": true,
+    "item": {
+      "name": "【送料無料】綿棒 100本×8袋 かさばらない袋入り　黒綿棒 黒い綿棒 スパイラル セット 抗菌 抗菌綿棒 紙軸 折れない 業務用 よく取れる 赤ちゃん メイク直し 耳掃除 耳そうじ ベビー綿棒 美容 クレンジング 2WAYタイプ 硬い 細い",
+      "price": 1280,
+      "unit_price": 1.6,
+      "metric": "piece",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/cotton-swab/0"
+    }
+  },
+  {
+    "category": "cotton-swab",
+    "approved": false,
+    "item": {
+      "name": "【100本入り　個別包装】アイコス 掃除 綿棒 アイコスクリーニングスティック クリーニングマット IQOS glo GLO クリーナー 100本 クリーニングスティック 綿棒 掃除 クリーニング 電子タバコ iqos DUO duo アイコス2.4 iqos2.4",
+      "price": 1080,
+      "unit_price": 10.8,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/cotton-swab/1"
+    }
+  },
+  {
+    "category": "cotton-swab",
+    "approved": false,
+    "item": {
+      "name": "クリーニングスティック アイコス用クリーナー 綿棒 Cleaning sticks 30本 1箱 加熱式タバコ 加熱式電子タバコ 電子タバコ 01",
+      "price": 680,
+      "unit_price": 22.666666666666668,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/cotton-swab/2"
+    }
+  },
+  {
+    "category": "cotton-swab",
+    "approved": false,
+    "item": {
+      "name": "★楽天1位★耳かき もちネバ式 耳掃除 耳垢をごっそり取る 耳かき 吸引 ネバネバ 綿棒 粘着 耳に優しい ”新感覚” 柔らかくて快適 清潔感がある 再利用可能 大人も子供も使用できます 24本入り　(先端径3.8mm/4.8mm)",
+      "price": 880,
+      "unit_price": 36.666666666666664,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/cotton-swab/3"
+    }
+  },
+  {
+    "category": "cotton-swab",
+    "approved": false,
+    "item": {
+      "name": "耳かき 粘着式 もちネバ式 耳掃除 耳垢をごっそり取る 耳かき 吸引 ネバネバ 綿棒 粘着 耳に優しい 柔らかくて快適 清潔感 再利用可能 合成ゴム 耳垢をごっそり取る 耳掃除 清潔感がある 吸引 粘着 大人も子供も使用できます 24本入り",
+      "price": 1099,
+      "unit_price": 45.791666666666664,
+      "metric": "piece",
+      "confidence": 0.88,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/cotton-swab/4"
+    }
+  },
+  {
+    "category": "floor-sheet",
+    "approved": true,
+    "item": {
+      "name": "【同梱不可】山崎産業 フローリング用 ウェットシート 20枚入り×50個（1ケース）お得 セット まとめ買い 床掃除シート フローリングシート ウェットタイプ ワイパーシート 掃除シート 床用クリーナー 除菌 使い捨てシート 共通サイズ 日用品 掃除用品",
+      "price": 4480,
+      "unit_price": 4.48,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/floor-sheet/0"
+    }
+  },
+  {
+    "category": "floor-sheet",
+    "approved": true,
+    "item": {
+      "name": "激落ちくん 業務用 フローリングシート 【送料無料】フローリングワイパー 大容量 ウエットシート 超厚ウエットシート 20枚 ×12個 水の激落ち 床 掃除 大掃除 大掃除用品 ケース売り",
+      "price": 2980,
+      "unit_price": 12.416666666666666,
+      "metric": "sheet",
+      "confidence": 0.99,
+      "postage": "送料込み",
+      "url": "https://hb.afl.rakuten.co.jp/hgc/fixture/floor-sheet/1"
+    }
+  }
+]

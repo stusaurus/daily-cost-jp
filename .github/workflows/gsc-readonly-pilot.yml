@@ -1,0 +1,74 @@
+name: Search Console Read-Only Pilot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/gsc-readonly-pilot.yml'
+  pull_request:
+    paths:
+      - 'scripts/gsc_readonly_pilot.py'
+      - 'tests/test_gsc_readonly_pilot.py'
+      - '.github/workflows/gsc-readonly-pilot.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gsc-readonly-pilot
+  cancel-in-progress: false
+
+jobs:
+  unit-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run GSC read-only offline tests
+        run: python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
+
+  read-only-smoke:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: ga4-readonly-pilot
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GSC_SITE_URL: 'https://stusaurus.github.io/daily-cost-jp/'
+      GCP_WIF_PROVIDER: 'projects/557507311026/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions'
+      GCP_SERVICE_ACCOUNT: 'daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm offline GSC normalization and fail-closed behavior
+        run: python3 -m unittest discover -s tests -p 'test_gsc_readonly_pilot.py'
+      - name: Authenticate using short-lived, main-only Google OIDC
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install minimum read-only Google auth dependency
+        run: python -m pip install 'google-auth[requests]>=2,<3'
+      - name: Check Search Console permissions and get read-only performance data
+        run: |
+          python scripts/gsc_readonly_pilot.py
+          cat audit-results/gsc-search-pilot.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Preserve connection status and provisional GSC report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-search-pilot
+          path: |
+            audit-results/gsc-search-pilot.json
+            audit-results/gsc-search-pilot.md
+          if-no-files-found: warn
+          retention-days: 30

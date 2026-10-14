@@ -1,0 +1,23 @@
+{
+  "releases": [
+    {
+      "path": "/categories/tissue/",
+      "recipe": "comparison-help-v1:tissue",
+      "published_on": "2026-10-11",
+      "commit": "b0ec675e379166e8b47207a54606df932e39ded4"
+    },
+    {
+      "path": "/categories/laundry/",
+      "recipe": "comparison-help-v1:laundry",
+      "published_on": "2026-10-11",
+      "commit": "8ba6adce5c840dcabd5079ac53c145a1960d9cd9"
+    },
+    {
+      "path": "/categories/toilet-paper/",
+      "recipe": "comparison-help-v1:toilet-paper",
+      "published_on": "2026-10-11",
+      "commit": "be10487ca396089bf4da99aa15e3db9a4fa11944"
+    }
+  ],
+  "calendar": "America/Los_Angeles"
+}

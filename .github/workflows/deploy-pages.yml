@@ -1,0 +1,238 @@
+name: Build and deploy daily-cost-jp
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_to_x:
+        description: "Publish today's social payload to X after deploy"
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # 06:00 JST = 21:00 UTC (previous day)
+    - cron: "0 21 * * *"
+  push:
+    branches:
+      - main
+    paths:
+      - "requirements-render.txt"
+      - "scripts/redesign_laboratory.py"
+      - "scripts/art_direction.py"
+      - "scripts/design/**"
+      - "scripts/build_pipeline.py"
+      - "scripts/build_freshness.py"
+      - ".github/actions/build-site/**"
+      - "scripts/build_site.py"
+      - "scripts/sale_quantity.py"
+      - "scripts/product_quality.py"
+      - "scripts/candidate_acquisition.py"
+      - "scripts/product_display.py"
+      - "scripts/validate_product_quality.py"
+      - "tests/test_sale_quantity.py"
+      - "scripts/build_site_entry.py"
+      - "scripts/rakuten_request.py"
+      - "scripts/build_site_final.py"
+      - "scripts/build_site_growth.py"
+      - "scripts/build_site_decision.py"
+      - "scripts/build_site_products.py"
+      - "scripts/build_site_products_v2.py"
+      - "scripts/build_realtime_products.py"
+      - "scripts/enable_realtime_search.py"
+      - "scripts/improve_realtime_search_ux.py"
+      - "scripts/improve_seo.py"
+      - "scripts/improve_category_seo.py"
+      - "scripts/improve_category_design.py"
+      - "scripts/sharpen_home_value_prop.py"
+      - "scripts/polish_home_design.py"
+      - "scripts/add_exact_store_compare.py"
+      - "scripts/add_daily_buy_picks.py"
+      - "scripts/build_daily_deals.py"
+      - "scripts/diversify_daily_deals.py"
+      - "scripts/x_post_strategy.py"
+      - "scripts/x_post_strategy.json"
+      - "scripts/post_buffer_evening.py"
+      - "tests/test_x_post_strategy.py"
+      - "scripts/build_daily_og.py"
+      - "scripts/post_buffer.py"
+      - "scripts/build_dynamic_trends_v2.py"
+      - "scripts/expand_ranking_detail.py"
+      - "scripts/fill_ranking_gaps.py"
+      - "scripts/fix_trend_query_links.py"
+      - "scripts/improve_trend_labels.py"
+      - "scripts/sync_trend_search_chips.py"
+      - "scripts/promote_home_ranking.py"
+      - "scripts/move_home_ranking_below_tools.py"
+      - "scripts/jump_to_rank11.py"
+      - "scripts/simplify_product_ranking_cta.py"
+      - "scripts/add_trust_faq.py"
+      - "scripts/add_trend_conversion_tracking.py"
+      - "scripts/add_back_to_top.py"
+      - "scripts/add_analytics.py"
+      - "scripts/analytics_runtime.js"
+      - "scripts/offer_validation.js"
+      - "scripts/improve_purchase_pages.py"
+      - "scripts/comparison_units.py"
+      - "scripts/price_observations.py"
+      - "scripts/build_observations.py"
+      - "scripts/complete_purchase_flow.py"
+      - "scripts/purchase_tools.js"
+      - "scripts/monitor_quality.py"
+      - "tests/test_purchase_completion.py"
+      - "tests/purchase_tools.test.cjs"
+      - "scripts/validate_generated_site.py"
+      - "scripts/add_search_landing_pages.py"
+      - "scripts/generate_seo_files.py"
+      - "scripts/step6_seo_policy.json"
+      - "scripts/step6_seo_content.py"
+      - "googlef35e71acece62b67.html"
+      - ".github/workflows/deploy-pages.yml"
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and validate through the shared pipeline
+        uses: ./.github/actions/build-site
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
+          STEP4_ENABLE_CONTENT: ${{ vars.STEP4_ENABLE_CONTENT }}
+          STEP4_PAUSE_CONTENT: ${{ vars.STEP4_PAUSE_CONTENT }}
+
+      - name: Generate SEO discovery files
+        env:
+          SITE_URL: https://stusaurus.github.io/daily-cost-jp/
+        run: |
+          python scripts/generate_seo_files.py
+          python scripts/validate_generated_site.py
+
+      - name: Save product quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: product-quality-report
+          path: |
+            quality-report.json
+            quality-monitor-report.json
+          retention-days: 14
+
+      - name: Add IndexNow verification key
+        run: printf '%s' '7d4f93c2a6814eb5b0d87f216ca9e403' > site/7d4f93c2a6814eb5b0d87f216ca9e403.txt
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  published_design_audit:
+    name: Verify published desktop and mobile design
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Japanese fonts for faithful visual checks
+        run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
+      - name: Audit the actual public pages
+        run: |
+          mkdir -p published-design-reports
+          for route in home tissue today categories; do
+            case "$route" in
+              home) page='https://stusaurus.github.io/daily-cost-jp/?test=1' ;;
+              tissue) page='https://stusaurus.github.io/daily-cost-jp/categories/tissue/?test=1' ;;
+              today) page='https://stusaurus.github.io/daily-cost-jp/today/?test=1' ;;
+              categories) page='https://stusaurus.github.io/daily-cost-jp/categories/?test=1' ;;
+            esac
+            npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "$page" --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="published-design-reports/$route-mobile" --quiet
+          done
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'https://stusaurus.github.io/daily-cost-jp/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=published-design-reports/home-desktop --quiet
+      - name: Save public-page visual and accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-design-evidence
+          path: published-design-reports/
+          retention-days: 14
+
+  post_x:
+    name: Publish daily X post
+    if: ${{ github.event_name == 'schedule' || inputs.post_to_x == true }}
+    runs-on: ubuntu-latest
+    needs: deploy
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publish today's daily-deals post to X via Buffer
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_NAME: nichiyo_cost
+          EXPECTED_BUILD_SHA: ${{ github.sha }}
+          EXPECTED_BUILD_RUN_ID: ${{ github.run_id }}
+        run: python scripts/post_buffer.py
+
+  indexnow:
+    name: Notify IndexNow
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit sitemap URLs to IndexNow
+        env:
+          SITE_URL: https://stusaurus.github.io/daily-cost-jp/
+          INDEXNOW_KEY: 7d4f93c2a6814eb5b0d87f216ca9e403
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, xml.etree.ElementTree as ET
+          base=os.environ["SITE_URL"]; key=os.environ["INDEXNOW_KEY"]; key_url=base+key+".txt"
+          if urllib.request.urlopen(key_url, timeout=20).read().decode().strip()!=key: raise SystemExit("IndexNow key verification failed")
+          xml=urllib.request.urlopen(base+"sitemap.xml", timeout=20).read()
+          root=ET.fromstring(xml); urls=[e.text.strip() for e in root.iter() if e.tag.endswith("loc") and e.text]
+          req=urllib.request.Request("https://api.indexnow.org/IndexNow", data=json.dumps({"host":"stusaurus.github.io","key":key,"keyLocation":key_url,"urlList":urls}).encode(), headers={"Content-Type":"application/json; charset=utf-8"}, method="POST")
+          with urllib.request.urlopen(req, timeout=30) as r: print("IndexNow", r.status, "URLs", len(urls))
+          PY

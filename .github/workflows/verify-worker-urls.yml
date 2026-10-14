@@ -1,0 +1,60 @@
+name: Verify current and new live Worker APIs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-worker-urls.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check both health endpoints and search purchase links
+        run: |
+          node <<'NODE'
+          const endpoints = {
+            site_current: 'https://daily-cost-api.kiyo0625puma.workers.dev',
+            newly_deployed: 'https://daily-cost-api.stuffedsaurus.workers.dev',
+          };
+          const timeoutMs = 25000;
+          async function fetchJson(url) {
+            const response = await fetch(url, {
+              signal: AbortSignal.timeout(timeoutMs),
+              headers: { 'User-Agent': 'daily-cost-jp-deployment-verify/1.0' },
+            });
+            let data;
+            try { data = await response.json(); }
+            catch { throw new Error(`Invalid JSON (HTTP ${response.status})`); }
+            if (!response.ok) throw new Error(`HTTP ${response.status}: ${data?.error || 'unknown'}`);
+            return data;
+          }
+          let failed = false;
+          for (const [label, base] of Object.entries(endpoints)) {
+            console.log('\nVerifying ' + label);
+            try {
+              const health = await fetchJson(base + '/health');
+              if (health?.ok !== true || health?.service !== 'daily-cost-api') {
+                throw new Error('Unexpected health response');
+              }
+              console.log('health: OK');
+              const result = await fetchJson(base + '/api/product-search?q=' + encodeURIComponent('アリエール') + '&hits=10');
+              if (!Array.isArray(result?.products)) throw new Error('Missing products array');
+              const count = result.products.length;
+              const priced = result.products.filter(p => Number(p.shipping_included_price) > 0);
+              const broken = priced.filter(p => !p.shipping_included_url);
+              console.log(`search: ${count} products; ${priced.length} shipping-inclusive; ${broken.length} missing purchase links`);
+              if (count === 0) throw new Error('Search returned zero products');
+              if (broken.length) throw new Error('Priced products missing purchase links');
+            } catch (error) {
+              failed = true;
+              console.error(label + ': ' + (error?.message || String(error)));
+            }
+          }
+          if (failed) process.exitCode = 1;
+          NODE
