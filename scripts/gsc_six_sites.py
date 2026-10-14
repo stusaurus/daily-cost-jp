@@ -2,6 +2,7 @@
 """Read-only, six-property Search Console report. Never treats failures as zero."""
 import datetime as dt
 import json
+import math
 import os
 from pathlib import Path
 from urllib.parse import quote, urlsplit
@@ -22,7 +23,7 @@ AUTHORIZED_LEVELS = {"siteOwner", "siteFullUser", "siteRestrictedUser"}
 
 
 def date_windows(today):
-    """Exclude the most recent three JST days to minimize GSC data lag."""
+    """Exclude the most recent three Pacific calendar days for GSC final data."""
     end = today - dt.timedelta(days=3)
 
     def window(n, lag=0):
@@ -41,7 +42,7 @@ def safe_metrics(row):
     if not isinstance(row, dict):
         raise ValueError("invalid metrics row")
     values = [row.get(k) for k in ("clicks", "impressions", "ctr", "position")]
-    if any(type(x) not in (int, float) for x in values):
+    if any(type(x) not in (int, float) or not math.isfinite(x) for x in values):
         raise ValueError("missing metrics")
     clicks, impressions, ctr, position = values
     if (clicks < 0 or impressions < 0 or int(clicks) != clicks
@@ -185,6 +186,7 @@ def make_report(today, session=None, permissions=None, auth_problem=None):
     observed = sum(1 for x in entries if x["status"] in ("OBSERVED", "NO_ROWS"))
     return {
         "source": "Google Search Console Search Analytics API (read-only)",
+        "data_timezone": "America/Los_Angeles",
         "as_of": str(today),
         "date_windows": windows,
         "status": "READY" if observed == len(SITES) else "PARTIAL" if observed else "UNAVAILABLE",
@@ -203,7 +205,7 @@ def markdown(report):
         "# 6サイト Google検索流入レポート",
         "",
         "- 集計状態：**" + report["status"] + "**",
-        "- 集計基準日：" + report["as_of"],
+        "- 集計基準日（太平洋時間）：" + report["as_of"],
         "- 直近28日：" + "〜".join(report["date_windows"]["last_28"]),
         "- 直近7日：" + "〜".join(report["date_windows"]["last_7"]),
         "",
@@ -225,6 +227,28 @@ def markdown(report):
                                  number("position"), str(delta) if delta is not None else "不明",
                                  item["status"] if "reason" not in item else item["reason"]]) +
                      " |")
+    lines.extend(["", "## 7日・28日の前期間比較", "",
+                  "| サイト | 期間 | 現在表示 / クリック | 前期間表示 / クリック | 表示増減 | クリック増減 | 判定 |",
+                  "|---|---|---:|---:|---:|---:|---|"])
+    for item in report["sites"]:
+        for label, current_key, prior_key, change_key in (
+                ("7日", "last_7", "prior_7", "week"),
+                ("28日", "last_28", "prior_28", "month")):
+            current = item["windows"].get(current_key, {}).get("metrics")
+            prior = item["windows"].get(prior_key, {}).get("metrics")
+            signal = item["changes"].get(change_key, {})
+            def pair(metrics):
+                return (str(metrics["impressions"]) + " / " + str(metrics["clicks"])) if metrics else "不明"
+            delta = signal.get("change_impressions")
+            percentage = signal.get("change_percent")
+            delta_text = str(delta) if delta is not None else "不明"
+            if percentage is not None:
+                delta_text += " (" + str(percentage) + "%)"
+            clicks = str(current["clicks"] - prior["clicks"]) if current and prior else "不明"
+            lines.append("| " + " | ".join([item["name"], label, pair(current), pair(prior),
+                                            delta_text, clicks, signal.get("status", "UNKNOWN")]) + " |")
+    lines.extend(["", "前7日：" + "〜".join(report["date_windows"]["prior_7"]),
+                  "前28日：" + "〜".join(report["date_windows"]["prior_28"]), ""])
     lines.extend(["", "## 主な検索表示ページ（直近28日・最大5件/サイト）", ""])
     for item in report["sites"]:
         lines.append("### " + item["name"])
@@ -249,7 +273,7 @@ def write_report(report):
 
 
 def main():
-    today = dt.datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    today = dt.datetime.now(ZoneInfo("America/Los_Angeles")).date()
     if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
         report = make_report(today, auth_problem="GOOGLE_CREDENTIALS_MISSING")
     else:
