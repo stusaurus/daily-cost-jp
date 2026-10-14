@@ -1,0 +1,80 @@
+name: GSC Six-Site Direct API (Read Only)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Monday 09:00 JST (GitHub schedules may run later)
+    - cron: '0 0 * * 1'
+  pull_request:
+    paths:
+      - 'scripts/gsc_six_sites.py'
+      - 'tests/test_gsc_six_sites.py'
+      - '.github/workflows/gsc-six-sites.yml'
+      - 'docs/gsc-six-sites-setup.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gsc-six-site-read-only
+  cancel-in-progress: false
+
+jobs:
+  offline-tests:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test date windows, missing permissions and zero safeguards
+        run: python3 -m unittest discover -s tests -p 'test_gsc_six_sites.py'
+
+  read-only-report:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: ga4-readonly-pilot
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_WIF_PROVIDER: 'projects/557507311026/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions'
+      GCP_SERVICE_ACCOUNT: 'daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify fail-closed tests before authentication
+        run: python3 -m unittest discover -s tests -p 'test_gsc_six_sites.py'
+      - name: Authenticate using existing Google OIDC (no JSON keys)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.GCP_WIF_PROVIDER }}
+          service_account: ${{ env.GCP_SERVICE_ACCOUNT }}
+      - name: Install read-only Google authentication dependency
+        run: python -m pip install 'google-auth[requests]>=2,<3'
+      - name: Read six exact Search Console URL-prefix properties
+        run: python scripts/gsc_six_sites.py
+      - name: Display verified metrics or explicit missing-data statuses
+        if: always()
+        run: |
+          if [ -f audit-results/gsc-six-sites.md ]; then
+            cat audit-results/gsc-six-sites.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'GSC report unavailable: no metrics were verified.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Save private-to-workflow aggregated diagnostic reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-six-sites-readonly
+          path: |
+            audit-results/gsc-six-sites.json
+            audit-results/gsc-six-sites.md
+          if-no-files-found: warn
+          retention-days: 30
