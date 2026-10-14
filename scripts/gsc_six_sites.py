@@ -54,13 +54,17 @@ def safe_metrics(row):
     clicks, impressions, ctr, position = values
     if (clicks < 0 or impressions < 0 or int(clicks) != clicks
             or int(impressions) != impressions or not 0 <= ctr <= 1
-            or position < 1 or clicks > impressions):
+            or clicks > impressions
+            or (impressions > 0 and position < 1)
+            or (impressions == 0 and (ctr != 0 or position != 0))):
         raise InvalidMetrics(values)
     return {
         "clicks": int(clicks),
         "impressions": int(impressions),
         "ctr": round(float(ctr), 6),
-        "position": round(float(position), 2),
+        # A verified zero-impression API row has no defined average rank.
+        # Missing rows and failed requests still retain metrics=None.
+        "position": round(float(position), 2) if impressions else None,
     }
 
 

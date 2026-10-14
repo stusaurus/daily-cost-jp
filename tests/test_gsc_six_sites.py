@@ -46,6 +46,35 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertEqual(data["status"], "NO_ROWS")
         self.assertIsNone(data["metrics"])
 
+    def test_explicit_zero_api_row_is_observed_with_undefined_rank(self):
+        row = {'clicks': 0, 'impressions': 0, 'ctr': 0, 'position': 0}
+        result = g.aggregate({'rows': [row]})
+        self.assertEqual(result, {'status': 'OBSERVED', 'metrics': {
+            'clicks': 0, 'impressions': 0, 'ctr': 0.0, 'position': None}})
+        self.assertIsNone(g.aggregate({})['metrics'])
+        for bad in ({**row, 'clicks': 1}, {**row, 'ctr': .5},
+                    {**row, 'position': 2}, {**row, 'impressions': 1}):
+            with self.assertRaises(ValueError):
+                g.safe_metrics(bad)
+
+    def test_explicit_zero_site_connects_but_missing_site_stays_unknown(self):
+        class ZeroSession(FakeSession):
+            def post(self, url, json=None, timeout=None):
+                if json.get('dimensions'):
+                    return Response(payload={'rows': []})
+                return Response(payload={'rows': [{
+                    'clicks': 0, 'impressions': 0, 'ctr': 0, 'position': 0}]})
+        site = g.SITES[3][1]
+        report = g.make_report(dt.date(2026, 10, 14), ZeroSession(),
+                               {site: 'siteRestrictedUser'})
+        self.assertEqual(report['status'], 'PARTIAL')
+        self.assertEqual(report['sites'][3]['status'], 'OBSERVED')
+        self.assertEqual(report['sites'][3]['windows']['last_28']['metrics']['impressions'], 0)
+        self.assertEqual(report['sites'][0]['windows'], {})
+        rendered = g.markdown(report)
+        self.assertIn('| 食品 | 0 | 0 | 0.0% | 不明 |', rendered)
+        self.assertIn('| 日用品 | 不明 |', rendered)
+
     def test_invalid_metrics_rejected(self):
         for item in (
             {"clicks": 2, "impressions": 1, "ctr": .5, "position": 5},
