@@ -10,7 +10,7 @@
 - https://stusaurus.github.io/kyo-bodo-jp/
 - https://stusaurus.github.io/sotojitaku/
 
-週次（月曜9時JST目安）と手動で実行し、直近7日/前7日・直近28日/前28日・上位5ページを日本語で出力します。直近3日分は暫定値を避けるため除外します。XやGA4、楽天の実績とは混同しません。
+週次（月曜9時JST目安）と手動で実行し、直近7日/前7日・直近28日/前28日・上位5ページを日本語で出力します。Search Consoleの集計日は太平洋時間（America/Los_Angeles）です。直近3日分は暫定値を避けるため除外します。月曜9時JSTは日曜の太平洋時間に相当するため、API期間もその暦日を基準にします。XやGA4、楽天の実績とは混同しません。
 
 ## 認証：既存Google OIDCを再利用、秘密鍵JSON不要
 
