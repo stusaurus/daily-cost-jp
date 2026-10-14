@@ -1,11 +1,14 @@
 import copy
+import datetime as dt
+from functools import partial
 import json
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import step5_evaluation as e
-from test_step4_purchase_audit import offer,snapshot
+from test_step4_purchase_audit import NOW,offer,snapshot
 
 
 class EvaluationTests(unittest.TestCase):
@@ -41,14 +44,27 @@ class EvaluationTests(unittest.TestCase):
     def test_assortment_amounts_empty_slots_no_source_mutation(self):
         tissue={'items':[offer(qty=60,title='ボックスティッシュ 200組 5箱×12パック')],'purpose_candidates':[offer(qty=5,suffix='s'),offer(qty=15,suffix='d')]}
         s=snapshot({'tissue':tissue,'laundry':{'items':[]},'toilet-paper':{'items':[]}});before=copy.deepcopy(s)
-        r=e.assortment(s)
+        with patch.object(e,'select',wraps=partial(e.select,now=NOW)):
+            r=e.assortment(s)
         self.assertEqual(s,before);self.assertEqual(r['empty_slots'],6)
         self.assertEqual(r['categories']['tissue']['slots']['small']['total_yen'],500)
         self.assertIsNone(r['categories']['tissue']['distinct_sku_count'])
 
     def test_bad_supplement_does_not_invent_candidates(self):
         s=snapshot({c:{'items':[],'purpose_candidates':'bad'} for c in e.CATEGORIES})
-        r=e.assortment(s);self.assertEqual(r['empty_slots'],9)
+        with patch.object(e,'select',wraps=partial(e.select,now=NOW)):
+            r=e.assortment(s)
+        self.assertEqual(r['empty_slots'],9)
+
+    def test_stale_snapshot_keeps_empty_slots_unknown(self):
+        s=snapshot({c:{'items':[]} for c in e.CATEGORIES})
+        before=copy.deepcopy(s)
+        with patch.object(e,'select',wraps=partial(e.select,now=NOW+dt.timedelta(days=7))):
+            r=e.assortment(s)
+        self.assertNotEqual(r['status'],'TRUSTED_RECENT')
+        self.assertIsNone(r['empty_slots'])
+        self.assertEqual(r['categories'],{})
+        self.assertEqual(s,before)
 
     def test_sufficient_data_ready_for_review_never_automatic_success(self):
         def window(period):
