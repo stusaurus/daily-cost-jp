@@ -51,6 +51,8 @@ class SixSiteReportTests(unittest.TestCase):
             {"clicks": 2, "impressions": 1, "ctr": .5, "position": 5},
             {"clicks": 1, "impressions": 10, "ctr": -1, "position": 5},
             {"clicks": 0, "impressions": 10, "ctr": 0, "position": "8"},
+            {"clicks": 0, "impressions": 10, "ctr": 0, "position": float('nan')},
+            {"clicks": 0, "impressions": 10, "ctr": 0, "position": float('inf')},
         ):
             with self.assertRaises(ValueError):
                 g.safe_metrics(item)
@@ -88,6 +90,16 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertEqual(g.change(later, earlier)["status"], "OBSERVED_DECLINE")
         self.assertEqual(g.change(later, None)["status"], "UNKNOWN")
         self.assertEqual(g.change({"impressions": 2}, {"impressions": 4})["status"], "LOW_SAMPLE")
+
+    def test_markdown_contains_both_comparison_windows_and_status(self):
+        session = FakeSession()
+        report = g.make_report(dt.date(2026, 10, 14), session,
+                               {site: "siteRestrictedUser" for _, site in g.SITES})
+        rendered = g.markdown(report)
+        self.assertEqual(report['data_timezone'], 'America/Los_Angeles')
+        self.assertIn('| 日用品 | 7日 | 30 / 1 | 30 / 1 | 0 (0.0%) | 0 | OBSERVE |', rendered)
+        self.assertIn('| 日用品 | 28日 |', rendered)
+        self.assertIn('前28日：2026-08-17〜2026-09-13', rendered)
 
 
 if __name__ == "__main__":
