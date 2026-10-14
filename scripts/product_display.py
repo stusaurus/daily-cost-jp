@@ -48,7 +48,7 @@ def promotion_only(label):
     rest = PROMO.sub('', text)
     rest = CAMPAIGN_DATE_RANGE.sub('', rest)
     rest = DATE.sub('', rest)
-    rest = re.sub(r'(?:[~〜～]\s*)?\d{1,2}日(?=\d{1,2}:\d{2})|\d{1,2}:\d{2}(?:迄|まで)?', '', rest)
+    rest = re.sub(r'(?:[~〜～]\s*)?\d{1,2}日(?=\d{1,2}:\d{2})|\d{1,2}:\d{2}(?:より|迄|まで)?', '', rest)
     # Any remaining word, number, brand, capacity, count or type keeps the label.
     return not re.sub(r'[\s★☆彡!！+＋・＼\\／/、。~〜～:：%％-]', '', rest)
 
