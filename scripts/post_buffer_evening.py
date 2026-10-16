@@ -122,7 +122,13 @@ def build_evening_text(payload: dict) -> str:
 
 def main() -> None:
     # A delayed/failed 19:00 refresh must not silently reuse the morning set.
-    payload = buffer.fetch_today_social(not_before=required_evening_refresh_time())
+    # If GitHub starts this scheduled job after midnight, the relevant payload
+    # is still the one produced by the previous evening's 19:00 refresh.
+    refresh_time = required_evening_refresh_time()
+    payload = buffer.fetch_today_social(
+        not_before=refresh_time,
+        expected_date=refresh_time.date().isoformat(),
+    )
     text = build_evening_text(payload)
     org_id, org_name, channel = buffer.discover_x_channel()
     channel_id = str(channel.get("id") or "")

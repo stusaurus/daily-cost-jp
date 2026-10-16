@@ -64,8 +64,8 @@ def gql(query: str) -> dict:
     return payload.get("data") or {}
 
 
-def fetch_today_social(not_before=None) -> dict:
-    expected_date = datetime.now(JST).date().isoformat()
+def fetch_today_social(not_before=None, expected_date: str | None = None) -> dict:
+    expected_date = expected_date or datetime.now(JST).date().isoformat()
     last_date = None
 
     # Pages is usually updated immediately after deployment, but give its CDN a
