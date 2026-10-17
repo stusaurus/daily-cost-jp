@@ -266,25 +266,50 @@ function unwrapItem(raw) {
       : raw;
 }
 
+function canonicalAffiliateItemDestination(value) {
+  try {
+    const affiliate = new URL(String(value || ""));
+    if (affiliate.protocol !== "https:" || affiliate.hostname !== "hb.afl.rakuten.co.jp" ||
+        !affiliate.pathname.startsWith("/hgc/")) return "";
+    return canonicalRakutenItemUrl(affiliate.searchParams.get("pc"));
+  } catch { return ""; }
+}
+
 function normalizeExactItem(raw) {
   const item = unwrapItem(raw);
   if (!item || typeof item !== "object") return null;
   const price = safeInt(item.itemPrice);
-  const itemUrl = canonicalRakutenItemUrl(item.itemUrl);
   const affiliateUrl = String(item.affiliateUrl || "");
-  if (price <= 0 || !itemUrl || !affiliateUrl.startsWith("https://hb.afl.rakuten.co.jp/")) return null;
+  const affiliateTarget = canonicalAffiliateItemDestination(affiliateUrl);
+  // The official Rakuten docs permit itemUrl to be the affiliate URL when
+  // affiliateId is set. Recover only if BOTH fields carry that same signed
+  // redirect; never infer a seller destination from an arbitrary URL.
+  const directUrl = canonicalRakutenItemUrl(item.itemUrl);
+  const redirectedItemUrl = item.itemUrl === affiliateUrl ? affiliateTarget : "";
+  const itemUrl = directUrl || redirectedItemUrl;
+  if (price <= 0 || !itemUrl || itemUrl !== affiliateTarget) return null;
   return {
     name: String(item.itemName || ""), price, item_url: itemUrl, affiliate_url: affiliateUrl,
     image: firstImageUrl(item.mediumImageUrls), shop_code: String(item.shopCode || ""),
     shop_name: String(item.shopName || ""), item_code: String(item.itemCode || ""),
-    availability: safeInt(item.availability, 1),
+    // Official Item Search 2026-07-01 fields. Null means not supplied: no
+    // positive evidence about availability, tax, postage or price ranges.
+    availability: item.availability == null ? null : safeInt(item.availability, -1),
+    tax_flag: item.taxFlag == null ? null : safeInt(item.taxFlag, -1),
+    postage_flag: item.postageFlag == null ? null : safeInt(item.postageFlag, -1),
+    purchasable_min_price: item.itemPriceMin3 == null ? null : safeInt(item.itemPriceMin3, -1),
+    purchasable_max_price: item.itemPriceMax3 == null ? null : safeInt(item.itemPriceMax3, -1),
+    price_base_field: String(item.itemPriceBaseField || ""),
+    // An API price range, even when equal, does NOT prove that the
+    // shop has a single SKU/variant or that cart conditions are fixed.
+    seller_variant_verified: false,
   };
 }
 
 async function fetchItemByCode(itemCode, env) {
   const params = new URLSearchParams({
     applicationId: env.RAKUTEN_APPLICATION_ID, itemCode, hits: "1", format: "json", formatVersion: "2", availability: "1",
-    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,taxFlag,postageFlag,itemPriceMin3,itemPriceMax3,itemPriceBaseField,mediumImageUrls",
   });
   if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
@@ -300,7 +325,7 @@ async function fetchItemByCode(itemCode, env) {
 async function fetchShopItems(q, shopCode, env) {
   const params = new URLSearchParams({
     applicationId: env.RAKUTEN_APPLICATION_ID, shopCode, keyword: q, hits: "30", format: "json", formatVersion: "2", availability: "1",
-    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,taxFlag,postageFlag,itemPriceMin3,itemPriceMax3,itemPriceBaseField,mediumImageUrls",
   });
   if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
@@ -664,6 +689,30 @@ export default {
 
     if (!env.RAKUTEN_APPLICATION_ID || !env.RAKUTEN_ACCESS_KEY) {
       return json({ error: "server_not_configured" }, 503, origin);
+    }
+
+    // Evidence-only: exactly one official Rakuten Item API call. No HTML
+    // scraping or related-shop fallback. Intended for review staging, never
+    // proof of a seller's fixed variant/cart conditions.
+    if (url.pathname === "/api/item-evidence") {
+      const itemUrl = String(url.searchParams.get("url") || "").trim();
+      const itemCode = String(url.searchParams.get("itemCode") || "").trim();
+      const locator = rakutenItemLocator(itemUrl);
+      if (!locator || !itemCode || itemCode.split(":", 1)[0] !== locator.shopCode) {
+        return json({ found: false, error: "invalid_exact_item_identity" }, 400, origin);
+      }
+      try {
+        const items = await fetchItemByCode(itemCode, env);
+        const exact = items.find((item) =>
+          item.item_url === locator.canonical && item.item_code === itemCode && item.shop_code === locator.shopCode
+        );
+        return json(exact
+          ? { found: true, lookup_method: "exact_item_code_only", ...exact }
+          : { found: false, reason: "exact_item_not_found" }, 200, origin);
+      } catch (error) {
+        console.error("item-evidence failed", error);
+        return json({ found: false, error: "rakuten_api_error", upstream_status: upstreamStatus(error) }, 502, origin);
+      }
     }
 
     if (url.pathname === "/api/item-lookup") {
