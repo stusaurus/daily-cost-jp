@@ -49,6 +49,11 @@ test("API evidence: item code result with another product URL is never substitut
  assert.equal(r.calls,1);assert.equal(r.response.status,200);
  assert.equal(r.body.found,false);assert.equal(r.body.reason,"exact_item_not_found");
 });
+test("API evidence: itemUrl may be official affiliate URL when it redirects to exactly the same product",async()=>{
+ const r=await run("affiliate-item-url",{itemUrl:affiliate});
+ assert.equal(r.calls,1);assert.equal(r.response.status,200);
+ assert.equal(r.body.found,true);assert.equal(r.body.item_url,exact);
+});
 test("API evidence: 429 stops immediately and propagates safely",async()=>{
  const r=await run("429",{upstream:429});
  assert.equal(r.calls,1);assert.equal(r.response.status,502);
