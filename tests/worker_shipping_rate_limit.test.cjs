@@ -22,7 +22,7 @@ async function exercise(label,endpoint,upstreamHandler){
 
 test("product search propagates postage Item API 429 rather than claiming zero shipping results",async()=>{
   const r=await exercise("product-postage","/api/product-search?q=ST-310",upstream=>{
-    if(upstream.pathname.includes("IchibaProduct"))return json({Products:[],pageCount:0,count:0});
+    if(upstream.pathname.includes("/Product/Search/"))return json({Products:[],pageCount:0,count:0});
     if(upstream.pathname.includes("IchibaItem"))return new Response(null,{status:429});
     throw Error("Unexpected API endpoint "+upstream.pathname);
   });
@@ -45,7 +45,7 @@ test("shipping lookup exposes rate-limit status without shopper secrets",async()
 
 test("successful product search retains its existing response shape",async()=>{
   const r=await exercise("empty-success","/api/product-search?q=ST-310",upstream=>{
-    if(upstream.pathname.includes("IchibaProduct"))return json({Products:[],pageCount:0,count:0});
+    if(upstream.pathname.includes("/Product/Search/"))return json({Products:[],pageCount:0,count:0});
     if(upstream.pathname.includes("IchibaItem"))return json({Items:[]});
     throw Error("Unexpected API endpoint");
   });
