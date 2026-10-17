@@ -676,6 +676,30 @@ export default {
       return json({ error: "server_not_configured" }, 503, origin);
     }
 
+    // Evidence-only: exactly one official Rakuten Item API call. No HTML
+    // scraping or related-shop fallback. Intended for review staging, never
+    // proof of a seller's fixed variant/cart conditions.
+    if (url.pathname === "/api/item-evidence") {
+      const itemUrl = String(url.searchParams.get("url") || "").trim();
+      const itemCode = String(url.searchParams.get("itemCode") || "").trim();
+      const locator = rakutenItemLocator(itemUrl);
+      if (!locator || !itemCode || itemCode.split(":", 1)[0] !== locator.shopCode) {
+        return json({ found: false, error: "invalid_exact_item_identity" }, 400, origin);
+      }
+      try {
+        const items = await fetchItemByCode(itemCode, env);
+        const exact = items.find((item) =>
+          item.item_url === locator.canonical && item.item_code === itemCode && item.shop_code === locator.shopCode
+        );
+        return json(exact
+          ? { found: true, lookup_method: "exact_item_code_only", ...exact }
+          : { found: false, reason: "exact_item_not_found" }, 200, origin);
+      } catch (error) {
+        console.error("item-evidence failed", error);
+        return json({ found: false, error: "rakuten_api_error", upstream_status: upstreamStatus(error) }, 502, origin);
+      }
+    }
+
     if (url.pathname === "/api/item-lookup") {
       const itemUrl = String(url.searchParams.get("url") || "").trim();
       const q = String(url.searchParams.get("q") || "").trim();
