@@ -266,13 +266,28 @@ function unwrapItem(raw) {
       : raw;
 }
 
+function canonicalAffiliateItemDestination(value) {
+  try {
+    const affiliate = new URL(String(value || ""));
+    if (affiliate.protocol !== "https:" || affiliate.hostname !== "hb.afl.rakuten.co.jp" ||
+        !affiliate.pathname.startsWith("/hgc/")) return "";
+    return canonicalRakutenItemUrl(affiliate.searchParams.get("pc"));
+  } catch { return ""; }
+}
+
 function normalizeExactItem(raw) {
   const item = unwrapItem(raw);
   if (!item || typeof item !== "object") return null;
   const price = safeInt(item.itemPrice);
-  const itemUrl = canonicalRakutenItemUrl(item.itemUrl);
   const affiliateUrl = String(item.affiliateUrl || "");
-  if (price <= 0 || !itemUrl || !affiliateUrl.startsWith("https://hb.afl.rakuten.co.jp/")) return null;
+  const affiliateTarget = canonicalAffiliateItemDestination(affiliateUrl);
+  // The official Rakuten docs permit itemUrl to be the affiliate URL when
+  // affiliateId is set. Recover only if BOTH fields carry that same signed
+  // redirect; never infer a seller destination from an arbitrary URL.
+  const directUrl = canonicalRakutenItemUrl(item.itemUrl);
+  const redirectedItemUrl = item.itemUrl === affiliateUrl ? affiliateTarget : "";
+  const itemUrl = directUrl || redirectedItemUrl;
+  if (price <= 0 || !itemUrl || itemUrl !== affiliateTarget) return null;
   return {
     name: String(item.itemName || ""), price, item_url: itemUrl, affiliate_url: affiliateUrl,
     image: firstImageUrl(item.mediumImageUrls), shop_code: String(item.shopCode || ""),
