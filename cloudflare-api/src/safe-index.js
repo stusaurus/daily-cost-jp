@@ -5,6 +5,12 @@ const SITE_URL = "https://stusaurus.github.io/daily-cost-jp/";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Surface a numeric upstream HTTP status only. Never expose API keys or raw upstream bodies.
+function upstreamStatus(error) {
+  const match = /^(?:item|product)_api_(\d{3})$/.exec(String(error?.message || ""));
+  return match ? Number(match[1]) : null;
+}
+
 function safeInt(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? Math.trunc(n) : fallback;
@@ -684,7 +690,7 @@ export default {
         return json({ found: Boolean(result), ...(result || {}) }, 200, origin);
       } catch (error) {
         console.error("shipping-lookup failed", error);
-        return json({ found: false, error: "rakuten_api_error" }, 502, origin);
+        return json({ found: false, error: "rakuten_api_error", upstream_status: upstreamStatus(error) }, 502, origin);
       }
     }
 
@@ -703,6 +709,10 @@ export default {
       try {
         includedItems = await fetchIncludedItemPages(q, env, 3);
       } catch (error) {
+        // An upstream rate limit is not a valid "zero postage results" state.
+        // Passing off 429 as an empty list would make every CAMP item look
+        // unavailable and repeatedly exhaust the same quota.
+        if (upstreamStatus(error) === 429) throw error;
         console.error("included item lookup failed", error);
       }
 
@@ -721,7 +731,7 @@ export default {
       }, 200, origin);
     } catch (error) {
       console.error("product-search failed", error);
-      return json({ error: "rakuten_api_error" }, 502, origin);
+      return json({ error: "rakuten_api_error", upstream_status: upstreamStatus(error) }, 502, origin);
     }
   },
 };
