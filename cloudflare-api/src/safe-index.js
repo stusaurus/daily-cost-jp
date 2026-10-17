@@ -277,14 +277,24 @@ function normalizeExactItem(raw) {
     name: String(item.itemName || ""), price, item_url: itemUrl, affiliate_url: affiliateUrl,
     image: firstImageUrl(item.mediumImageUrls), shop_code: String(item.shopCode || ""),
     shop_name: String(item.shopName || ""), item_code: String(item.itemCode || ""),
-    availability: safeInt(item.availability, 1),
+    // Official Item Search 2026-07-01 fields. Null means not supplied: no
+    // positive evidence about availability, tax, postage or price ranges.
+    availability: item.availability == null ? null : safeInt(item.availability, -1),
+    tax_flag: item.taxFlag == null ? null : safeInt(item.taxFlag, -1),
+    postage_flag: item.postageFlag == null ? null : safeInt(item.postageFlag, -1),
+    purchasable_min_price: item.itemPriceMin3 == null ? null : safeInt(item.itemPriceMin3, -1),
+    purchasable_max_price: item.itemPriceMax3 == null ? null : safeInt(item.itemPriceMax3, -1),
+    price_base_field: String(item.itemPriceBaseField || ""),
+    // An API price range, even when equal, does NOT prove that the
+    // shop has a single SKU/variant or that cart conditions are fixed.
+    seller_variant_verified: false,
   };
 }
 
 async function fetchItemByCode(itemCode, env) {
   const params = new URLSearchParams({
     applicationId: env.RAKUTEN_APPLICATION_ID, itemCode, hits: "1", format: "json", formatVersion: "2", availability: "1",
-    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,taxFlag,postageFlag,itemPriceMin3,itemPriceMax3,itemPriceBaseField,mediumImageUrls",
   });
   if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
@@ -300,7 +310,7 @@ async function fetchItemByCode(itemCode, env) {
 async function fetchShopItems(q, shopCode, env) {
   const params = new URLSearchParams({
     applicationId: env.RAKUTEN_APPLICATION_ID, shopCode, keyword: q, hits: "30", format: "json", formatVersion: "2", availability: "1",
-    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,mediumImageUrls",
+    elements: "itemName,itemCode,itemPrice,itemUrl,affiliateUrl,shopName,shopCode,availability,taxFlag,postageFlag,itemPriceMin3,itemPriceMax3,itemPriceBaseField,mediumImageUrls",
   });
   if (env.RAKUTEN_AFFILIATE_ID) params.set("affiliateId", env.RAKUTEN_AFFILIATE_ID);
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
