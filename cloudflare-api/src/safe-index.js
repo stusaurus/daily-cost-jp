@@ -284,6 +284,7 @@ async function fetchItemByCode(itemCode, env) {
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
     headers: { accessKey: env.RAKUTEN_ACCESS_KEY, Origin: ALLOWED_ORIGIN, Referer: SITE_URL, "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0" },
   });
+  if (response.status === 404) return []; // Missing exact SKU is not an API outage.
   if (!response.ok) throw new Error("item_api_" + response.status);
   const payload = await response.json();
   const source = Array.isArray(payload.Items) ? payload.Items : Array.isArray(payload.items) ? payload.items : [];
@@ -299,6 +300,7 @@ async function fetchShopItems(q, shopCode, env) {
   const response = await fetch(ITEM_API_URL + "?" + params.toString(), {
     headers: { accessKey: env.RAKUTEN_ACCESS_KEY, Origin: ALLOWED_ORIGIN, Referer: SITE_URL, "User-Agent": "daily-cost-jp-cloudflare-item-lookup/1.0" },
   });
+  if (response.status === 404) return []; // Missing exact SKU is not an API outage.
   if (!response.ok) throw new Error("item_api_" + response.status);
   const payload = await response.json();
   const source = Array.isArray(payload.Items) ? payload.Items : Array.isArray(payload.items) ? payload.items : [];
@@ -668,7 +670,8 @@ export default {
         return json(result || { found: false, reason: "exact_item_not_found" }, 200, origin);
       } catch (error) {
         console.error("item-lookup failed", error);
-        return json({ found: false, error: "rakuten_api_error" }, 502, origin);
+        const reason = String(error?.message || "").match(/^item_api_(400|401|403|404|429|500|502|503|504)$/);
+        return json({ found: false, error: "rakuten_api_error", upstream_status: reason ? Number(reason[1]) : null }, 502, origin);
       }
     }
     if (url.pathname === "/api/shipping-lookup") {
