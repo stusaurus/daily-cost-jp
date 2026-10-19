@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from test_step4_purchase_audit import offer
 import step5_household_candidates as h
+from step5_prepare_preview import acquire_preview
 from step4_recommendations import select_category
 
 
@@ -120,6 +121,53 @@ class HouseholdTests(unittest.TestCase):
         self.assertEqual(report['requests'][0]['excluded_reasons']['duplicate_offer'],1)
         self.assertIsNone(report['distinct_sku_count'])
         self.assertNotIn('shop:',str(report));self.assertNotIn('ボックスティッシュ',str(report))
+
+    def test_current_small_query_comparison_reuses_responses_and_protects_source(self):
+        bulk=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本',suffix='bulk')
+        old=offer('laundry',3.8,'100g',title='洗濯洗剤 380g',unit_price=2500/3.8,suffix='old')
+        current=offer('laundry',8.5,'100g',title='洗濯洗剤 850g',unit_price=1000/8.5,suffix='new')
+        everyday=offer('laundry',20,'100g',title='洗濯洗剤 2000g',unit_price=75,suffix='daily')
+        snapshot={'categories':{'laundry':{'items':[bulk,old]}}};original=copy.deepcopy(snapshot)
+        plan=copy.deepcopy(h.QUERIES);calls=[]
+        def fetch(cat,page):
+            q=cat['keyword'];calls.append(q)
+            if '850g' in q:return [current]
+            if '400g' in q or '900g' in q:return []
+            return [everyday]
+        revised,result=acquire_preview(snapshot,[{'id':'laundry'}],fetch,lambda r,c:r,lambda n:None)
+        self.assertEqual(snapshot,original);self.assertEqual(h.QUERIES,plan)
+        self.assertEqual(revised['categories']['laundry']['items'],original['categories']['laundry']['items'])
+        self.assertEqual(len(calls),4);self.assertEqual(len(calls),len(set(calls)))
+        self.assertEqual(result['status'],'OBSERVED');self.assertTrue(result['small_payment_lower'])
+        self.assertTrue(result['other_slots_unchanged'])
+        self.assertEqual(result['candidate']['small']['quantity'],8.5)
+        self.assertEqual(result['candidate']['small']['price_total_yen'],1000)
+        self.assertNotIn('shop:',str(result));self.assertNotIn('洗濯洗剤 850g',str(result))
+
+    def test_query_comparison_api_failure_is_unknown_not_improvement(self):
+        bulk=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本')
+        calls=[];plan=copy.deepcopy(h.QUERIES)
+        def fetch(cat,page):
+            calls.append(cat['keyword']);raise RuntimeError('403 private token')
+        _,result=acquire_preview({'categories':{'laundry':{'items':[bulk]}}},
+            [{'id':'laundry'}],fetch,lambda r,c:r,lambda n:None)
+        self.assertEqual(len(calls),5);self.assertEqual(len(set(calls)),5)
+        self.assertEqual(result['status'],'UNKNOWN');self.assertFalse(result['small_payment_lower'])
+        self.assertEqual(h.QUERIES,plan);self.assertNotIn('private',str(result))
+
+    def test_query_comparison_does_not_create_or_mix_other_sites_or_categories(self):
+        snapshot={'categories':{'other':{'items':[{'untouched':True}]}}}
+        revised,result=acquire_preview(snapshot,[{'id':'other'}],
+            lambda *args:self.fail('Unexpected API call'),lambda r,c:r,lambda n:None)
+        self.assertEqual(revised,snapshot);self.assertIsNone(result)
+
+    def test_query_comparison_without_confirmed_family_is_unknown(self):
+        mass=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本')
+        volume=offer('laundry',90,'100ml',title='洗濯洗剤 1500ml×6本')
+        _,result=acquire_preview({'categories':{'laundry':{'items':[mass,volume]}}},
+            [{'id':'laundry'}],lambda *args:self.fail('Unexpected API call'),lambda r,c:r,lambda n:None)
+        self.assertEqual(result['status'],'UNKNOWN');self.assertFalse(result['small_payment_lower'])
+        self.assertEqual(result['unique_api_queries'],0)
 
 
 if __name__=='__main__':unittest.main()
