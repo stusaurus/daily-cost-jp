@@ -95,6 +95,7 @@ def tissue_size_guide(data):
             f'<a class="size-link" href="{esc(small["url"])}" target="_blank" '
             'rel="nofollow sponsored noopener" data-conversion-source="category" '
             'data-category-id="tissue" '
+            'data-purchase-purpose="small" '
             f'data-id="{esc(small.get("item_code", ""))}" '
             f'data-product-name="{esc(label)}" '
             f'data-shipping-price="{small["price"]}" '
