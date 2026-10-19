@@ -10,6 +10,9 @@ import json
 import os
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from urllib.request import urlopen
+from urllib.parse import urlsplit
+from html.parser import HTMLParser
 
 from scripts import gsc_six_sites as base
 
@@ -38,12 +41,15 @@ def analytics_rows(payload, dimension, *, property_url=None):
     """Rows are a non-exhaustive sample of reported queries/dates, never totals."""
     if not isinstance(payload, dict) or not isinstance(payload.get("rows", []), list):
         raise ValueError("invalid analytics payload")
+    dimensions = ("query", "page") if dimension == "query_page" else (dimension,)
+    if dimensions not in (("query",), ("date",), ("query", "page")):
+        raise ValueError("unsupported dimensions")
     rows = payload.get("rows", [])
     if len(rows) > ROW_LIMIT:
         raise ValueError("unexpected row count")
     parsed = []
     for row in rows:
-        if not isinstance(row, dict) or not isinstance(row.get("keys"), list) or len(row["keys"]) != 1:
+        if not isinstance(row, dict) or not isinstance(row.get("keys"), list) or len(row["keys"]) != len(dimensions):
             raise ValueError("invalid analytics key")
         key = row["keys"][0]
         if not isinstance(key, str) or not key:
@@ -55,9 +61,17 @@ def analytics_rows(payload, dimension, *, property_url=None):
                 raise ValueError("invalid date dimension") from error
             if parsed_date.isoformat() != key:
                 raise ValueError("invalid date format")
-        if dimension == "query":
-            key = cleaned(key)
-        parsed.append({"key": key, **base.safe_metrics(row)})
+        item = {"key": cleaned(key) if dimension in ("query", "query_page") else key,
+                **base.safe_metrics(row)}
+        if dimension == "query_page":
+            page = row["keys"][1]
+            if not property_url or not isinstance(page, str) or base.safe_page(page, property_url) is None:
+                raise ValueError("page outside exact property")
+            if any(part in (".", "..") for part in urlsplit(page).path.split("/")):
+                raise ValueError("ambiguous page path")
+            item["page"] = page
+            item["path"] = base.safe_page(page, property_url)
+        parsed.append(item)
     parsed.sort(key=(lambda r: r["key"]) if dimension == "date"
                 else (lambda r: (-r["impressions"], -r["clicks"], r["key"])))
     return {
@@ -66,6 +80,45 @@ def analytics_rows(payload, dimension, *, property_url=None):
         "rows": parsed,
         "note": "Reported grouped rows are not exhaustive; anonymized queries and low-volume rows can be missing.",
     }
+
+
+class PublicPage(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.canonicals = []
+        self.robots = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "link" and attrs.get("rel", "").lower() == "canonical":
+            self.canonicals.append(cleaned(attrs.get("href"), 350))
+        if tag == "meta" and attrs.get("name", "").lower() == "robots":
+            self.robots.append(cleaned(attrs.get("content")))
+
+
+def public_state(url):
+    """Anonymous public HTTP check, separate from the Google authorized session.
+
+    This is neither Google's live test nor evidence of Google index coverage.
+    Do not spend URL Inspection quota on dead, redirected or non-HTML targets.
+    """
+    try:
+        with urlopen(url, timeout=20) as response:
+            status, final = response.status, response.url
+            content_type = response.headers.get("Content-Type", "")
+            raw = response.read(2_000_001)
+            if status != 200 or final != url or "text/html" not in content_type or len(raw) > 2_000_000:
+                return {"status": "INVALID_PUBLIC_TARGET", "http_status": status,
+                        "final_url": cleaned(final, 350)}
+            parser = PublicPage()
+            parser.feed(raw.decode("utf-8"))
+            return {"status": "PUBLIC_HTML", "http_status": status,
+                    "canonical": parser.canonicals, "robots": parser.robots,
+                    "x_robots_tag": cleaned(response.headers.get("X-Robots-Tag"))}
+    except Exception as error:
+        status = getattr(error, "code", None)
+        return {"status": "INVALID_PUBLIC_TARGET" if status in (404, 410) else "PUBLIC_CHECK_UNAVAILABLE",
+                "http_status": status if isinstance(status, int) else None}
 
 
 def inspect_url(session, site, path):
@@ -112,17 +165,26 @@ def site_diagnostics(session, name, site, windows, permissions):
         ("queries_28d", windows["last_28"], "query"),
         ("queries_7d", windows["last_7"], "query"),
         ("daily_28d", windows["last_28"], "date"),
+        ("query_pages_28d", windows["last_28"], "query_page"),
     )
     for label, period, dimension in requests:
         try:
-            response = base.query(session, site, period, [dimension])
-            result["analytics"][label] = analytics_rows(response, dimension)
-        except Exception:
-            result["analytics"][label] = {"status": "UNAVAILABLE", "rows": [], "reason": "QUERY_FAILED_OR_INVALID_RESPONSE"}
+            dimensions = ["query", "page"] if dimension == "query_page" else [dimension]
+            response = base.query(session, site, period, dimensions)
+            result["analytics"][label] = analytics_rows(response, dimension, property_url=site)
+        except Exception as error:
+            code = str(error)
+            reason = code if code.startswith("SEARCH_ANALYTICS_HTTP_") and code.rsplit("_", 1)[-1].isdigit() else "QUERY_FAILED_OR_INVALID_RESPONSE"
+            result["analytics"][label] = {"status": "UNAVAILABLE", "rows": [], "reason": reason}
             errors.append(label)
     for path in TARGET_PATHS[name]:
         try:
-            inspected = inspect_url(session, site, path)
+            public = public_state(site + path.lstrip("/"))
+            if public["status"] == "PUBLIC_HTML":
+                inspected = inspect_url(session, site, path)
+            else:
+                inspected = {"path": path, "status": "UNAVAILABLE", "reason": public["status"]}
+            inspected["public"] = public
         except Exception:
             inspected = {"path": path, "status": "UNAVAILABLE", "reason": "INSPECTION_FAILED"}
         result["inspection"].append(inspected)
@@ -184,6 +246,16 @@ def markdown(report):
                 key = html.escape(row["key"], quote=False).replace("|", "\\|")
                 lines.append("| " + key + " | " + str(row["impressions"]) + " | " +
                              str(row["clicks"]) + " | " + str(row["position"] or "不明") + " |")
+        pairs = site["analytics"].get("query_pages_28d", {})
+        lines.extend(["", "### 検索語 × 表示ページ（28日・最大上位30行）", "",
+                      "状態：" + pairs.get("status", "UNAVAILABLE"),
+                      "匿名化・省略のある内訳です。サイト合計や検索語単独の数値に加算しません。"])
+        lines.extend(["", "| 検索語 | 表示ページ | 表示 | クリック | CTR | 順位 |",
+                      "|---|---|---:|---:|---:|---:|"])
+        for row in pairs.get("rows", [])[:30]:
+            vals = [row["key"], row["path"], str(row["impressions"]), str(row["clicks"]),
+                    str(round(row["ctr"] * 100, 2)) + "%", str(row["position"] or "不明")]
+            lines.append("| " + " | ".join(html.escape(v, quote=False).replace("|", "\\|") for v in vals) + " |")
         daily = site["analytics"].get("daily_28d", {})
         lines.extend(["", "### 日別検索表示（直近28日）", "", "状態：" + daily.get("status", "UNAVAILABLE")])
         if daily.get("status") not in ("UNAVAILABLE", "NO_ROWS"):
@@ -197,6 +269,17 @@ def markdown(report):
             vals = [item["path"], item["status"], item.get("verdict") or "不明",
                     item.get("coverage_state") or "不明", item.get("last_crawl_time") or "不明"]
             lines.append("| " + " | ".join(html.escape(v, quote=False).replace("|", "\\|") for v in vals) + " |")
+        for item in site["inspection"]:
+            lines.extend(["", "対象：" + html.escape(item["path"], quote=False)])
+            detail = {"公開HTTP": item.get("public", {}).get("status", "UNAVAILABLE"),
+                      "API失敗理由": item.get("reason"),
+                      "Google canonical": item.get("google_canonical"),
+                      "指定canonical": item.get("user_canonical"),
+                      "indexingState": item.get("indexing_state"),
+                      "robotsTxtState": item.get("robots_txt_state"),
+                      "pageFetchState": item.get("page_fetch_state")}
+            for label, value in detail.items():
+                lines.append("- " + label + "：" + html.escape(cleaned(value, 350) or "不明", quote=False).replace("|", "\\|"))
         lines.append("")
     lines.extend(["", "※検索キーワードとページの内訳は匿名化等で欠落します。集計値と足し合わせないでください。",
                   "※インデックス検査はGoogleが保存する状態であり、ライブページ検査ではありません。",

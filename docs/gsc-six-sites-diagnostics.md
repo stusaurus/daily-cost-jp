@@ -25,3 +25,23 @@
 4. 10/12に公開したSEO改善の評価は、新しいデータ期間が十分に含まれてから判断する。
 
 GitHub PagesとSEOの本番コードには触れないため、10/19まで観察する方針と矛盾しない。
+
+## 2026-10-19の追加監査
+
+- `query_pages_28d` は `dimensions: [query, page]` の1回/サイトだけ追加。検索語×表示URL、CTR、平均順位をJSON・Summaryに保存する。サイトの厳密なプレフィックスから外れる行は診断失敗とし、他サイトへ転用しない。
+- Googleの返却行はクリック数順で、最大1000行を取得したあと表示回数順に並べる。「全検索語の表示回数上位」とは限らない。1000行到達は `TOP_ROWS_LIMIT_POSSIBLE`。ページングなし。匿名化・少数データの省略は1000行未満でも起こりうる。検索語単独、検索語×ページ、サイト合計を足し合わせない。
+- query×pageは負荷の大きい組合せなので28日窓だけ、週1回に制限。Google APIはプロパティ一覧1回、Search Analytics 24回、URL Inspection最大17回。既存集計への追加はなく、診断の従来比は6回増。別途17回の匿名HTTP GETで公開HTMLを確認する。
+- URL Inspectionはサイトあたり2,000回/日・600回/分の公式上限に対し2〜4回/サイト。APIの負荷・割当エラーはUNAVAILABLE/PARTIALと非ゼロ終了で残す。無限再試行しない。
+- 公開GETにはGoogleのAuthorizedSessionを使わない。200・HTML・リダイレクトなし・2MB以下のページのみGoogle検査へ進む。404/410、リダイレクト、非HTML、通信失敗は未取得とし、未登録とは判定しない。対象の置換を自動で推測せず、明示的な対象修正を促す。
+- SummaryにもGoogle/指定canonical、最終クロール、coverage、indexing/robots/fetch状態とAPI失敗理由を残す。HTTP確認はGoogleによるライブURLテストではない。
+- 既存集計・新診断とも失敗時にerror annotationとSummaryを残す。artifactアップロード自体の失敗も失敗として扱う。
+- 既存日次 `autonomous-health-audit.yml` に既存週次集計の実行履歴監査を追加。schedule/mainのみを判定し、手動成功では代用しない。月曜予定時刻から24時間は遅延猶予、以後欠落・失敗・監査取得失敗で日次ジョブが失敗する。cron時刻自体は変更しない。
+- 新診断の初回scheduleの欠落監視は未実装。承認・マージ前の日付を欠落扱いしないため、初回本番実行を確認した後に既存監査へ対象追加する。新診断自体の失敗記録は実装済み。
+- 日次監査もGitHub上なのでGitHub全体停止中の外部通知は保証しない。メール/アプリ通知の到達は個人のGitHub設定に依存し未検証。
+
+公式仕様：
+- https://developers.google.com/webmaster-tools/v1/searchanalytics/query
+- https://developers.google.com/webmaster-tools/limits
+- https://developers.google.com/webmaster-tools/v1/urlInspection.index/inspect
+- https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
+- https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs

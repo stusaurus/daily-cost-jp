@@ -78,3 +78,8 @@ jobs:
             audit-results/gsc-six-sites.md
           if-no-files-found: warn
           retention-days: 30
+      - name: Record failed read-only collection explicitly
+        if: failure()
+        run: |
+          echo '::error::GSC collection failed. Review authentication, API and artifact steps; missing results are not zero traffic.'
+          echo '**FAILED: GSC collection or evidence storage did not complete.**' >> "$GITHUB_STEP_SUMMARY"
