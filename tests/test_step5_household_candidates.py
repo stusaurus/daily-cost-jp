@@ -169,5 +169,32 @@ class HouseholdTests(unittest.TestCase):
         self.assertEqual(result['status'],'UNKNOWN');self.assertFalse(result['small_payment_lower'])
         self.assertEqual(result['unique_api_queries'],0)
 
+    def test_tissue_plan_comparison_preserves_small_bulk_and_uses_actual_pack_quantity(self):
+        bulk=offer(qty=60,suffix='bulk',title='ボックスティッシュ 400枚 200組 5箱×12パック')
+        small=offer(qty=5,suffix='small')
+        daily=offer(qty=15,unit_price=120,suffix='daily',title='ボックスティッシュ 300枚 150組 5箱×3個')
+        premium=offer(qty=20,unit_price=350,suffix='premium')
+        snapshot={'categories':{'tissue':{'items':[bulk]}}};before=copy.deepcopy(snapshot)
+        calls=[]
+        def fetch(cat,page):
+            q=cat['keyword'];calls.append(q)
+            if q==h.QUERIES['tissue']['small'][0]:return [small]
+            if q=='ティッシュ 5箱 3個':return [daily,bulk]
+            if q=='ボックスティッシュ 15箱':return []
+            return [premium]
+        revised,r=acquire_preview(snapshot,[{'id':'tissue'}],fetch,lambda row,c:row,lambda n:None,
+            comparison_category='tissue',baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')})
+        self.assertEqual(snapshot,before);self.assertEqual(len(calls),4)
+        self.assertEqual(r['payment_lower_purposes'],['everyday'])
+        self.assertEqual(r['unchanged_purposes'],['small','bulk'])
+        self.assertEqual(r['candidate']['everyday']['tissue_specification'],
+            {'boxes':15,'pairs_per_box':150,'total_pairs':2250,'sheets_per_box':300,'sheets_per_pair':2})
+        self.assertIsNone(r['candidate']['small']['tissue_specification']['sheets_per_pair'])
+        self.assertEqual(revised['categories']['tissue']['household_acquisition']['requests'][1]['excluded_reasons'],{'requested_purpose_mismatch':1})
+
+    def test_non_laundry_comparison_requires_explicit_baseline(self):
+        with self.assertRaises(ValueError):
+            acquire_preview({},[],lambda *args:[],lambda r,c:r,lambda n:None,comparison_category='tissue')
+
 
 if __name__=='__main__':unittest.main()
