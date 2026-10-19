@@ -133,7 +133,7 @@ def operator_query(query):
 
 
 def findings_for(report, kind):
-    from autonomous_operations_triage import new_finding, good_path
+    from autonomous_operations_triage import new_finding, good_path, short
     findings, summary = [], []
     period = report["date_windows"]["last_28"]
     def add(site, code, path, message, evidence):
@@ -204,6 +204,13 @@ def findings_for(report, kind):
             observed = [i for i in inspections if i.get("status") == "OBSERVED_SNAPSHOT"]
             state.update(index_observed=len(observed), index_pass=sum(i.get("verdict") == "PASS" for i in observed),
                          inspection_unavailable=len(inspections) - len(observed))
+            # Preserve useful per-URL evidence without republishing query text.
+            # Old/absent crawl timestamps never prove a recent edit failed.
+            state['index_snapshots'] = [{k: short(i.get(k), 350) if isinstance(i.get(k), str) else None
+                for k in ('path', 'status', 'verdict', 'coverage_state', 'last_crawl_time',
+                          'google_canonical', 'user_canonical', 'indexing_state',
+                          'robots_txt_state', 'page_fetch_state')}
+                | {'public_status': i.get('public', {}).get('status')} for i in inspections[:17]]
             if state['inspection_unavailable']:
                 add(site, 'GSC_INSPECTION_DATA_UNKNOWN', '/', '保存済み登録状態のAPI取得に欠落',
                     '未取得=' + str(state['inspection_unavailable']) + '。未登録とは区別し再取得を確認')

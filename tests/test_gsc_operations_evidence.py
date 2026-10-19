@@ -106,6 +106,8 @@ class EvidenceTests(unittest.TestCase):
         f,summary=e.findings_for(r,'diagnostic')
         self.assertEqual(len(f),2); self.assertEqual(summary[3]['index_observed'],1)
         self.assertEqual(summary[3]['inspection_unavailable'],1)
+        self.assertEqual(summary[3]['index_snapshots'][0]['verdict'],'NEUTRAL')
+        self.assertIsNone(summary[3]['index_snapshots'][0]['last_crawl_time'])
         s['inspection'][0].update(verdict='PASS',google_canonical=s['property'],page_fetch_state='SERVER_ERROR')
         codes={x['code'] for x in e.findings_for(r,'diagnostic')[0].values()}
         self.assertEqual(codes, {'GSC_CANONICAL_REVIEW','GSC_CRAWL_REVIEW','GSC_INSPECTION_DATA_UNKNOWN'})
