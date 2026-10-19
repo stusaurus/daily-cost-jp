@@ -1,7 +1,12 @@
 import copy
+import json
 import sys
+import tempfile
 import unittest
+from functools import partial
 from pathlib import Path
+from unittest.mock import patch
+from bs4 import BeautifulSoup
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import step4_recommendations as r
 from test_step4_purchase_audit import offer, snapshot, NOW
@@ -54,5 +59,51 @@ class RecommendationsTests(unittest.TestCase):
     def test_safe_empty_guides_search(self):
         markup=r.block('tissue',r.select_category('tissue',{'items':[]}),'ティッシュ')
         self.assertEqual(markup.count('確認できる候補なし'),3);self.assertNotIn('class="buy-button"',markup)
+
+    def test_priority_pages_have_one_gated_quantity_selector_and_exact_links(self):
+        from redesign_laboratory import buying_modes_markup
+        categories={
+            'tissue':{'items':[offer(qty=n,suffix=f't{n}') for n in (5,15,60)]},
+            'laundry':{'items':[offer('laundry',n,'100ml',suffix=f'l{n}') for n in (5,20,100)]},
+            'toilet-paper':{'items':[offer('toilet-paper',n,'roll',suffix=f'p{n}',
+                title=f'トイレットペーパー ダブル 30m {n}ロール') for n in (12,24,48)]}}
+        source=snapshot(categories);before=copy.deepcopy(source)
+        with tempfile.TemporaryDirectory() as tmp:
+            site=Path(tmp);(site/'data.json').write_text(json.dumps(source))
+            original={}
+            for cid,c in categories.items():
+                path=site/'categories'/cid/'index.html';path.parent.mkdir(parents=True)
+                original[cid]='<html><head><title>比較</title></head><body><main>'+buying_modes_markup(cid,c)+'<section id="purchase-tools"></section><a id="rank" href="'+c['items'][0]['url']+'">単価ランキング</a></main></body></html>'
+                path.write_text(original[cid])
+            with patch.object(r,'select',wraps=partial(r.select,now=NOW)):
+                r.apply(site,enabled=False)
+                for cid in categories:
+                    self.assertEqual((site/'categories'/cid/'index.html').read_text(),original[cid])
+                report=r.apply(site,enabled=True)
+            for cid in categories:
+                markup=BeautifulSoup((site/'categories'/cid/'index.html').read_text(),'html.parser')
+                self.assertFalse(markup.select('.lab-buy-modes'))
+                self.assertEqual(len(markup.select('.step4-recommendations')),1)
+                self.assertEqual(len(markup.select('.step4-purpose')),3)
+                self.assertEqual(markup.select_one('#rank')['href'],categories[cid]['items'][0]['url'])
+                links=markup.select('[data-purchase-purpose]')
+                self.assertEqual(len({a['href'] for a in links}),3)
+                for a in links:
+                    row=report['categories'][cid]['slots'][a['data-purchase-purpose']]
+                    self.assertEqual(a['href'],row['offer']['url'])
+                    self.assertEqual(float(a['data-shipping-price']),row['offer']['price'])
+                    self.assertIn('sponsored',a['rel'])
+            self.assertEqual(source,before)
+
+    def test_untrusted_catalog_does_not_restore_legacy_recommendations(self):
+        from redesign_laboratory import buying_modes_markup
+        with tempfile.TemporaryDirectory() as tmp:
+            site=Path(tmp);(site/'data.json').write_text(json.dumps(snapshot({'tissue':{'items':[offer()]}})))
+            page=site/'index.html';markup='<html><head></head><body><main>'+buying_modes_markup('tissue',{'items':[offer()]})+'</main></body></html>'
+            page.write_text(markup)
+            with patch.object(r,'select',return_value={'status':'UNTRUSTED','categories':{},'catalog_updated_at':None}):
+                r.apply(site,enabled=True)
+            self.assertEqual(page.read_text(),markup)
+            self.assertNotIn('lab-buy-modes',markup)
 
 if __name__=='__main__':unittest.main()

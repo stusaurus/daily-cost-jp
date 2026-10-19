@@ -93,8 +93,8 @@ def assortment(snapshot):
             if purpose in counts:counts[purpose]+=1
         slots={p:({'quantity':r['quantity'],'total_yen':r['offer']['price'],'comparison_unit':r['unit'][0],
                    'offer_ref':hashed_id(r['offer'])[0]} if r else None) for p,r in s['slots'].items()}
-        # Audit the older buying-mode cards separately: strict STEP5 choices may
-        # be healthy while the old price-near-minimum selector repeats one pack.
+        # Use the renderer's selection policy: retired legacy cards must not
+        # create findings for UI that is no longer displayed.
         from redesign_laboratory import recommendation_picks
         _, legacy = recommendation_picks(cid, c)
         legacy_refs = [hashed_id(row['item'])[0] for _, _, row, _ in legacy]

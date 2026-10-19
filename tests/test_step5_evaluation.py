@@ -49,7 +49,8 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(s,before);self.assertEqual(r['empty_slots'],6)
         self.assertEqual(r['categories']['tissue']['slots']['small']['total_yen'],500)
         self.assertIsNone(r['categories']['tissue']['distinct_sku_count'])
-        self.assertTrue(r['categories']['tissue']['legacy_role_collision'])
+        self.assertFalse(r['categories']['tissue']['legacy_role_collision'])
+        self.assertEqual(len({slot['offer_ref'] for slot in r['categories']['tissue']['slots'].values()}),3)
         self.assertIsNotNone(r['categories']['tissue']['slots']['small']['offer_ref'])
 
     def test_bad_supplement_does_not_invent_candidates(self):
