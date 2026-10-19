@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from step4_purchase_audit import load_live, verify_snapshot
-from step4_recommendations import select, select_category, sale_band, destination_matches, CATEGORIES
+from step4_recommendations import select, select_category, sale_band, destination_matches, CATEGORIES, payment_tradeoffs
 from step4_recommendations import PURPOSES as PURPOSE_LABELS
 from product_quality import filter_items, parsed_quantity
 from comparison_units import comparison_unit
@@ -70,29 +70,6 @@ def fetch_details():
         rows.append((day,v[1],v[2],v[3] if registered['operator_test'] else '',int(row.metric_values[0].value)))
     result.update(status='AGGREGATES_ONLY',current=aggregate_purpose([r for r in rows if r[0]>=start.isoformat()],[start.isoformat(),end.isoformat()],registered),
                   prior=aggregate_purpose([r for r in rows if r[0]<start.isoformat()],[prior_start.isoformat(),(start-dt.timedelta(days=1)).isoformat()],registered))
-    return result
-
-
-def payment_tradeoffs(slots):
-    """Observe checkout totals only; different packs are not identical products.
-
-    Use ONLY the already verified selection. No new offers, price guesses,
-    brand substitution, savings estimate or recommendation changes.
-    """
-    result=[]
-    for i, smaller in enumerate(PURPOSES):
-        a=slots[smaller]
-        if not a:continue
-        for larger in PURPOSES[i+1:]:
-            b=slots[larger]
-            if (not b or a['offer']['metric']!=b['offer']['metric'] or a['unit'][0]!=b['unit'][0]
-                or a['quantity']>=b['quantity'] or a['offer']['price']<=b['offer']['price']):continue
-            result.append({'smaller_purpose':smaller,'larger_purpose':larger,
-                'smaller_quantity':a['quantity'],'larger_quantity':b['quantity'],
-                'metric':a['offer']['metric'],'comparison_unit':a['unit'][0],
-                'smaller_total_yen':a['offer']['price'],'larger_total_yen':b['offer']['price'],
-                'smaller_offer_ref':hashed_id(a['offer'])[0],'larger_offer_ref':hashed_id(b['offer'])[0],
-                'same_product_verified':False,'automatic_substitution':False})
     return result
 
 

@@ -88,5 +88,84 @@ class HouseholdTests(unittest.TestCase):
             self.assertEqual(pool,[])
             self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
 
+    def followup(self, extra, audit=False):
+        ranked=[offer(qty=60,unit_price=70,suffix='bulk')]
+        small=offer(qty=5,unit_price=400,suffix='small')
+        everyday=offer(qty=15,unit_price=100,suffix='daily')
+        calls=[]
+        def fetch(cat,page):
+            calls.append((cat['keyword'],page))
+            if cat['keyword']==h.QUERIES['tissue']['small'][0]:return [small]
+            if cat['keyword']==h.QUERIES['tissue']['everyday'][0]:return [everyday]
+            if isinstance(extra,Exception):raise extra
+            return extra
+        before=copy.deepcopy(ranked)
+        acquire=h.audit_acquisition if audit else h.acquire_household
+        pool,report=acquire({'id':'tissue'},ranked,fetch,lambda row,cat:row,lambda n:None)
+        self.assertEqual(ranked,before)
+        self.assertLessEqual(len(calls),4);self.assertEqual(len(calls),len(set(calls)))
+        return pool,report,calls,ranked
+
+    def test_payment_inversion_uses_only_unused_fixed_query_and_preserves_other_slots(self):
+        pool,report,calls,ranked=self.followup([offer(qty=10,unit_price=100,suffix='better')])
+        self.assertEqual(len(calls),3)
+        follow=report['requests'][-1]
+        self.assertEqual((follow['purpose'],follow['phase'],follow['query_index']),('small','PAYMENT_FOLLOWUP',1))
+        self.assertEqual(follow['decision'],'LOWER_CHECKOUT_TOTAL_SELECTED')
+        slots=select_category('tissue',{'items':ranked,'purpose_candidates':pool})['slots']
+        self.assertEqual(slots['small']['offer']['price'],1000)
+        self.assertEqual(slots['everyday']['offer']['item_code'],'shop:daily')
+        self.assertEqual(slots['bulk']['offer']['item_code'],'shop:bulk')
+
+    def test_no_payment_inversion_keeps_early_exit_and_request_budget(self):
+        _,report,calls=self.acquire([offer(qty=5,suffix='small'),offer(qty=15,suffix='daily')])
+        self.assertEqual(len(calls),2)
+        self.assertTrue(all(r['phase']=='INITIAL' for r in report['requests']))
+
+    def test_followup_rejects_no_benefit_shipping_unknown_and_same_offer(self):
+        for rows in ([offer(qty=10,unit_price=300,suffix='higher')],
+                     [{**offer(qty=10,unit_price=100,suffix='bad'),'postage':'送料不明'}],
+                     [offer(qty=5,unit_price=400,suffix='small')],
+                     [offer(qty=60,unit_price=20,suffix='wrong-band')]):
+            with self.subTest(rows=rows):
+                pool,report,_,ranked=self.followup(rows)
+                selected=select_category('tissue',{'items':ranked,'purpose_candidates':pool})['slots']['small']
+                self.assertEqual(selected['offer']['item_code'],'shop:small')
+                self.assertEqual(report['requests'][-1]['decision'],'KEEP_EXISTING_SELECTION')
+
+    def test_followup_error_preserves_verified_pool_and_unknown_is_not_zero(self):
+        pool,report,_,_=self.followup(RuntimeError('private 403 token'))
+        self.assertTrue(pool);self.assertEqual(report['status'],'VERIFIED_CANDIDATES')
+        row=report['requests'][-1]
+        self.assertEqual(row['status'],'API_FETCH_FAILURE');self.assertIsNone(row['received'])
+        self.assertNotIn('private',str(report))
+
+    def test_followup_cannot_crowd_an_existing_purpose_out_of_thirty_offer_pool(self):
+        extra=[offer(qty=10,unit_price=100,suffix=f'new{i}') for i in range(30)]
+        pool,report,_,ranked=self.followup(extra)
+        self.assertEqual(report['requests'][-1]['decision'],'KEEP_EXISTING_SELECTION')
+        slots=select_category('tissue',{'items':ranked,'purpose_candidates':pool})['slots']
+        self.assertEqual(slots['small']['offer']['item_code'],'shop:small')
+        self.assertEqual(slots['everyday']['offer']['item_code'],'shop:daily')
+        self.assertLessEqual(len(pool),h.MAX_CANDIDATES)
+
+    def test_empty_or_failed_queries_never_exceed_original_four_request_cap(self):
+        for result in ([],RuntimeError('429 private response')):
+            _,report,calls=self.acquire(result)
+            self.assertEqual(len(calls),h.MAX_REQUESTS)
+            self.assertEqual(len(report['requests']),4)
+            self.assertTrue(all(r['phase']=='INITIAL' for r in report['requests']))
+
+    def test_live_audit_replays_baseline_without_second_api_acquisition(self):
+        _,report,calls,_=self.followup([offer(qty=10,unit_price=100,suffix='better')],audit=True)
+        proof=report['comparison']
+        self.assertEqual((proof['baseline_request_count'],proof['candidate_request_count'],len(calls)),(2,3,3))
+        self.assertEqual(proof['baseline_extra_api_requests'],0)
+        self.assertEqual(proof['lower_total_purposes'],['small'])
+        self.assertEqual(proof['baseline']['slots']['small']['total_yen'],2000)
+        self.assertEqual(proof['candidate']['slots']['small']['total_yen'],1000)
+        self.assertFalse(proof['same_product_savings_claim'])
+        self.assertNotIn('shop:',str(proof));self.assertNotIn('https:',str(proof))
+
 
 if __name__=='__main__':unittest.main()
