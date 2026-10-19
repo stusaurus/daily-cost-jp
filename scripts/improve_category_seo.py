@@ -92,6 +92,12 @@ def replace_once(text: str, pattern: str, replacement: str) -> str:
 
 
 def metric_label(category_id: str, payload: dict) -> str:
+    # The paper rankings use normalized comparison units, while catalog.metric
+    # retains box/roll for parsing quantities and reference per-package prices.
+    if category_id == "tissue":
+        return "100組"
+    if category_id == "toilet-paper":
+        return "シングル・ダブル別の10m"
     data = payload.get("categories", {}).get(category_id, {})
     return METRIC_LABELS.get(data.get("metric"), "同じ単位")
 
