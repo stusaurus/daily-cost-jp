@@ -21,7 +21,7 @@ def main():
         text=re.sub(r'<style id="step4-purpose-style">.*?</style>','',text,flags=re.S)
         path.write_text(text)
     original=json.loads((before/'data.json').read_text())
-    subprocess.run([sys.executable,'scripts/step5_household_candidates.py',str(after),'--audit-followup'],check=True)
+    subprocess.run([sys.executable,'scripts/step5_household_candidates.py',str(after)],check=True)
     revised=json.loads((after/'data.json').read_text())
     protected=json.loads(json.dumps(revised))
     for cid in ('tissue','laundry','toilet-paper'):

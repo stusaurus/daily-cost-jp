@@ -11,7 +11,7 @@ import json
 import re
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs, unquote
-from step4_purchase_audit import verify_snapshot, BANDS, hashed_id
+from step4_purchase_audit import verify_snapshot, BANDS
 from product_quality import filter_items, parsed_quantity
 from sale_quantity import normalize
 from comparison_units import comparison_unit, LABELS
@@ -21,26 +21,6 @@ VERSION = 'purchase-purpose-v1'
 ROOT = '/daily-cost-jp/'
 CATEGORIES = ('laundry', 'tissue', 'toilet-paper')
 PURPOSES = {'small': '少量で試す・買いやすい', 'everyday': '普段使い', 'bulk': '単価重視のまとめ買い'}
-
-
-def payment_tradeoffs(slots):
-    """Observe totals across verified packs, without same-product/savings claims."""
-    result=[]
-    purposes=tuple(PURPOSES)
-    for i, smaller in enumerate(purposes):
-        a=slots[smaller]
-        if not a:continue
-        for larger in purposes[i+1:]:
-            b=slots[larger]
-            if (not b or a['offer']['metric']!=b['offer']['metric'] or a['unit'][0]!=b['unit'][0]
-                or a['quantity']>=b['quantity'] or a['offer']['price']<=b['offer']['price']):continue
-            result.append({'smaller_purpose':smaller,'larger_purpose':larger,
-                'smaller_quantity':a['quantity'],'larger_quantity':b['quantity'],
-                'metric':a['offer']['metric'],'comparison_unit':a['unit'][0],
-                'smaller_total_yen':a['offer']['price'],'larger_total_yen':b['offer']['price'],
-                'smaller_offer_ref':hashed_id(a['offer'])[0],'larger_offer_ref':hashed_id(b['offer'])[0],
-                'same_product_verified':False,'automatic_substitution':False})
-    return result
 
 
 def destination_matches(item):
