@@ -5,11 +5,14 @@ on:
     paths:
       - 'scripts/autonomous_health_audit.py'
       - 'tests/test_autonomous_health_audit.py'
+      - 'scripts/gsc_schedule_health.py'
+      - 'tests/test_gsc_schedule_health.py'
       - '.github/workflows/autonomous-health-audit.yml'
   schedule:
     - cron: '17 0 * * *'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: autonomous-health-audit
   cancel-in-progress: false
@@ -23,11 +26,21 @@ jobs:
         run: python3 -m unittest discover -s tests -p 'test_autonomous_health_audit.py'
       - name: Read-only production audit
         run: python3 scripts/autonomous_health_audit.py
+      - name: Test GSC schedule receipt safeguards
+        if: always()
+        run: python3 -m unittest discover -s tests -p 'test_gsc_schedule_health.py'
+      - name: Detect missing or failed weekly GSC schedules independently of manual runs
+        if: github.event_name != 'pull_request' && always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 scripts/gsc_schedule_health.py
       - name: Upload audit report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: autonomous-health-report
-          path: audit-results/health.json
+          path: |
+            audit-results/health.json
+            audit-results/gsc-schedule-health.json
           if-no-files-found: warn
           retention-days: 14
