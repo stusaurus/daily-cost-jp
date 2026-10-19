@@ -98,6 +98,41 @@ def new_finding(level, code, path, message, next_action, *, evidence=""):
     }
 
 
+def period_28(value):
+    """Keep exact source windows; malformed/missing dates remain unknown."""
+    try:
+        if not isinstance(value, list) or len(value) != 2:
+            return None
+        start, end = (dt.date.fromisoformat(day) for day in value)
+        return [start.isoformat(), end.isoformat()] if (end-start).days == 27 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def investigation_rows(findings):
+    """Display related CTR hypotheses once, retaining every machine finding.
+
+    Source periods and observations are never merged into a metric or proof of
+    persistence. Other codes, sites and paths remain independent investigations.
+    """
+    rows, grouped = [], {}
+    for f in findings:
+        if f['code'] not in ('GSC_LOW_CTR', 'SEO_SNIPPET_RESEARCH'):
+            rows.append({**f, 'evidence_findings': []})
+            continue
+        key = (f.get('site', SITE), f['path'])
+        if key not in grouped:
+            grouped[key] = {**f, 'evidence_findings': [],
+                'message': '検索結果のクリック状況を調査',
+                'next_action': '下記の期間別根拠を照合。数値を合算せず、タイトルは自動変更しない'}
+            rows.append(grouped[key])
+        row = grouped[key]
+        row['evidence_findings'].append(f)
+        if LEVELS[f['severity']] < LEVELS[row['severity']]:
+            row['severity'] = f['severity']
+    return rows
+
+
 def evaluate(joined, browser, health, quality, ga4=None, six_site=None, product=None, now=None):
     findings = []
     def add(*args, **kwargs):
@@ -179,12 +214,14 @@ def evaluate(joined, browser, health, quality, ga4=None, six_site=None, product=
                     "運営者テストを一般ユーザーの楽天クリックと区別できない",
                     "GA4のoperator_test計測とイベント設定を調査")
             elif code == "CHECK_SEARCH_RESULT_APPEAL":
-                metrics = item.get("gsc_last_28") or {}
-                if metrics.get("impressions", 0) >= 50:
+                from gsc_operations_evidence import metrics as observed_metrics
+                metrics = observed_metrics(item.get("gsc_last_28"))
+                if metrics and metrics["impressions"] >= 50:
                     add("P2", "SEO_SNIPPET_RESEARCH", item["path"],
                         "検索表示数に対するクリックが少ない可能性",
                         "検索クエリ・端末・競合を確認。タイトルは自動変更しない",
-                        evidence="28日表示=" + str(metrics.get("impressions", "不明")))
+                        evidence=f"28日表示={metrics['impressions']} / クリック={metrics['clicks']} / 平均順位={metrics['position']}")
+                    findings[-1]['period'] = period_28(joined.get('gsc_period_last_28'))
             elif code == "INVESTIGATE_SEARCH_EXPOSURE_CHANGE":
                 add("P3", "SEARCH_EXPOSURE_CHANGE", item["path"],
                     "検索表示数の変化を要調査",
@@ -250,6 +287,12 @@ def evaluate(joined, browser, health, quality, ga4=None, six_site=None, product=
                         '旧おすすめ欄で異なる買い方に同一商品が重複',
                         'STEP5の数量別選定と旧欄を照合。表示件数のために商品基準を緩めない',
                         evidence='既存選定ロジックを同じ商品データで再現。売上への影響は未確認')
+                tradeoffs = category.get('payment_tradeoffs')
+                if isinstance(tradeoffs, list) and tradeoffs:
+                    add('P3', 'PURCHASE_PAYMENT_TRADEOFF', '/categories/' + cid + '/',
+                        '少ない数量の推薦枠で支払総額が高い組合せあり',
+                        'STEP5レポートの数量・総額・ブランド・仕様を照合。同一商品や割高とは断定せず自動置換しない',
+                        evidence='既存の数量別選定枠の観測。同一商品の価格比較・収益効果の証明ではない')
 
     # Deduplicate by structural finding identity, not fluctuating metrics or viewport.
     unique = {}
@@ -287,22 +330,34 @@ def evaluate(joined, browser, health, quality, ga4=None, six_site=None, product=
 
 def markdown(report):
     counts = report["summary"]
+    rows = investigation_rows(report['findings'])
     lines = [
         "## 自動運営｜改善の優先順位（読み取り専用）",
         "",
         "- 状態：**" + report["status"] + "**",
         f"- 要対応件数：P0={counts['P0']} / P1={counts['P1']} / P2={counts['P2']}",
+        f"- 表示する調査単位：{len(rows)}件（上記は検出件数。同じページの低CTR根拠はまとめて表示）",
         "- **実サイトや楽天リンクの変更は行っていません。**",
         "- 収益・成約件数は未接続のため判定できません。",
         "",
         "| 重要度 | 対象 | 調査項目 | 次の作業 |",
         "|---|---|---|---|",
     ]
-    for f in report["findings"][:12]:
+    for f in rows[:12]:
         lines.append("| " + f["severity"] + " | " + short(f.get('site_name', '日用品')) + ' ' + f["path"] +
                      " | " + f["message"] + " | " + f["next_action"] + " |")
     if not report["findings"]:
         lines.append("| ― | ― | 新たに確認できた問題なし | 次の定期検査まで監視 |")
+    for row in rows[:12]:
+        if not row['evidence_findings']:
+            continue
+        lines += ['', '### クリック状況の期間別根拠：' + short(row.get('site_name', '日用品')) + ' ' + row['path'],
+                  '', '同じ調査先にまとめた表示です。合算・独立標本・継続観測の証明には使いません。']
+        for f in row['evidence_findings']:
+            source = '6サイト公式集計' if f['code'] == 'GSC_LOW_CTR' else '既存GSC pilot'
+            period = period_28(f.get('period'))
+            dates = ' ～ '.join(period) if period else '未確認（0扱いしない）'
+            lines.append('- ' + source + ' / ' + f['severity'] + ' / 期間=' + dates + ' / ' + short(f.get('evidence')))
     evidence = report.get('six_site_evidence') or {}
     for kind, source in evidence.get('sources', {}).items():
         lines += ['', '### 6サイト公式API / ' + short(kind), '',

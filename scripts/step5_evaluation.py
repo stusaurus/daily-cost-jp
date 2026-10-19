@@ -7,6 +7,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 from step4_purchase_audit import load_live, verify_snapshot
 from step4_recommendations import select, select_category, sale_band, destination_matches, CATEGORIES
+from step4_recommendations import PURPOSES as PURPOSE_LABELS
 from product_quality import filter_items, parsed_quantity
 from comparison_units import comparison_unit
 from step4_purchase_audit import hashed_id
@@ -72,6 +73,29 @@ def fetch_details():
     return result
 
 
+def payment_tradeoffs(slots):
+    """Observe checkout totals only; different packs are not identical products.
+
+    Use ONLY the already verified selection. No new offers, price guesses,
+    brand substitution, savings estimate or recommendation changes.
+    """
+    result=[]
+    for i, smaller in enumerate(PURPOSES):
+        a=slots[smaller]
+        if not a:continue
+        for larger in PURPOSES[i+1:]:
+            b=slots[larger]
+            if (not b or a['offer']['metric']!=b['offer']['metric'] or a['unit'][0]!=b['unit'][0]
+                or a['quantity']>=b['quantity'] or a['offer']['price']<=b['offer']['price']):continue
+            result.append({'smaller_purpose':smaller,'larger_purpose':larger,
+                'smaller_quantity':a['quantity'],'larger_quantity':b['quantity'],
+                'metric':a['offer']['metric'],'comparison_unit':a['unit'][0],
+                'smaller_total_yen':a['offer']['price'],'larger_total_yen':b['offer']['price'],
+                'smaller_offer_ref':hashed_id(a['offer'])[0],'larger_offer_ref':hashed_id(b['offer'])[0],
+                'same_product_verified':False,'automatic_substitution':False})
+    return result
+
+
 def assortment(snapshot):
     selection=select(snapshot)
     result={'status':selection['status'],'catalog_updated_at':selection['catalog_updated_at'],'categories':{},'empty_slots':None,'ranking_changed':False}
@@ -103,6 +127,7 @@ def assortment(snapshot):
             'recommendation_status':s['status'],'recommendation_reasons':s['reasons'],
             'acquisition_status':c.get('household_acquisition',{}).get('status','NOT_CONNECTED'),
             'acquisition_reasons':c.get('household_acquisition',{}).get('reasons',{}),
+            'payment_tradeoffs':payment_tradeoffs(s['slots']),
             'legacy_role_collision':bool(legacy_refs and len(set(legacy_refs)) < len(legacy_refs))}
     result['empty_slots']=empty
     return result
@@ -147,11 +172,19 @@ def main():
     except Exception:snapshot=None
     result=evaluate(snapshot,read(root/'step4-events-28d.json'),read(root/'step4-events-prior-28d.json'),details,read(root/'gsc-search-pilot.json'))
     (root/'step5-evaluation.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
-    (root/'step5-evaluation.md').write_text('# STEP5：品揃えと収益検証\n\n'
+    text=('# STEP5：品揃えと収益検証\n\n'
        +f"- 品揃え：{result['assortment']['status']}、空枠：{result['assortment']['empty_slots']}\n"
        +'- 7日は取得/空枠/計測の運用確認。28日は期間・観測日数・イベント件数・テスト/不明を分離して評価。\n'
        +'- 非運営者区分は実利用者の証明ではない。GSCとGA4をユーザー結合しない。\n'
        +'- 楽天確定成果未接続。売上0円ではなく不明。改善成功/失敗は未判定。\n')
+    text+='\n## 支払総額の調査候補\n\n異なるブランド・仕様の選定枠の観測です。同一商品の価格比較・節約額ではありません。自動置換しません。\n'
+    for cid,category in result['assortment']['categories'].items():
+        for row in category['payment_tradeoffs']:
+            metric=row['metric'];factor=100 if metric in ('100g','100ml') else 1
+            unit={'100g':'g','100ml':'ml','box':'箱','roll':'ロール'}[metric]
+            text+=(f"- {cid}: {PURPOSE_LABELS[row['smaller_purpose']]} {row['smaller_quantity']*factor:g}{unit} / ¥{row['smaller_total_yen']:,.0f} → "
+                   f"{PURPOSE_LABELS[row['larger_purpose']]} {row['larger_quantity']*factor:g}{unit} / ¥{row['larger_total_yen']:,.0f}。ブランド・仕様・購入条件を確認。\n")
+    (root/'step5-evaluation.md').write_text(text)
     print('STEP5 evaluation',result['assortment']['status'],'sales NOT_CONNECTED')
 
 

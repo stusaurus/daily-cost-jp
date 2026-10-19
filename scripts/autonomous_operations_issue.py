@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 REPO = "stusaurus/daily-cost-jp"
 ISSUE_TITLE = "【自動運営】日用品サイトの改善判断（最新）"
 MARKER = "<!-- daily-cost-autonomous-operations-v1 -->"
+LAYOUT_MARKER = "<!-- operations-layout:period-evidence-v1 -->"
 TAG_RE = re.compile(r"<!-- findings-hash:([a-f0-9]{20}) -->")
 API = "https://api.github.com/repos/" + REPO
 # A 100-PR GitHub page can exceed 250 KB; cap the full response, not its JSON.
@@ -25,6 +26,8 @@ def should_update(existing, fingerprint, now=None):
     if not isinstance(existing, dict):
         return True
     body = existing.get("body", "")
+    if not isinstance(body, str) or LAYOUT_MARKER not in body:
+        return True
     old = TAG_RE.search(body) if isinstance(body, str) else None
     if not old or old.group(1) != fingerprint:
         return True
@@ -46,6 +49,7 @@ def render_issue(report, run_url):
         raise ValueError("Unexpected run URL")
     return ("\n".join([
         MARKER,
+        LAYOUT_MARKER,
         f"<!-- findings-hash:{key} -->",
         "# 日用品サイト：自動運営の改善キュー",
         "",
