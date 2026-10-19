@@ -9,6 +9,7 @@ from step4_purchase_audit import load_live, verify_snapshot
 from step4_recommendations import select, select_category, sale_band, destination_matches, CATEGORIES
 from product_quality import filter_items, parsed_quantity
 from comparison_units import comparison_unit
+from step4_purchase_audit import hashed_id
 from ga4_page_diagnostics import path_from_location, FOCUS_PAGES
 from step4_measurement import read
 from ga4_three_day_report import check_response
@@ -90,12 +91,19 @@ def assortment(snapshot):
             if key in seen:continue
             seen.add(key);purpose=sale_band(cid,row,qty['quantity'])
             if purpose in counts:counts[purpose]+=1
-        slots={p:({'quantity':r['quantity'],'total_yen':r['offer']['price'],'comparison_unit':r['unit'][0]} if r else None) for p,r in s['slots'].items()}
+        slots={p:({'quantity':r['quantity'],'total_yen':r['offer']['price'],'comparison_unit':r['unit'][0],
+                   'offer_ref':hashed_id(r['offer'])[0]} if r else None) for p,r in s['slots'].items()}
+        # Audit the older buying-mode cards separately: strict STEP5 choices may
+        # be healthy while the old price-near-minimum selector repeats one pack.
+        from redesign_laboratory import recommendation_picks
+        _, legacy = recommendation_picks(cid, c)
+        legacy_refs = [hashed_id(row['item'])[0] for _, _, row, _ in legacy]
         empty+=sum(r is None for r in slots.values())
         result['categories'][cid]={'eligible_offer_counts':counts,'distinct_sku_count':None,'slots':slots,
             'recommendation_status':s['status'],'recommendation_reasons':s['reasons'],
             'acquisition_status':c.get('household_acquisition',{}).get('status','NOT_CONNECTED'),
-            'acquisition_reasons':c.get('household_acquisition',{}).get('reasons',{})}
+            'acquisition_reasons':c.get('household_acquisition',{}).get('reasons',{}),
+            'legacy_role_collision':bool(legacy_refs and len(set(legacy_refs)) < len(legacy_refs))}
     result['empty_slots']=empty
     return result
 

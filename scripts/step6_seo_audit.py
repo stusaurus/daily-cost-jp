@@ -360,8 +360,8 @@ def main():
                     findings.append(new_finding('P2','SEO_COMPARISON_HELP_REVIEW',row['path'],'FAQ読了後の比較導線に改善仮説','固定のDraft候補を検証し人間がレビュー',evidence='28日表示='+str(row['metrics']['last_28']['impressions'])))
         operations['findings']=sorted({f['id']:f for f in findings}.values(),key=lambda f:(f['severity'],f['path'],f['code']))[:20]
         operations['summary']={p:sum(f['severity']==p for f in operations['findings']) for p in ('P0','P1','P2','P3')}
-        operations['fingerprint']=digest('\n'.join(f"{f['severity']}:{f['id']}" for f in operations['findings']))[:20]
-        operations['status']='URGENT_REVIEW' if operations['summary']['P0'] else 'REVIEW_REQUIRED' if operations['findings'] else 'NO_ACTIONABLE_FINDINGS'
+        operations['fingerprint']=digest('\n'.join(f"{f['severity']}:{f['id']}" for f in operations['findings'] if f['severity'] in ('P0','P1','P2')))[:20]
+        operations['status']='URGENT_REVIEW' if operations['summary']['P0'] else 'REVIEW_REQUIRED' if any(operations['summary'][p] for p in ('P1','P2')) else 'NO_ACTIONABLE_FINDINGS'
         (out/'autonomous-operations.json').write_text(json.dumps(operations,ensure_ascii=False,indent=2))
         (out/'autonomous-operations.md').write_text(ops_markdown(operations))
     print('STEP6:', report['status'], 'technical=', report['technical']['status'])

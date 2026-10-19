@@ -121,10 +121,17 @@ def main():
         print("Rolling issue sync disabled outside main")
         return
     report = json.loads(Path("audit-results/autonomous-operations.json").read_text(encoding="utf-8"))
-    result = sync_issue(report, os.environ.get("GITHUB_TOKEN", ""),
-                        os.environ.get("GITHUB_RUN_ID", ""),
-                        os.environ.get("GITHUB_REF", ""),
-                        os.environ.get("GITHUB_REPOSITORY", ""))
+    result = {"status": "FAILED", "url": None}
+    try:
+        result = sync_issue(report, os.environ.get("GITHUB_TOKEN", ""),
+                            os.environ.get("GITHUB_RUN_ID", ""),
+                            os.environ.get("GITHUB_REF", ""),
+                            os.environ.get("GITHUB_REPOSITORY", ""))
+    finally:
+        Path('audit-results/operations-issue-sync.json').write_text(json.dumps(result))
+        if os.environ.get('GITHUB_STEP_SUMMARY'):
+            with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as stream:
+                stream.write('\nRolling operations Issue sync: **' + result['status'] + '**\n')
     print("Autonomous operations rolling issue: " + result["status"])
     if result.get("url"):
         print("Issue URL: " + result["url"])

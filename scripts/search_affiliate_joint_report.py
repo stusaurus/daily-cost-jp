@@ -66,7 +66,7 @@ def parse_affiliate(row):
             "unknown_operator_clicks": clicks["production_unknown"]}
 
 
-def priority(gsc_28, gsc_7, gsc_prior7, ga4_28, known_operator):
+def priority(gsc_28, gsc_7, gsc_prior7, ga4_28, known_operator, periods_match=True):
     """The output tells where to investigate, never why a person did not purchase."""
     if gsc_28 is None:
         return (8, "GSC_PAGE_NOT_REPORTED",
@@ -77,12 +77,11 @@ def priority(gsc_28, gsc_7, gsc_prior7, ga4_28, known_operator):
     if gsc_28["impressions"] >= 50 and gsc_28["ctr"] < 0.02 and 4 <= gsc_28["position"] <= 30:
         return (2, "CHECK_SEARCH_RESULT_APPEAL",
                 "検索表示に対しクリックが少ない。検索意図・タイトルを調査する仮説")
-    if (gsc_7 and gsc_prior7 and gsc_prior7["impressions"] >= 30 and
-            gsc_7["impressions"] >= 10 and
-            10 * gsc_7["impressions"] <= 6 * gsc_prior7["impressions"]):
+    if (gsc_7 and gsc_prior7 and gsc_prior7["impressions"] >= 50 and
+            gsc_prior7["impressions"] - gsc_7["impressions"] >= 30):
         return (3, "INVESTIGATE_SEARCH_EXPOSURE_CHANGE",
                 "前7日間より検索表示が減った可能性。検索クエリと季節性を確認")
-    if (known_operator and gsc_28["clicks"] >= 5 and ga4_28 and
+    if (periods_match and known_operator and gsc_28["clicks"] >= 5 and ga4_28 and
             ga4_28["pageviews"] >= 30 and
             ga4_28["provisional_non_operator_clicks"] == 0):
         return (3, "INSPECT_LANDING_TO_AFFILIATE_JOURNEY",
@@ -152,7 +151,8 @@ def combine(ga4, gsc):
             rank, code, hypothesis = (9, "GSC_CONNECTION_REQUIRED",
                                       "Search Consoleの検索実績を取得できないため統合判断を保留")
         else:
-            rank, code, hypothesis = priority(recent, g7, prior7, a, operator_known)
+            same_period = gsc['windows']['last_28'] == ga4['period_last_28']
+            rank, code, hypothesis = priority(recent, g7, prior7, a, operator_known, same_period)
         entries.append({
             "path": page, "rank": rank, "code": code, "hypothesis": hypothesis,
             "gsc_last_28": recent, "gsc_last_7": g7, "ga4_last_28": a,
@@ -172,6 +172,7 @@ def combine(ga4, gsc):
         "seo_copy_change_authorized": False,
         "ga4_source_status": ga4.get("status", "UNKNOWN"),
         "ga4_operator_dimension_registered": operator_known,
+        "cross_source_periods_match": bool(gsc_ok and gsc['windows']['last_28'] == ga4['period_last_28']),
         "gsc_period_last_28": gsc.get("windows", {}).get("last_28") if gsc_ok else None,
         "ga4_period_last_28": ga4["period_last_28"],
         "not_same_population_or_period": True,

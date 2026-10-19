@@ -19,6 +19,18 @@ def event_report(period,views,clicks,unknown=0):
        'events':{p:{'page_view':buckets(views if p=='/' else 0),'affiliate_click':buckets(clicks if p=='/' else 0)} for p in ('/','/categories/laundry/','/categories/tissue/','/categories/toilet-paper/')}}
 
 class AutomationTests(unittest.TestCase):
+    def test_acquisition_failure_is_unknown_not_verified_shortage(self):
+        source=catalog()
+        source['categories']['laundry']['household_acquisition']={
+            'status':'ACQUISITION_UNAVAILABLE','reasons':{'api_fetch_failure':4}}
+        c=a.diagnose(source,now=NOW)
+        missing=[d for d in c['decisions'] if d['path']=='/categories/laundry/' and d['code'].startswith('PURCHASE_')]
+        self.assertTrue(all(d['reason']=='ACQUISITION_UNKNOWN' for d in missing))
+        report={'source':'daily-cost autonomous operations triage v1','findings':[]}
+        with patch.object(a,'feedback_valid',return_value=True): result=a.integrate(report,c)
+        matched=[f for f in result['findings'] if f['code']=='PURCHASE_ACQUISITION_UNKNOWN']
+        self.assertEqual(len(matched),1)
+
     def test_only_fixed_content_is_auto_and_all_code_human(self):
         c=a.diagnose(catalog(),True,now=NOW)
         self.assertEqual(c['content_action'],'ALLOW_FIXED_SELECTION')

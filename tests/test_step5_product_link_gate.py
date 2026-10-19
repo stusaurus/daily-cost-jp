@@ -19,6 +19,21 @@ from test_step4_purchase_audit import offer
 
 
 class ProductLinkIntegrationTests(unittest.TestCase):
+    def test_tissue_quantity_guide_uses_exact_existing_selected_purpose_gate(self):
+        from improve_purchase_pages import tissue_size_guide
+        self.render()
+        page = self.root / 'categories/tissue/index.html'
+        original = page.read_text()
+        guide = tissue_size_guide(self.payload['categories']['tissue'])
+        self.assertIn(self.extra['tissue']['url'], guide)
+        page.write_text(original.replace('</main>', guide + '</main>'))
+        self.assertEqual(self.errors(), [])
+        # Reproduce the initial CI failure: no context means no authorization,
+        # even for an otherwise verified product URL. The gate is unchanged.
+        bad_guide = guide.replace('data-purchase-purpose="small" ', '')
+        page.write_text(original.replace('</main>', bad_guide + '</main>'))
+        self.assertTrue(any('outside verified selection' in e for e in self.errors()))
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

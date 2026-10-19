@@ -71,6 +71,13 @@ def tissue_size_guide(data):
     from tissue_buying_quantity import safe_box_count
     from comparison_units import comparison_unit
     small = data.get("small_pack_offer")
+    if not small:
+        # STEP5 already obtains strictly verified household packs separately.
+        # Reuse its selection, rather than claiming no small pack exists merely
+        # because the older dedicated supplement returned none. Never touch rank.
+        from step4_recommendations import select_category
+        choice = select_category('tissue', data).get('slots', {}).get('small')
+        small = choice['offer'] if choice else None
     count = safe_box_count(small) if small else None
     if count is not None and small.get("postage") == "送料込み":
         unit = comparison_unit("tissue", small)
@@ -81,13 +88,14 @@ def tissue_size_guide(data):
         )
         label = clean_display_name(small["name"])
         small_block = (
-            '<p>取得できた10箱以下の比較候補から、箱単価が低い商品を表示。</p>'
+            '<p>箱数と送料を確認できた10箱以下の比較候補です。</p>'
             f'<p class="tissue-size-price">{count}箱・支払総額 {money(small["price"])}（送料込み）</p>'
             f'{normalized}'
             f'<p>{esc(label)} ・ {esc(small.get("shop", ""))}</p>'
             f'<a class="size-link" href="{esc(small["url"])}" target="_blank" '
             'rel="nofollow sponsored noopener" data-conversion-source="category" '
             'data-category-id="tissue" '
+            'data-purchase-purpose="small" '
             f'data-id="{esc(small.get("item_code", ""))}" '
             f'data-product-name="{esc(label)}" '
             f'data-shipping-price="{small["price"]}" '

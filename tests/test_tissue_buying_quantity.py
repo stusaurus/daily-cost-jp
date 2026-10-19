@@ -93,6 +93,23 @@ class TissueQuantityTests(unittest.TestCase):
         self.assertIn("最安値は保証しません", rendered)
         self.assertNotIn("5箱・支払総額 ¥3,980", rendered)
 
+    def test_existing_step5_pool_fills_guide_without_mutating_ranking(self):
+        import copy
+        data = {'items': [bulk_offer()], 'small_pack_offer': None,
+                'purpose_candidates': [box_offer(2)]}
+        before = copy.deepcopy(data)
+        rendered = tissue_size_guide(data)
+        self.assertIn('5箱・支払総額 ¥500', rendered)
+        self.assertNotIn('候補がありません', rendered)
+        self.assertEqual(data, before)
+
+    def test_step5_fallback_rejects_unsafe_shipping_or_destination(self):
+        for change in ({'postage': '送料別'}, {'item_code': 'shop:wrong'},
+                       {'name': 'ボックスティッシュ 200組 5箱×12パック'}):
+            rendered = tissue_size_guide({'items': [bulk_offer()],
+                'purpose_candidates': [{**box_offer(2), **change}]})
+            self.assertIn('候補がありません', rendered)
+
     def test_snapshot_cannot_import_unsafe_offer_into_catalog(self):
         other = box_offer(9)
         other["postage"] = "送料別"

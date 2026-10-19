@@ -98,7 +98,7 @@ def new_finding(level, code, path, message, next_action, *, evidence=""):
     }
 
 
-def evaluate(joined, browser, health, quality, ga4=None):
+def evaluate(joined, browser, health, quality, ga4=None, six_site=None, product=None, now=None):
     findings = []
     def add(*args, **kwargs):
         findings.append(new_finding(*args, **kwargs))
@@ -186,9 +186,9 @@ def evaluate(joined, browser, health, quality, ga4=None):
                         "検索クエリ・端末・競合を確認。タイトルは自動変更しない",
                         evidence="28日表示=" + str(metrics.get("impressions", "不明")))
             elif code == "INVESTIGATE_SEARCH_EXPOSURE_CHANGE":
-                add("P2", "SEARCH_EXPOSURE_CHANGE", item["path"],
+                add("P3", "SEARCH_EXPOSURE_CHANGE", item["path"],
                     "検索表示数の変化を要調査",
-                    "日別・端末別のデータを確認。順位低下とは断定しない")
+                    "初回は観察。公式成果物の別日継続を確認。順位低下とは断定しない")
             elif code == "INSPECT_LANDING_TO_AFFILIATE_JOURNEY":
                 add("P2", "LANDING_CTA_RESEARCH", item["path"],
                     "検索着地後の購入導線に改善余地がある可能性",
@@ -201,6 +201,55 @@ def evaluate(joined, browser, health, quality, ga4=None):
                 "楽天クリックの一部で運営者テスト区分が不明",
                 "GA4イベント送信とカスタムディメンションを点検",
                 evidence=f"区分不明={summary['unknown_operator_clicks']}件")
+
+    now = now or dt.datetime.now(dt.timezone.utc)
+    # Only the authenticated artifact adapter supplies six-site evidence. Its
+    # output is data, NEVER an instruction/recipe or permission to edit a site.
+    from gsc_operations_evidence import SOURCE, instant
+    try:
+        fresh = (isinstance(six_site, dict) and six_site.get('source') == SOURCE and
+                 dt.timedelta(0) <= now - instant(six_site['generated_at_utc']) <= dt.timedelta(hours=6))
+    except (KeyError, ValueError, TypeError, AttributeError):
+        fresh = False
+    if fresh:
+        from gsc_six_sites import SITES
+        allowed_sites = dict(SITES)
+        for kind in ('aggregate', 'diagnostic'):
+            source = six_site.get('sources', {}).get(kind, {})
+            if source.get('status') != 'FRESH':
+                add('P2', 'GSC_' + kind.upper() + '_EVIDENCE_UNKNOWN', '/',
+                    '6サイト公式APIの新鮮な本番成果物が未確認', '実行・artifact・権限・10日以内の鮮度を確認。0と扱わない')
+                continue
+            for row in source.get('findings', [])[:50]:
+                if (row.get('severity') not in ('P2', 'P3') or not good_path(row.get('path')) or
+                        allowed_sites.get(row.get('site_name')) != row.get('site') or
+                        not re.fullmatch(r'GSC_[A-Z0-9_]{2,65}', row.get('code', ''))):
+                    continue
+                f = new_finding(row['severity'], row['code'], row['path'], row.get('message'),
+                                row.get('next_action'), evidence=row.get('evidence'))
+                slug = row['site'].rstrip('/').rsplit('/', 1)[-1]
+                f.update(id=f['code'] + ':' + slug + ':' + f['path'], site=row['site'],
+                         site_name=row['site_name'], observation=row.get('observation'), period=row.get('period'))
+                findings.append(f)
+    elif six_site is not None:
+        add('P2', 'GSC_ARTIFACT_ADAPTER_UNKNOWN', '/', '6サイト診断接続結果が古いか不正',
+            '公式artifact接続を再実行。取得失敗や古いデータは0ではない')
+
+    if isinstance(product, dict) and product.get('source') == 'daily-cost step5 evaluation v1':
+        assortment = product.get('assortment', {})
+        try:
+            product_fresh = (assortment.get('status') == 'TRUSTED_RECENT' and
+                dt.timedelta(0) <= now - instant(assortment['catalog_updated_at']) <= dt.timedelta(hours=72))
+        except (KeyError, ValueError, TypeError, AttributeError):
+            product_fresh = False
+        if product_fresh:
+            for cid in ('tissue', 'laundry', 'toilet-paper'):
+                category = assortment.get('categories', {}).get(cid, {})
+                if category.get('legacy_role_collision') is True:
+                    add('P2', 'PURCHASE_LEGACY_ROLE_COLLISION', '/categories/' + cid + '/',
+                        '旧おすすめ欄で異なる買い方に同一商品が重複',
+                        'STEP5の数量別選定と旧欄を照合。表示件数のために商品基準を緩めない',
+                        evidence='既存選定ロジックを同じ商品データで再現。売上への影響は未確認')
 
     # Deduplicate by structural finding identity, not fluctuating metrics or viewport.
     unique = {}
@@ -225,6 +274,7 @@ def evaluate(joined, browser, health, quality, ga4=None):
         "automatic_pull_requests": False,
         "automatic_merge": False,
         "affiliate_sales_verified": False,
+        "six_site_evidence": six_site if fresh else None,
         "notes": [
             "Search Console visits and GA4 clicks cannot be used to infer purchase rate.",
             "Missing/stale monitoring data is unknown, never interpreted as zero problems.",
@@ -249,14 +299,30 @@ def markdown(report):
         "|---|---|---|---|",
     ]
     for f in report["findings"][:12]:
-        lines.append("| " + f["severity"] + " | " + f["path"] +
+        lines.append("| " + f["severity"] + " | " + short(f.get('site_name', '日用品')) + ' ' + f["path"] +
                      " | " + f["message"] + " | " + f["next_action"] + " |")
     if not report["findings"]:
         lines.append("| ― | ― | 新たに確認できた問題なし | 次の定期検査まで監視 |")
+    evidence = report.get('six_site_evidence') or {}
+    for kind, source in evidence.get('sources', {}).items():
+        lines += ['', '### 6サイト公式API / ' + short(kind), '',
+                  '- 取得状態: ' + short(source.get('status'))]
+        for site in source.get('sites', []):
+            m = site.get('metrics')
+            detail = (f"表示={m['impressions']} / クリック={m['clicks']}" if m else
+                      f"保存済み登録PASS={site.get('index_pass')} / API取得={site.get('index_observed')}")
+            lines.append('- ' + short(site.get('name')) + ': ' + detail + ' / 期間=' + short(str(site.get('period'))))
+            if 'returned_query_rows' in site:
+                q = site['returned_query_rows']
+                lines.append(f"  - 返却検索語行: site:付き={q['operator']} / 自然語={q['natural']}。匿名化・省略分は不明。")
+        lines += ['- 原本run: ' + ', '.join(str(r['run_id']) for r in source.get('receipts', []))]
     lines += [
         "",
         "※監査対象外やデータ不足の箇所を「問題なし」と断定していません。",
         "※収益化の改善策と実際の売上は別。作業候補は人がレビューするまで実装・公開しません。",
+        "※検索の判定閾値は運用判断であり統計的有意差ではありません。初回P3・別日2回継続P2。",
+        "※検索語は匿名化・省略あり。site:付き行は確認検索として分離し、サイト合計に加算しません。",
+        "※URL InspectionはGoogle保存済み状態で、ライブURLテストではありません。",
         "",
     ]
     return "\n".join(lines)
@@ -269,7 +335,9 @@ def main():
     health = read_optional(root / "health.json")
     ga4 = read_optional(root / "ga4-three-day-report.json")
     quality = fetch_public_quality()
-    report = evaluate(joined, browser, health, quality, ga4)
+    six_site = read_optional(root / 'gsc-operations-evidence.json')
+    product = read_optional(root / 'step5-evaluation.json')
+    report = evaluate(joined, browser, health, quality, ga4, six_site, product)
     report["generated_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
     report["quality_source_status"] = quality.get("status", "UNAVAILABLE")
     root.mkdir(parents=True, exist_ok=True)
