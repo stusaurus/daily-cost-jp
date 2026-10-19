@@ -4,7 +4,17 @@ const http=require('node:http');
 const fs=require('node:fs');
 const path=require('node:path');
 const assert=require('node:assert/strict');
-(async()=>{
+const {execFileSync}=require('node:child_process');
+
+function step5SmallTissue(category){
+ // The legacy supplement is not the whole catalog. Obtain the expected
+ // fallback from the SAME strict selector; never infer safety from HTML.
+ return JSON.parse(execFileSync(process.env.PYTHON||'python',['-c',
+  "import sys,json; sys.path.insert(0,'scripts'); from step4_recommendations import select_category; print(json.dumps(select_category('tissue',json.load(sys.stdin))['slots']['small']))"
+ ],{input:JSON.stringify(category),encoding:'utf8',timeout:15000}));
+}
+module.exports={step5SmallTissue};
+if(require.main===module)(async()=>{
  const root=path.resolve('site');
  const server=http.createServer((req,res)=>{
   let rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/daily-cost-jp\//,'');
@@ -19,6 +29,7 @@ const assert=require('node:assert/strict');
   browser=await chromium.launch({executablePath:process.env.CHROME_PATH||chromium.executablePath(),headless:true,args:['--no-sandbox']});
   fs.mkdirSync('qa-search',{recursive:true});
   const catalog=JSON.parse(fs.readFileSync('site/data.json','utf8'));
+  const fallbackSmall=step5SmallTissue(catalog.categories.tissue);
   for(const width of [1440,390,320])for(const cid of ['laundry','tissue','toilet-paper']){
    const page=await browser.newPage({viewport:{width,height:1000}});
    await page.route(/googletagmanager|google-analytics/,route=>route.abort());
@@ -31,14 +42,18 @@ const assert=require('node:assert/strict');
      const sizeBox=page.locator('#tissue-buy-size');
      assert.equal(await sizeBox.count(),1,'tissue must offer shopping-size choices');
      assert.equal(await sizeBox.locator('.tissue-size-card').count(),2);
-     const offer=catalog.categories.tissue.small_pack_offer;
+     const legacy=catalog.categories.tissue.small_pack_offer;
+     const offer=legacy||fallbackSmall?.offer;
+     const boxes=legacy?catalog.categories.tissue.small_pack_boxes:fallbackSmall?.quantity;
      const smallLink=sizeBox.locator('.tissue-size-card').first().locator('a.size-link');
      const href=await smallLink.getAttribute('href');
      if(offer){
        assert.equal(href,offer.url,'small offer must match quality-checked catalog');
        assert.equal(Number(await smallLink.getAttribute('data-shipping-price')),offer.price);
        assert.equal(await smallLink.getAttribute('data-id'),offer.item_code);
-       assert.match(await sizeBox.innerText(),new RegExp(''+catalog.categories.tissue.small_pack_boxes+'箱'));
+       assert.ok(boxes>0&&boxes<=10,'small offer must be 1–10 actual boxes');
+       assert.equal(await smallLink.getAttribute('data-purchase-purpose'),'small');
+       assert.match(await sizeBox.innerText(),new RegExp(''+boxes+'箱'));
      }else{
        assert.ok(href.startsWith('../../products/?q='),'missing small stock must only link to in-site search');
        assert.match(await sizeBox.innerText(),/候補がありません/);
