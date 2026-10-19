@@ -46,10 +46,13 @@ def diagnose(snapshot,enabled=False,paused=False,current_events=None,prior_event
     action='STOP_AND_FALLBACK' if reason!='FIXED_SELECTION_ALLOWED' else 'ALLOW_FIXED_SELECTION'
     decisions=[]
     for cid,result in selection['categories'].items():
+        acquisition = snapshot['categories'].get(cid, {}).get('household_acquisition', {})
+        acquisition_failed = (acquisition.get('status') == 'ACQUISITION_UNAVAILABLE' or
+                              acquisition.get('reasons', {}).get('api_fetch_failure', 0) > 0)
         for purpose,row in result['slots'].items():
             decisions.append({'path':f'/categories/{cid}/','code':'PURCHASE_'+purpose.upper(),
                 'classification':'AUTO_CONTENT' if enabled and action=='ALLOW_FIXED_SELECTION' and row else 'INVESTIGATE',
-                'reason':'FIXED_VERIFIED_SELECTION' if row else 'NO_VERIFIED_CANDIDATE', 'automatic_code_change':False})
+                'reason':'FIXED_VERIFIED_SELECTION' if row else 'ACQUISITION_UNKNOWN' if acquisition_failed else 'NO_VERIFIED_CANDIDATE', 'automatic_code_change':False})
     # STEP4 cannot promote an observed metric or issue text into executable code.
     decisions += [{'path':'/','code':code,'classification':'HUMAN_ONLY','automatic_code_change':False} for code in ('PRODUCT_QUALITY','PRICE_CALCULATION','POSTAGE','RAKUTEN_URL','SEO','CODE_CSS_NEW_FEATURE','SAFETY_RULE')]
     return {'source':SOURCE,'rule_version':VERSION,'generated_at_utc':now.isoformat(),'content_action':action,'reason':reason,'reaction_status':reaction,
@@ -140,6 +143,7 @@ def integrate(operations,control):
     candidates=[]
     if control['content_action']=='STOP_AND_FALLBACK':candidates.append(('P1','STEP4_CONTENT_PAUSED','/','購買枠は安全停止の対象です。現行の安全なランキングへ戻します。','入力品質・停止状態を確認。品質判定は緩めない'))
     for d in control['decisions']:
+        if d['classification']=='INVESTIGATE' and d.get('reason')=='ACQUISITION_UNKNOWN':candidates.append(('P2','PURCHASE_ACQUISITION_UNKNOWN',d['path'],'購入候補の取得に失敗。供給ゼロや候補不足とは断定しません。','API取得・権限・次回更新を確認。商品判定は緩めない'))
         if d['classification']=='INVESTIGATE' and d.get('reason')=='NO_VERIFIED_CANDIDATE':candidates.append(('P2',d['code'],d['path'],'購入目的に合う検証済み候補が不足しています。','不足数量の取得と商品同一性を調査。架空候補は追加しない'))
     ids={f['id'] for f in findings}
     for severity,code,path,message,next_action in candidates:

@@ -5,6 +5,17 @@ from scripts import gsc_schedule_health as g
 
 
 class ScheduleTests(unittest.TestCase):
+    def test_diagnostic_first_date_and_exact_grace_boundary(self):
+        due = g.FIRST_DIAGNOSTIC
+        for now in (due - dt.timedelta(days=7), due - dt.timedelta(seconds=1)):
+            self.assertEqual(g.evaluate(now, 45, [self.receipt()], due)['status'], 'NOT_YET_DUE')
+        self.assertEqual(g.evaluate(due, 45, [], due)['status'], 'WAITING_WITHIN_24H_GRACE')
+        self.assertEqual(g.evaluate(due + dt.timedelta(hours=24), 45, [], due)['status'], 'MISSING_SCHEDULE')
+        manual = self.receipt(event='workflow_dispatch', date='2026-10-26T01:00:00Z')
+        self.assertEqual(g.evaluate(due + dt.timedelta(hours=25), 45, [manual], due)['status'], 'MISSING_SCHEDULE')
+        scheduled = {**manual, 'event': 'schedule'}
+        self.assertEqual(g.evaluate(due + dt.timedelta(hours=25), 45, [scheduled], due)['status'], 'HEALTHY')
+
     def now(self, day=20, hour=1):
         return dt.datetime(2026, 10, day, hour, tzinfo=dt.timezone.utc)
 

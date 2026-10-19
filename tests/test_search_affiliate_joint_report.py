@@ -133,11 +133,21 @@ class JointReportTests(unittest.TestCase):
             {"path": TISSUE, "last_28": gsc_metrics(8, 180, rank=3),
              "last_7": gsc_metrics(3, 30), "prior_7": gsc_metrics(3, 40)}])
         ga = ga4_report()
+        ga['period_last_28'] = report['windows']['last_28']
         ga["pages"][0]["periods"]["last_28"]["pageviews"] = 70
         result = module.combine(ga, report)
         selected = next(x for x in result["page_diagnostics"] if x["path"] == TISSUE)
         self.assertEqual(selected["code"], "INSPECT_LANDING_TO_AFFILIATE_JOURNEY")
         self.assertIn("同一ユーザーの行動は不明", selected["hypothesis"])
+
+    def test_different_windows_never_produce_cross_source_funnel_hypothesis(self):
+        report = gsc_report(pages=[{'path': TISSUE, 'last_28': gsc_metrics(8, 180, rank=3),
+                                   'last_7': gsc_metrics(3, 30), 'prior_7': gsc_metrics(3, 40)}])
+        ga = ga4_report()
+        ga['pages'][0]['periods']['last_28']['pageviews'] = 70
+        result = module.combine(ga, report)
+        self.assertFalse(result['cross_source_periods_match'])
+        self.assertNotEqual(result['page_diagnostics'][0]['code'], 'INSPECT_LANDING_TO_AFFILIATE_JOURNEY')
 
     def test_disabled_operator_dimension_withholds_nonoperator_clicks_in_summary(self):
         result = module.combine(ga4_report(dim=False), gsc_report())
