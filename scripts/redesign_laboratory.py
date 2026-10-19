@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from comparison_units import comparison_unit, quantity_label, LABELS
 from product_display import clean_display_name
 from art_direction import install_art, apply_art
+from step4_recommendations import CATEGORIES as QUANTITY_PURPOSE_CATEGORIES
 
 SITE = Path('site')
 ROOT = '/daily-cost-jp/'
@@ -107,7 +108,14 @@ def demo_markup(categories):
     return f'<div class="lab-demo" aria-label="実商品による単価比較の見本"><div class="lab-demo-caption"><span>{esc(categories[cid]["name"])} / 同じものさしで比較</span><span>実際の取得データ</span></div><div class="lab-demo-grid">{cards}</div><p class="lab-demo-note"><strong>同じ{esc(rows[0][1][0])}で、{difference:.2f}円の差。</strong>{note}<br>素材・用途も確認して選びましょう。<a href="{ROOT}categories/{cid}/" data-conversion-source="category">この比較を見る ↗</a></p></div>'
 
 def recommendation_picks(cid, category):
-    """Return transparent picks for three buying intents from one comparable-unit group."""
+    """Legacy price-based cards for categories without quantity-purpose selection.
+
+    The three priority categories use step4_recommendations exclusively. Its
+    content approval, freshness and quantity/shipping gates must also apply when
+    no safe purpose candidate is available; never fall back to these cards.
+    """
+    if cid in QUANTITY_PURPOSE_CATEGORIES:
+        return None, []
     groups = {}
     for rank, item in enumerate(category.get('items', []), 1):
         unit = comparison_unit(cid, item)

@@ -49,30 +49,31 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertEqual(photo_url('https://example.com/image?a=1'),'https://example.com/image?a=1')
 
     def test_buying_modes_use_one_comparable_unit_and_explain_the_tradeoff(self):
-        items = self.items + [{
-            'name':'箱ティッシュ200組20箱',
-            'price':1600,
-            'unit_price':80,
-            'metric':'box',
-            'url':'https://hb.afl.rakuten.co.jp/c',
-            'image':'',
-            'shop':'C',
-        }]
-        category={'name':'ティッシュ','items':items}
-        label,picks=recommendation_picks('tissue',category)
-        self.assertEqual(label,'100組')
+        items = [dict(self.items[i % 2],name=f'食器用洗剤 {qty}ml',metric='100ml',price=qty,unit_price=unit)
+                 for i,(qty,unit) in enumerate([(500,100),(1000,105),(2000,110)])]
+        category={'name':'食器用洗剤','items':items}
+        label,picks=recommendation_picks('dish',category)
+        self.assertEqual(label,'100ml')
         self.assertEqual([pick[1] for pick in picks],['単価最安','普段使い','まとめ買い'])
         self.assertTrue(all(pick[2]['value'] > 0 for pick in picks))
-        self.assertEqual(picks[0][2]['item']['name'],'箱ティッシュ200組60箱')
-        markup=BeautifulSoup(buying_modes_markup('tissue',category),'html.parser')
+        self.assertEqual(picks[0][2]['item']['name'],'食器用洗剤 500ml')
+        markup=BeautifulSoup(buying_modes_markup('dish',category),'html.parser')
         self.assertEqual(len(markup.select('.lab-buy-mode-card')),3)
         self.assertEqual(markup.select_one('[data-buy-mode="everyday"] .lab-buy-mode-kicker').text,'普段使い')
         self.assertIn('家族人数を推測せず',markup.select_one('.lab-buy-mode-note').text)
         self.assertTrue(all(card.select_one('.lab-mode-buy')['data-conversion-source']=='category' for card in markup.select('.lab-buy-mode-card')))
-        self.assertTrue(all('100組' in card.select_one('.lab-mode-buy')['data-unit-price-label'] for card in markup.select('.lab-buy-mode-card')))
+        self.assertTrue(all('100ml' in card.select_one('.lab-mode-buy')['data-unit-price-label'] for card in markup.select('.lab-buy-mode-card')))
         long={'name':'A'*100}
         self.assertTrue(display_name(long).endswith('…'))
         self.assertLessEqual(len(display_name(long)),76)
+
+    def test_priority_categories_never_render_legacy_purpose_claims(self):
+        from step4_recommendations import CATEGORIES
+        for cid in CATEGORIES:
+            with self.subTest(cid=cid):
+                self.assertEqual(recommendation_picks(cid,{'items':self.items}),(None,[]))
+                self.assertEqual(buying_modes_markup(cid,{'items':self.items}),'')
+                self.assertEqual(buying_modes_markup(cid,{'items':[],'error':'API'}),'')
 
     def test_premium_numbers_photos_and_difference_remain_factual(self):
         price=BeautifulSoup(price_markup(12345.67,'100ml'),'html.parser')
@@ -101,6 +102,7 @@ class LaboratoryDesignTests(unittest.TestCase):
             for id_ in ['show-saved','show-comparison','exact-name','judge-button','tissue-rank-1','tissue-rank-2']:
                 self.assertEqual(len(s.select('#'+id_)),1)
             c=BeautifulSoup(category.read_text(),'html.parser')
+            self.assertFalse(c.select('.lab-buy-modes'))
             self.assertIn('/a.jpg',c.select_one('.lab-answer-photo img')['src'])
             self.assertEqual(c.select_one('.answer-pick .lab-price-value').text,'¥44.22')
             self.assertEqual(c.select_one('.answer-pick .lab-price-unit').text,'／100組')
