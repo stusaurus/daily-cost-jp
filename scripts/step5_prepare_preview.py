@@ -46,7 +46,7 @@ def acquire_preview(snapshot, categories, fetch, normalize, sleep):
                 'comparison_unit':row['unit'],'spec_ref':row['spec_ref']}
                 for p,row in selection['slots'].items()}
         before,after=receipt(baseline),receipt(candidate)
-        comparable=all(r['status'] in ('RECEIVED','API_RESPONSE_ZERO')
+        comparable=bool(report['requests'] and old_report['requests']) and all(r['status'] in ('RECEIVED','API_RESPONSE_ZERO')
                        for r in report['requests']+old_report['requests'])
         comparison={'status':'OBSERVED' if comparable else 'UNKNOWN',
             'baseline':before,'candidate':after,'baseline_acquisition':old_report,

@@ -161,5 +161,13 @@ class HouseholdTests(unittest.TestCase):
             lambda *args:self.fail('Unexpected API call'),lambda r,c:r,lambda n:None)
         self.assertEqual(revised,snapshot);self.assertIsNone(result)
 
+    def test_query_comparison_without_confirmed_family_is_unknown(self):
+        mass=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本')
+        volume=offer('laundry',90,'100ml',title='洗濯洗剤 1500ml×6本')
+        _,result=acquire_preview({'categories':{'laundry':{'items':[mass,volume]}}},
+            [{'id':'laundry'}],lambda *args:self.fail('Unexpected API call'),lambda r,c:r,lambda n:None)
+        self.assertEqual(result['status'],'UNKNOWN');self.assertFalse(result['small_payment_lower'])
+        self.assertEqual(result['unique_api_queries'],0)
+
 
 if __name__=='__main__':unittest.main()
