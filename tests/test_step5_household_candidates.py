@@ -15,6 +15,7 @@ class HouseholdTests(unittest.TestCase):
         def fetch(cat, page):
             calls.append(cat)
             if isinstance(rows, Exception): raise rows
+            if callable(rows):return rows(cat,page)
             return rows
         pool, report = h.acquire_household({'id':cid}, baseline, fetch, lambda r,c:r, lambda n:None)
         return pool, report, calls
@@ -87,6 +88,38 @@ class HouseholdTests(unittest.TestCase):
             pool,report,_=self.acquire([offer(qty=20,title=title)])
             self.assertEqual(pool,[])
             self.assertGreater(report['reasons']['specialized_household_use_unconfirmed'],0)
+
+    def test_request_trace_distinguishes_fallback_from_early_exit(self):
+        def rows(cat,page):
+            if cat['keyword']==h.QUERIES['tissue']['small'][0]:
+                return [offer(qty=60),{**offer(),'postage':'送料不明'}]
+            if cat['keyword']==h.QUERIES['tissue']['small'][1]:return [offer(suffix='small')]
+            return [offer(qty=20,suffix='everyday')]
+        pool,report,calls=self.acquire(rows)
+        self.assertEqual(len(calls),3)
+        first,second,third=report['requests']
+        self.assertEqual([r['query_index'] for r in report['requests']],[0,1,0])
+        self.assertEqual([r['early_exit'] for r in report['requests']],[False,False,True])
+        self.assertEqual(first['excluded_reasons']['requested_purpose_mismatch'],1)
+        self.assertEqual(first['eligible'],0)
+        self.assertEqual(second['excluded_reasons'],{})
+        self.assertEqual(report['eligible_by_purpose'],{'small':1,'everyday':1,'bulk':0})
+        self.assertEqual(report['request_diagnostics_scope'],'PER_RESPONSE_BEFORE_WHOLE_POOL_GATE')
+
+    def test_request_failures_remain_unknown_and_do_not_expose_exception(self):
+        _,report,calls=self.acquire(RuntimeError('403 private token'))
+        self.assertEqual(len(calls),h.MAX_REQUESTS)
+        for r in report['requests']:
+            self.assertIsNone(r['received']);self.assertFalse(r['early_exit'])
+            self.assertEqual(r['excluded_reasons'],{'api_fetch_failure':1})
+        self.assertNotIn('private',str(report));self.assertNotIn('403',str(report))
+
+    def test_query_dedupe_reasons_and_public_counts_do_not_claim_distinct_skus(self):
+        a=offer(suffix='small');b=offer(qty=20,suffix='daily')
+        _,report,_=self.acquire([a,a,b])
+        self.assertEqual(report['requests'][0]['excluded_reasons']['duplicate_offer'],1)
+        self.assertIsNone(report['distinct_sku_count'])
+        self.assertNotIn('shop:',str(report));self.assertNotIn('ボックスティッシュ',str(report))
 
 
 if __name__=='__main__':unittest.main()

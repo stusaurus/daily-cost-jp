@@ -26,7 +26,8 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
     cid = category['id']
     report = {'version': 'household-acquisition-v1', 'status': 'NO_VERIFIED_CANDIDATES',
               'ranking_changed': False, 'requests': [], 'eligible_by_purpose': {},
-              'reasons': {}, 'distinct_sku_count': None}
+              'reasons': {}, 'distinct_sku_count': None,
+              'request_diagnostics_scope': 'PER_RESPONSE_BEFORE_WHOLE_POOL_GATE'}
     if cid not in QUERIES:
         return [], report
     families = {u[0] for r in filter_items(cid, ranked) if (u := comparison_unit(cid, r))}
@@ -36,11 +37,14 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
     family = next(iter(families))
     pool, seen, reasons = [], set(), Counter()
     for purpose, queries in QUERIES[cid].items():
-        for query in queries:
+        for query_index, query in enumerate(queries):
             if len(report['requests']) >= MAX_REQUESTS:
                 break
             sleep(1.15)
-            record = {'purpose': purpose, 'received': None, 'eligible': 0, 'status': 'API_FETCH_FAILURE'}
+            query_reasons = Counter()
+            record = {'purpose': purpose, 'query_index': query_index, 'received': None,
+                      'eligible': 0, 'status': 'API_FETCH_FAILURE',
+                      'early_exit': False, 'excluded_reasons': query_reasons}
             report['requests'].append(record)
             try:
                 raw = fetch_page({**category, 'keyword': query, '_supplementary': True, '_household': True}, 1)
@@ -50,9 +54,11 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                 quality = {}
                 safe = filter_items(cid, rows, quality)
                 reasons.update(quality[cid]['reasons'])
+                query_reasons.update(quality[cid]['reasons'])
                 record.update(received=len(raw), status='API_RESPONSE_ZERO' if not raw else 'RECEIVED')
             except Exception:
                 reasons['api_fetch_failure'] += 1
+                query_reasons['api_fetch_failure'] += 1
                 continue
             for row in safe:
                 qty, unit = parsed_quantity(cid, row['name']), comparison_unit(cid, row)
@@ -64,13 +70,16 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                           'requested_purpose_mismatch' if not qty or sale_band(cid, row, qty['quantity']) != purpose else None)
                 if reason:
                     reasons[reason] += 1
+                    query_reasons[reason] += 1
                     continue
                 # Item-code identifies an offer, not a claim of distinct SKU.
                 if row['item_code'] in seen:
                     reasons['duplicate_offer'] += 1
+                    query_reasons['duplicate_offer'] += 1
                     continue
                 seen.add(row['item_code']); pool.append(copy.deepcopy(row)); record['eligible'] += 1
             if record['eligible']:
+                record['early_exit'] = query_index < len(queries)-1
                 break
     # Reapply the whole-pool outlier gate; per-query acceptance is insufficient.
     final_quality = {}
@@ -81,6 +90,8 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
     for purpose in ('small', 'everyday', 'bulk'):
         report['eligible_by_purpose'][purpose] = sum(sale_band(cid, r, parsed_quantity(cid, r['name'])['quantity']) == purpose for r in pool)
     report['reasons'] = dict(sorted(reasons.items()))
+    for record in report['requests']:
+        record['excluded_reasons'] = dict(sorted(record['excluded_reasons'].items()))
     report['status'] = ('VERIFIED_CANDIDATES' if pool else 'ACQUISITION_UNAVAILABLE' if
                         report['requests'] and all(r['status'] == 'API_FETCH_FAILURE' for r in report['requests']) else 'NO_VERIFIED_CANDIDATES')
     return pool, report
