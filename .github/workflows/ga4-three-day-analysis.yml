@@ -207,7 +207,9 @@ jobs:
       - name: Read aggregate STEP4 purchase events using existing Google credentials
         run: python scripts/step4_measurement.py --fetch
       - name: Read STEP5 dimension registration and anonymous purpose counts
-        run: python scripts/step5_evaluation.py --fetch
+        run: |
+          python scripts/step5_evaluation.py --fetch
+          cat audit-results/step5-evaluation.md >> "$GITHUB_STEP_SUMMARY"
       - name: Export Google calendar-month aggregates only (no financial inputs)
         continue-on-error: true
         run: python scripts/step7_google_monthly.py

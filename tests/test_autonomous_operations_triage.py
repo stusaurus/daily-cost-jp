@@ -1,5 +1,6 @@
 """Offline priority, safety and dedupe tests. No network or secrets."""
 import datetime as dt
+import copy
 import json
 import pathlib
 import sys
@@ -175,6 +176,66 @@ class IssueDedupeTests(unittest.TestCase):
             answer = issue.sync_issue(r, "fake", "38048780107", "refs/heads/main", issue.REPO)
         self.assertEqual(answer["status"], "UNCHANGED")
         self.assertEqual(api.call_count, 1)
+
+    def test_old_layout_updates_same_issue_once_without_new_finding_ids(self):
+        r=self.report()
+        old={'number':55,'title':issue.ISSUE_TITLE,'state':'open',
+             'body':issue.render_issue(r,f'https://github.com/{issue.REPO}/actions/runs/12345678').replace(issue.LAYOUT_MARKER,''),
+             'updated_at':dt.datetime.now(dt.timezone.utc).isoformat()}
+        with patch.object(issue,'github_request',side_effect=[[old],{'html_url':'same issue'}]) as api:
+            self.assertEqual(issue.sync_issue(r,'fake','38048780107','refs/heads/main',issue.REPO)['status'],'UPDATED')
+        self.assertEqual(api.call_args.args[0],'/issues/55')
+        self.assertIn(issue.LAYOUT_MARKER,api.call_args.args[3]['body'])
+
+
+class GroupedEvidenceTests(unittest.TestCase):
+    def findings(self):
+        a=triage.new_finding('P2','SEO_SNIPPET_RESEARCH',TISSUE,'pilot','review',evidence='28日表示=54 / クリック=1')
+        a['period']=['2026-09-19','2026-10-16']
+        b=triage.new_finding('P3','GSC_LOW_CTR',TISSUE,'official','review',evidence='28日表示=62 / クリック=1')
+        b.update(site=SITE,site_name='日用品',period=['2026-09-18','2026-10-15'])
+        return [a,b]
+
+    def test_same_investigation_separate_periods_and_no_metric_sum(self):
+        fs=self.findings();before=copy.deepcopy(fs)
+        report={'summary':{'P0':0,'P1':0,'P2':1,'P3':1},'status':'REVIEW_REQUIRED','findings':fs}
+        rows=triage.investigation_rows(fs);self.assertEqual(len(rows),1)
+        self.assertEqual(rows[0]['severity'],'P2');self.assertEqual(len(rows[0]['evidence_findings']),2)
+        text=triage.markdown(report)
+        self.assertEqual(text.count('| 検索結果のクリック状況を調査 |'),1)
+        for value in ('2026-09-18 ～ 2026-10-15','2026-09-19 ～ 2026-10-16','表示=54','表示=62','継続観測の証明には使いません'):
+            self.assertIn(value,text)
+        self.assertNotIn('表示=116',text);self.assertEqual(fs,before)
+
+    def test_other_sites_paths_and_ranking_remain_separate(self):
+        fs=self.findings();other=copy.deepcopy(fs[1]);other.update(site='https://stusaurus.github.io/food-cost-jp/',site_name='食品')
+        rank={**fs[1],'code':'GSC_RANK_11_20'}
+        different={**fs[1],'path':'/categories/laundry/'}
+        self.assertEqual(len(triage.investigation_rows(fs+[other,rank,different])),4)
+
+    def test_unknown_dates_are_not_fabricated_or_zero(self):
+        fs=self.findings();fs[0]['period']=None;fs[1]['period']=['2026-02-30','2026-03-29']
+        text=triage.markdown({'summary':{'P0':0,'P1':0,'P2':1},'status':'REVIEW_REQUIRED','findings':fs})
+        self.assertEqual(text.count('期間=未確認（0扱いしない）'),2)
+        self.assertNotIn('2026-02-30',text)
+
+    def test_pilot_keeps_its_own_gsc_window(self):
+        j=joined();j['gsc_period_last_28']=['2026-09-19','2026-10-16'];j['ga4_period_last_28']=['2026-09-20','2026-10-17']
+        r=evaluate(j=j);self.assertEqual(r['findings'][0]['period'],j['gsc_period_last_28'])
+
+    def test_payment_review_requires_fresh_product_evidence_never_autofix(self):
+        now=dt.datetime(2026,10,19,tzinfo=dt.timezone.utc)
+        product={'source':'daily-cost step5 evaluation v1','assortment':{'status':'TRUSTED_RECENT',
+            'catalog_updated_at':now.isoformat(),'categories':{'tissue':{'payment_tradeoffs':[{'same_product_verified':False}]}}}}
+        r=triage.evaluate(joined(),browser(),health(),quality(),product=product,now=now)
+        f=next(f for f in r['findings'] if f['code']=='PURCHASE_PAYMENT_TRADEOFF')
+        self.assertEqual(f['severity'],'P3');self.assertFalse(f['auto_fix_allowed'])
+        stale=triage.evaluate(joined(),browser(),health(),quality(),product=product,now=now+dt.timedelta(days=4))
+        self.assertNotIn('PURCHASE_PAYMENT_TRADEOFF',{f['code'] for f in stale['findings']})
+
+class IssueSafetyTests(unittest.TestCase):
+    def report(self):
+        return evaluate()
 
     def test_changed_queue_updates_same_issue_not_creates_new_one(self):
         oldr = self.report()

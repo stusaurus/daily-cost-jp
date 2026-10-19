@@ -59,6 +59,34 @@ class EvaluationTests(unittest.TestCase):
             r=e.assortment(s)
         self.assertEqual(r['empty_slots'],9)
 
+    def test_payment_tradeoff_is_review_only_not_brand_or_savings_claim(self):
+        tissue={'items':[offer(qty=60,unit_price=60,suffix='bulk')],
+                'purpose_candidates':[offer(qty=5,unit_price=400,suffix='small'),offer(qty=15,suffix='everyday')]}
+        s=snapshot({'tissue':tissue,'laundry':{'items':[]},'toilet-paper':{'items':[]}});before=copy.deepcopy(s)
+        with patch.object(e,'select',wraps=partial(e.select,now=NOW)):
+            r=e.assortment(s)
+        rows=r['categories']['tissue']['payment_tradeoffs'];self.assertEqual(len(rows),1)
+        row=rows[0];self.assertEqual((row['smaller_total_yen'],row['larger_total_yen']),(2000,1500))
+        self.assertEqual((row['smaller_quantity'],row['larger_quantity']),(5,15))
+        self.assertFalse(row['same_product_verified']);self.assertFalse(row['automatic_substitution'])
+        self.assertNotIn('name',row);self.assertNotIn('url',row);self.assertNotIn('savings',row)
+        self.assertEqual(s,before);self.assertFalse(r['ranking_changed'])
+
+    def test_payment_tradeoff_skips_unknown_and_incompatible_families(self):
+        from step4_recommendations import select_category
+        slots=select_category('tissue',{'items':[offer(qty=5,unit_price=400,suffix='small'),offer(qty=15,suffix='daily')]})['slots']
+        self.assertEqual(len(e.payment_tradeoffs(slots)),1)
+        incompatible=copy.deepcopy(slots);incompatible['everyday']['unit'][0]='1箱'
+        self.assertEqual(e.payment_tradeoffs(incompatible),[])
+        slots['everyday']=None;self.assertEqual(e.payment_tradeoffs(slots),[])
+
+    def test_invalid_shipping_never_creates_payment_candidate(self):
+        c={'items':[offer(qty=15)],'purpose_candidates':[{**offer(qty=5,unit_price=400),'postage':'送料不明'}]}
+        s=snapshot({'tissue':c,'laundry':{'items':[]},'toilet-paper':{'items':[]}})
+        with patch.object(e,'select',wraps=partial(e.select,now=NOW)):
+            r=e.assortment(s)
+        self.assertEqual(r['categories']['tissue']['payment_tradeoffs'],[])
+
     def test_stale_snapshot_keeps_empty_slots_unknown(self):
         s=snapshot({c:{'items':[]} for c in e.CATEGORIES})
         before=copy.deepcopy(s)
