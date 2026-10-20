@@ -98,6 +98,71 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(cleared['findings'],[])
         self.assertEqual(e.assess([],'aggregate')['status'],'UNKNOWN')
 
+    def test_intra_window_drop_requires_28_observed_consecutive_days(self):
+        r = report('diagnostic')
+        period = r['date_windows']['last_28']
+        start = dt.date.fromisoformat(period[0])
+        rows = [{'key':(start + dt.timedelta(days=i)).isoformat(),
+                 'impressions':11 if i < 14 else 2, 'clicks':0} for i in range(28)]
+        daily = {'status':'OBSERVED_ROWS','rows_returned':28,'rows':rows}
+        r['sites'][0]['analytics']['daily_28d'] = daily
+        signal = e.within_28d_exposure_drop(r['sites'][0]['analytics'], period)
+        self.assertEqual((signal['before'],signal['after']), (154,28))
+        findings, summaries = e.findings_for(r,'diagnostic')
+        matched = [f for f in findings.values() if f['code'] == 'GSC_WITHIN_28D_EXPOSURE_DROP']
+        self.assertEqual(len(matched),1)
+        self.assertEqual(matched[0]['severity'],'P3')
+        self.assertFalse(matched[0]['auto_fix_allowed'])
+        self.assertIn('154',matched[0]['evidence'])
+        self.assertEqual(summaries[0]['within_28d_exposure_drop'],signal)
+
+    def test_intra_window_drop_missing_days_ambiguous_or_small_samples_suppressed(self):
+        r=report('diagnostic')
+        period=r['date_windows']['last_28']
+        start=dt.date.fromisoformat(period[0])
+        original=[{'key':(start+dt.timedelta(days=i)).isoformat(),
+                   'impressions':11 if i<14 else 2,'clicks':0} for i in range(28)]
+        for scenario in ('missing','no_rows','unavailable','unsorted','duplicate',
+                         'bad_date','bool','negative','bad_clicks','small_before',
+                         'not_a_drop','bad_count','bad_period'):
+            rows=copy.deepcopy(original)
+            daily={'status':'OBSERVED_ROWS','rows_returned':28,'rows':rows}
+            window=period[:]
+            if scenario=='missing': rows.pop()
+            if scenario=='no_rows': daily['status']='NO_ROWS'
+            if scenario=='unavailable': daily['status']='UNAVAILABLE'
+            if scenario=='unsorted': rows[6],rows[7]=rows[7],rows[6]
+            if scenario=='duplicate': rows[6]['key']=rows[5]['key']
+            if scenario=='bad_date': rows[6]['key']='2026-01-01'
+            if scenario=='bool': rows[6]['impressions']=True
+            if scenario=='negative': rows[6]['impressions']=-1
+            if scenario=='bad_clicks': rows[6]['clicks']=20
+            if scenario=='small_before':
+                for x in rows[:14]: x['impressions']=7
+            if scenario=='not_a_drop':
+                for x in rows[14:]: x['impressions']=9
+            if scenario=='bad_count': daily['rows_returned']=27
+            if scenario=='bad_period': window[0]='2026-01-01'
+            with self.subTest(scenario=scenario):
+                self.assertIsNone(e.within_28d_exposure_drop({'daily_28d':daily},window))
+        self.assertIsNone(e.within_28d_exposure_drop({},period))
+
+    def test_intra_window_shift_needs_week_apart_to_escalate(self):
+        r=report('diagnostic')
+        start=dt.date.fromisoformat(r['date_windows']['last_28'][0])
+        r['sites'][0]['analytics']['daily_28d']={
+            'status':'OBSERVED_ROWS','rows_returned':28,
+            'rows':[{'key':(start+dt.timedelta(days=i)).isoformat(),
+                     'impressions':11 if i<14 else 2,'clicks':0} for i in range(28)]}
+        def severity(obs):
+            result=e.assess(obs,'diagnostic')
+            return next(f['severity'] for f in result['findings']
+                        if f['code']=='GSC_WITHIN_28D_EXPOSURE_DROP')
+        self.assertEqual(severity([observation(r)]),'P3')
+        self.assertEqual(severity([observation(r), observation(r,run_id=124)]),'P3')
+        self.assertEqual(severity([observation(r), observation(r,'2026-10-18',124)]),'P3')
+        self.assertEqual(severity([observation(r), observation(r,'2026-10-12',124)]),'P2')
+
     def test_saved_inspection_and_api_failure_are_different(self):
         r=report('diagnostic'); s=r['sites'][3]
         s['inspection']=[{'path':'/categories/pack-rice/','status':'OBSERVED_SNAPSHOT','verdict':'NEUTRAL',
