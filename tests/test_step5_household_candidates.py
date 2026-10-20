@@ -215,7 +215,9 @@ class HouseholdTests(unittest.TestCase):
     def test_review_filter_changes_only_tissue_everyday_household_requests(self):
         from unittest.mock import patch
         from urllib.parse import urlsplit,parse_qs
-        import build_site_entry as entry
+        import os
+        with patch.dict(os.environ,{'RAKUTEN_APPLICATION_ID':'offline-test','RAKUTEN_ACCESS_KEY':'offline-test'}):
+            import build_site_entry as entry
         base={'id':'tissue','keyword':'ボックスティッシュ 15箱','_household':True,
               '_supplementary':True,'_household_purpose':'everyday'}
         for overrides,flag in (({},'0'),({'_household_require_reviews':True},'1'),
