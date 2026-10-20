@@ -1,9 +1,11 @@
 import sys
 import unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from improve_category_seo import metric_label, seo_section, faq_section, render_search_copy, SEARCH_TARGETS
+from improve_category_seo import metric_label, seo_section, faq_section, render_search_copy, SEARCH_TARGETS, toilet_ply_availability_note
 from comparison_units import comparison_unit
 
 
@@ -37,6 +39,54 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             guide = seo_section("laundry", "洗濯洗剤", "洗濯洗剤", unit)
             self.assertIn(f"{unit}あたり", guide)
             self.assertNotIn("{comparison_unit}", guide)
+
+    def test_ply_availability_note_matches_verified_single_only(self):
+        item = {"name": "シングル 170m 48ロール", "metric": "roll", "unit_price": 110}
+        note = toilet_ply_availability_note({"categories": {"toilet-paper": {"items": [item]}}})
+        self.assertIn("比較可能な候補はシングルのみ", note)
+        self.assertIn("ダブルの10m単価を確認できた候補", note)
+        self.assertIn("ダブルを商品名で検索", note)
+        self.assertIn("../../products/?q=", note)
+        self.assertNotIn("ダブルの商品がないという意味です", note)
+
+    def test_ply_availability_note_matches_verified_double_only(self):
+        item = {"name": "ダブル 30m 12ロール", "metric": "roll", "unit_price": 80}
+        note = toilet_ply_availability_note({"categories": {"toilet-paper": {"items": [item]}}})
+        self.assertIn("比較可能な候補はダブルのみ", note)
+        self.assertIn("シングルの10m単価を確認できた候補", note)
+
+    def test_ply_availability_note_avoids_claims_for_both_or_unverified(self):
+        single = {"name": "シングル 170m 48ロール", "metric": "roll", "unit_price": 110}
+        double = {"name": "ダブル 30m 12ロール", "metric": "roll", "unit_price": 80}
+        uncertain = {"name": "トイレットペーパー 12ロール", "metric": "roll", "unit_price": 80}
+        for rows in ([], [single, double], [uncertain], [None], [{"name": "シングル 170m 48ロール", "metric": "roll"}]):
+            self.assertEqual(toilet_ply_availability_note({"categories": {"toilet-paper": {"items": rows}}}), "")
+        self.assertEqual(toilet_ply_availability_note({"categories": {}}), "")
+
+    def test_generated_toilet_page_shows_correct_missing_ply_and_keeps_metadata(self):
+        import improve_category_seo as module
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            path = root / "categories" / "toilet-paper" / "index.html"
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                '<html><head><title>Before</title>'
+                '<meta name="description" content="Before"></head>'
+                '<body><main class="container"><h1>Before</h1>'
+                '<p class="lead">Before</p>'
+                '<section class="related-categories"></section></main></body></html>',
+                encoding="utf-8",
+            )
+            payload = {"categories": {"toilet-paper": {"items": [
+                {"name": "シングル 170m 48ロール", "metric": "roll", "unit_price": 110}
+            ]}}}
+            with patch.object(module, "SITE_DIR", root):
+                self.assertTrue(module.enhance_page("toilet-paper", "トイレットペーパー", "🧻", "トイレットペーパー", payload))
+            html_page = path.read_text(encoding="utf-8")
+            self.assertEqual(html_page.count('class="category-ply-availability"'), 1)
+            self.assertIn("ダブルを商品名で検索する", html_page)
+            self.assertIn('id="category-seo-schema"', html_page)
+            self.assertIn("トイレットペーパーはいくらなら安い", html_page)
 
     def test_other_categories_and_unknown_metrics_are_unchanged(self):
         for metric, expected in (("100g", "100g"), ("100ml", "100ml"), ("unknown", "同じ単位")):

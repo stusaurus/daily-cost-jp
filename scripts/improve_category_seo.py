@@ -124,6 +124,36 @@ def render_search_copy(text: str, label: str) -> str:
     return text.replace("{comparison_unit}", label)
 
 
+def toilet_ply_availability_note(payload: dict) -> str:
+    """Only describe a missing ply when the current ranking has a verified other ply."""
+    from comparison_units import comparison_unit
+
+    category = payload.get("categories", {}).get("toilet-paper", {})
+    items = category.get("items") if isinstance(category, dict) else None
+    if not isinstance(items, list) or not items:
+        return ""
+    eligible = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        unit = comparison_unit("toilet-paper", item)
+        if unit and unit[0] in {"シングル10m", "ダブル10m"}:
+            eligible.add(unit[0])
+    if len(eligible) != 1:
+        return ""
+    available = "シングル" if "シングル10m" in eligible else "ダブル"
+    missing = "ダブル" if available == "シングル" else "シングル"
+    query = urllib.parse.quote("トイレットペーパー " + missing)
+    return (
+        '<p class="category-ply-availability" role="note">'
+        f"今回掲載している比較可能な候補は{available}のみです。"
+        f"{missing}の10m単価を確認できた候補は今回の一覧にありません。"
+        f"楽天市場に{missing}の商品がないという意味ではありません。"
+        f'<a href="../../products/?q={query}">{missing}を商品名で検索する →</a>'
+        "</p>"
+    )
+
+
 def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     q = urllib.parse.quote(name)
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
@@ -183,6 +213,7 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
+.category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
 """
@@ -204,6 +235,13 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
     markup = replace_once(markup, r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{html.escape(description, quote=True)}">')
     markup = replace_once(markup, r"<h1>.*?</h1>", f"<h1>{emoji} {html.escape(h1)}</h1>")
     markup = replace_once(markup, r'<p class="lead">.*?</p>', f'<p class="lead">{html.escape(lead)}</p>')
+    if category_id == "toilet-paper":
+        note = toilet_ply_availability_note(payload)
+        if note:
+            lead_markup = f'<p class="lead">{html.escape(lead)}</p>'
+            if markup.count(lead_markup) != 1:
+                raise ValueError("Cannot place ply availability note safely")
+            markup = markup.replace(lead_markup, lead_markup + "\n" + note, 1)
 
     if 'id="category-seo-style"' not in markup:
         markup = markup.replace("</head>", CSS + "\n" + schema_markup(name, category_id, description, h1) + "\n</head>", 1)
