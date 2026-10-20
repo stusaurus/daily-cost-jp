@@ -11,7 +11,7 @@ from step4_recommendations import destination_matches, sale_band, select_categor
 
 QUERIES = {
     'tissue': {'small': ('ボックスティッシュ 5箱', 'ボックスティッシュ 10箱'),
-               'everyday': ('ティッシュ 15箱', 'ボックスティッシュ 20箱')},
+               'everyday': ('ボックスティッシュ 15箱', 'ボックスティッシュ 20箱')},
     'toilet-paper': {'small': ('トイレットペーパー シングル 12ロール', 'トイレットペーパー シングル 6ロール'),
                      'everyday': ('トイレットペーパー シングル 24ロール', 'トイレットペーパー シングル 36ロール')},
     'laundry': {'small': ('洗濯洗剤 詰め替え 850g', '洗濯洗剤 詰め替え 900g'),
@@ -47,7 +47,8 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                       'early_exit': False, 'excluded_reasons': query_reasons}
             report['requests'].append(record)
             try:
-                raw = fetch_page({**category, 'keyword': query, '_supplementary': True, '_household': True}, 1)
+                raw = fetch_page({**category, 'keyword': query, '_supplementary': True, '_household': True,
+                                  '_household_purpose': purpose}, 1)
                 if not isinstance(raw, list) or len(raw) > 30 or any(not isinstance(x, dict) for x in raw):
                     raise ValueError('Malformed API list')
                 rows = [normalize_item(x, category) for x in raw]

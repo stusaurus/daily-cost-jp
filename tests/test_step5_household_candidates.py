@@ -179,12 +179,14 @@ class HouseholdTests(unittest.TestCase):
         def fetch(cat,page):
             q=cat['keyword'];calls.append(q)
             if q==h.QUERIES['tissue']['small'][0]:return [small]
-            if q=='ティッシュ 15箱':return [daily,bulk]
-            if q=='ボックスティッシュ 15箱':return []
+            if q=='ボックスティッシュ 15箱':return [] if cat.get('_household_require_reviews') else [daily,bulk]
             return [premium]
         revised,r=acquire_preview(snapshot,[{'id':'tissue'}],fetch,lambda row,c:row,lambda n:None,
-            comparison_category='tissue',baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')})
+            comparison_category='tissue',baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')},
+            baseline_tissue_reviews=True)
         self.assertEqual(snapshot,before);self.assertEqual(len(calls),4)
+        self.assertEqual({q['has_review_flag'] for q in r['query_evidence']
+                          if q['keyword']=='ボックスティッシュ 15箱'},{0,1})
         self.assertEqual(r['payment_lower_purposes'],['everyday'])
         self.assertEqual(r['unchanged_purposes'],['small','bulk'])
         self.assertEqual(r['candidate']['everyday']['tissue_specification'],
@@ -209,6 +211,38 @@ class HouseholdTests(unittest.TestCase):
         self.assertIsNone(result['items'][0]['individual_gate_reason'])
         self.assertEqual(public_query_evidence({'id':'tissue','keyword':'x'},1,[],lambda *a:None)['status'],'API_RESPONSE_ZERO')
         self.assertEqual(public_query_evidence({'id':'tissue','keyword':'x'},1,{'error':'secret'},lambda *a:None)['status'],'MALFORMED')
+
+    def test_review_filter_changes_only_tissue_everyday_household_requests(self):
+        from unittest.mock import patch
+        from urllib.parse import urlsplit,parse_qs
+        import build_site_entry as entry
+        base={'id':'tissue','keyword':'ボックスティッシュ 15箱','_household':True,
+              '_supplementary':True,'_household_purpose':'everyday'}
+        for overrides,flag in (({},'0'),({'_household_require_reviews':True},'1'),
+            ({'_household_purpose':'small'},'1'),({'id':'laundry'},'1'),
+            ({'_household':False},'1'),({'_household_purpose':None},'1')):
+            with self.subTest(overrides=overrides),patch.object(entry,'fetch_json',return_value={'Items':[]}) as fetch:
+                entry.fetch_page({**base,**overrides},1)
+                params=parse_qs(urlsplit(fetch.call_args.args[0].full_url).query)
+                self.assertEqual(params['hasReviewFlag'],[flag])
+                self.assertEqual(params['postageFlag'],['1'])
+                self.assertEqual(params['imageFlag'],['1'])
+                self.assertEqual(params['hits'],['30'])
+
+    def test_review_filter_cache_separates_both_plans_with_five_query_cap(self):
+        bulk=offer(qty=60,suffix='bulk',title='ボックスティッシュ 400枚 200組 5箱×12パック')
+        small=offer(qty=5,suffix='small');premium=offer(qty=20,suffix='premium')
+        calls=[]
+        def fetch(cat,page):
+            calls.append((cat['keyword'],cat.get('_household_require_reviews')))
+            if cat['_household_purpose']=='small':return [small]
+            if cat['keyword'].endswith('15箱'):return []
+            return [premium]
+        _,r=acquire_preview({'categories':{'tissue':{'items':[bulk]}}},[{'id':'tissue'}],
+            fetch,lambda x,c:x,lambda n:None,comparison_category='tissue',
+            baseline_queries={'everyday':h.QUERIES['tissue']['everyday']},baseline_tissue_reviews=True)
+        self.assertEqual(len(calls),5);self.assertEqual(r['unique_api_queries'],5)
+        self.assertEqual(r['status'],'OBSERVED');self.assertEqual(r['payment_lower_purposes'],[])
 
 
 if __name__=='__main__':unittest.main()

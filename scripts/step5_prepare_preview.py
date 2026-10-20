@@ -10,7 +10,7 @@ ROOT=Path('audit-results')
 
 
 def acquire_preview(snapshot, categories, fetch, normalize, sleep,
-                    comparison_category='laundry', baseline_queries=None):
+                    comparison_category='laundry', baseline_queries=None, baseline_tissue_reviews=False):
     """CI only: compare one query plan using bounded, shared responses."""
     import step5_household_candidates as h
     if comparison_category!='laundry' and baseline_queries is None:
@@ -23,8 +23,14 @@ def acquire_preview(snapshot, categories, fetch, normalize, sleep,
         data=revised['categories'][cid]
         cache={}
         query_evidence=[]
+        in_baseline=False
         def cached_fetch(query_category,page):
-            key=(query_category['keyword'],page)
+            legacy=bool(in_baseline and baseline_tissue_reviews and cid=='tissue' and
+                        query_category.get('_household_purpose')=='everyday')
+            query_category={**query_category,'_household_require_reviews':legacy}
+            review_flag=int(not (cid=='tissue' and query_category.get('_household') is True and
+                                 query_category.get('_household_purpose')=='everyday' and not legacy))
+            key=(query_category['keyword'],page,review_flag)
             if key not in cache:
                 if len(cache)>=5:raise ValueError('Preview query budget exceeded')
                 try:
@@ -32,12 +38,15 @@ def acquire_preview(snapshot, categories, fetch, normalize, sleep,
                 except Exception:
                     cache[key]=RuntimeError('Preview acquisition unavailable')
                     if cid==comparison_category:
-                        query_evidence.append({'keyword':key[0],'page':page,'status':'UNAVAILABLE','items':None})
+                        query_evidence.append({'keyword':key[0],'page':page,'has_review_flag':review_flag,'status':'UNAVAILABLE','items':None})
                 else:
                     if cid==comparison_category:
-                        try:query_evidence.append(public_query_evidence(query_category,page,cache[key],normalize))
+                        try:
+                            evidence=public_query_evidence(query_category,page,cache[key],normalize)
+                            evidence['has_review_flag']=review_flag
+                            query_evidence.append(evidence)
                         except Exception:
-                            query_evidence.append({'keyword':key[0],'page':page,'status':'EVIDENCE_UNAVAILABLE','items':None})
+                            query_evidence.append({'keyword':key[0],'page':page,'has_review_flag':review_flag,'status':'EVIDENCE_UNAVAILABLE','items':None})
             value=cache[key]
             if isinstance(value,Exception):raise value
             return copy.deepcopy(value)
@@ -49,8 +58,11 @@ def acquire_preview(snapshot, categories, fetch, normalize, sleep,
         try:
             old_queries=baseline_queries or {'small':('洗濯洗剤 詰め替え 400g','洗濯洗剤 詰め替え 900g')}
             h.QUERIES[cid].update(old_queries)
+            in_baseline=True
             old_pool,old_report=h.acquire_household(category,data['items'],cached_fetch,normalize,sleep)
-        finally:h.QUERIES.clear();h.QUERIES.update(plan)
+        finally:
+            in_baseline=False
+            h.QUERIES.clear();h.QUERIES.update(plan)
         old_data=copy.deepcopy(snapshot['categories'][cid])
         h.attach(old_data,old_pool,old_report)
         baseline=h.select_category(cid,old_data)
@@ -100,7 +112,7 @@ def public_query_evidence(category,page,raw,normalize):
         source=row.get('Item',row)
         if not isinstance(source,dict):
             continue
-        public={key:source[key] for key in ('itemName','itemCode','itemPrice','postageFlag','itemUrl','shopName')
+        public={key:source[key] for key in ('itemName','itemCode','itemPrice','postageFlag','itemUrl','shopName','reviewCount')
                 if key in source and isinstance(source[key],(str,int,float)) and not isinstance(source[key],bool)}
         public={key:value[:1000] if isinstance(value,str) else value for key,value in public.items()}
         normalized=normalize(row,category)
@@ -126,7 +138,8 @@ def main():
     import time
     revised,comparison=acquire_preview(original,entry.core.CATEGORIES,entry.fetch_page,
         entry.core.normalize_item,time.sleep,comparison_category='tissue',
-        baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')})
+        baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')},
+        baseline_tissue_reviews=True)
     (after/'data.json').write_text(json.dumps(revised,ensure_ascii=False,indent=2))
     protected=json.loads(json.dumps(revised))
     for cid in ('tissue','laundry','toilet-paper'):
