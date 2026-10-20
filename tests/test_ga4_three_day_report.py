@@ -16,6 +16,26 @@ SITE = "https://stusaurus.github.io/daily-cost-jp/categories/tissue/"
 
 
 class ThreeDayReportTests(unittest.TestCase):
+    def test_zero_flag_never_becomes_verified_customer_evidence(self):
+        report=module.make_report([
+            ('20261005',SITE,'1',2),('20261005',SITE,'0',3),('20261005',SITE,'',4)
+        ],[('20261005',20),('20261006',20),('20261007',20)],DAYS,True)
+        evidence=report['summary']['traffic_evidence']
+        self.assertEqual(evidence['confirmed_test_clicks'],2)
+        self.assertEqual(evidence['possible_test_or_unverified_use_clicks'],3)
+        self.assertEqual(evidence['unknown_origin_clicks'],4)
+        self.assertIsNone(evidence['verified_legitimate_use_clicks'])
+        self.assertEqual(evidence['verified_legitimate_use_status'],'UNKNOWN')
+        self.assertEqual(report['summary']['production_raw_clicks'],9)
+
+    def test_missing_dimension_withholds_test_and_customer_attribution(self):
+        report=module.make_report([('20261005',SITE,'0',3)],[],DAYS,False)
+        e=report['summary']['traffic_evidence']
+        self.assertIsNone(e['confirmed_test_clicks'])
+        self.assertIsNone(e['possible_test_or_unverified_use_clicks'])
+        self.assertEqual(e['unknown_origin_clicks'],3)
+        self.assertIsNone(e['verified_legitimate_use_clicks'])
+
     def test_window_allows_ga4_reporting_delay(self):
         self.assertEqual(module.window(dt.date(2026, 10, 10)), [
             dt.date(2026, 10, 6), dt.date(2026, 10, 7), dt.date(2026, 10, 8)])
