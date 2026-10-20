@@ -11,7 +11,7 @@ from step4_recommendations import destination_matches, sale_band, select_categor
 
 QUERIES = {
     'tissue': {'small': ('ボックスティッシュ 5箱', 'ボックスティッシュ 10箱'),
-               'everyday': ('ボックスティッシュ 15箱', 'ボックスティッシュ 20箱')},
+               'everyday': ('ティッシュ 15箱', 'ボックスティッシュ 20箱')},
     'toilet-paper': {'small': ('トイレットペーパー シングル 12ロール', 'トイレットペーパー シングル 6ロール'),
                      'everyday': ('トイレットペーパー シングル 24ロール', 'トイレットペーパー シングル 36ロール')},
     'laundry': {'small': ('洗濯洗剤 詰め替え 850g', '洗濯洗剤 詰め替え 900g'),
