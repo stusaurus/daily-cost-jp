@@ -29,7 +29,8 @@ def acquire_preview(snapshot, categories, fetch, normalize, sleep,
                         query_category.get('_household_purpose')=='everyday')
             query_category={**query_category,'_household_require_reviews':legacy}
             review_flag=int(not (cid=='tissue' and query_category.get('_household') is True and
-                                 query_category.get('_household_purpose')=='everyday' and not legacy))
+                                 query_category.get('_household_purpose')=='everyday' and
+                                 query_category.get('_household_query_index')==0 and not legacy))
             key=(query_category['keyword'],page,review_flag)
             if key not in cache:
                 if len(cache)>=5:raise ValueError('Preview query budget exceeded')

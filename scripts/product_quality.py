@@ -78,6 +78,22 @@ COUNT_UNITS = {
 }
 
 
+def explicit_tissue_box_total(title):
+    """A stated box total corroborated by exactly one explicit pack product."""
+    text=normalize(title)
+    if ambiguous_quantity(title) or re.search(r'選べ|選択|ポリ袋|レジ袋|空箱',text):
+        return None
+    matches=list(re.finditer(r'(?<![\d.])(\d+)個パック\s*x\s*(\d+)セット\s*合計\s*(\d+)箱',text))
+    if len(matches)!=1:return None
+    match=matches[0];inner,outer,total=map(int,match.groups())
+    counts=re.findall(r'(\d+(?:\.\d+)?)\s*(個|パック|セット|箱)',text)
+    if any('.' in n for n,unit in counts) or re.search(r'x\s*\d',text[match.end():],re.I):return None
+    visible=[(int(n),unit) for n,unit in counts]
+    if visible!=[(inner,'個'),(outer,'セット'),(total,'箱')] or min(inner,outer,total)<=0 or inner*outer!=total:
+        return None
+    return {'metric':'box','quantity':float(total),'confidence':0.99,'evidence':match.group(0)}
+
+
 def category_rejection(category_id, title):
     if category_id not in REQUIRED:
         return 'unknown_category'
@@ -98,7 +114,12 @@ def category_rejection(category_id, title):
         return 'mixed_bundle'
     if re.search(EXCLUDED[category_id], text, re.I):
         return 'wrong_use_or_type'
-    if not all(re.search(group, text, re.I) for group in REQUIRED[category_id]):
+    evidence=all(re.search(group,text,re.I) for group in REQUIRED[category_id])
+    if category_id=='tissue' and not evidence:
+        # Literal product type plus explicit pairs and corroborated box total;
+        # never recognize a product from its brand name alone.
+        evidence=bool(re.search(r'ティシュー',text) and re.search(r'\d+\s*組',text) and explicit_tissue_box_total(text))
+    if not evidence:
         return 'missing_category_evidence'
     return None
 
@@ -296,6 +317,9 @@ def safer_parse_count_quantity(title, allowed_units):
     text = re.sub(r"(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?", "", text)
     if ambiguous_quantity(title):
         return None
+    if allowed_units==COUNT_UNITS['tissue']:
+        explicit=explicit_tissue_box_total(title)
+        if explicit:return explicit
     units_re = "|".join(re.escape(unit) for unit in allowed_units)
 
     explicit_matches = list(re.finditer(

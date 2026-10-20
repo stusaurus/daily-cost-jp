@@ -219,9 +219,10 @@ class HouseholdTests(unittest.TestCase):
         with patch.dict(os.environ,{'RAKUTEN_APPLICATION_ID':'offline-test','RAKUTEN_ACCESS_KEY':'offline-test'}):
             import build_site_entry as entry
         base={'id':'tissue','keyword':'ボックスティッシュ 15箱','_household':True,
-              '_supplementary':True,'_household_purpose':'everyday'}
+              '_supplementary':True,'_household_purpose':'everyday','_household_query_index':0}
         for overrides,flag in (({},'0'),({'_household_require_reviews':True},'1'),
             ({'_household_purpose':'small'},'1'),({'id':'laundry'},'1'),
+            ({'_household_query_index':1},'1'),
             ({'_household':False},'1'),({'_household_purpose':None},'1')):
             with self.subTest(overrides=overrides),patch.object(entry,'fetch_json',return_value={'Items':[]}) as fetch:
                 entry.fetch_page({**base,**overrides},1)
@@ -243,7 +244,7 @@ class HouseholdTests(unittest.TestCase):
         _,r=acquire_preview({'categories':{'tissue':{'items':[bulk]}}},[{'id':'tissue'}],
             fetch,lambda x,c:x,lambda n:None,comparison_category='tissue',
             baseline_queries={'everyday':h.QUERIES['tissue']['everyday']},baseline_tissue_reviews=True)
-        self.assertEqual(len(calls),5);self.assertEqual(r['unique_api_queries'],5)
+        self.assertEqual(len(calls),4);self.assertEqual(r['unique_api_queries'],4)
         self.assertEqual(r['status'],'OBSERVED');self.assertEqual(r['payment_lower_purposes'],[])
 
 

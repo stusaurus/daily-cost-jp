@@ -58,7 +58,8 @@ def fetch_page(category, page):
     if core.AFFILIATE_ID:
         params["affiliateId"] = core.AFFILIATE_ID
     if (category.get('id')=='tissue' and category.get('_household') is True and
-        category.get('_household_purpose')=='everyday' and not category.get('_household_require_reviews')):
+        category.get('_household_purpose')=='everyday' and category.get('_household_query_index')==0 and
+        not category.get('_household_require_reviews')):
         # Reviews are not quantity/shipping evidence. Keep every safety gate,
         # and compare the old review-only request only in the unpublished CI.
         params['hasReviewFlag'] = 0
