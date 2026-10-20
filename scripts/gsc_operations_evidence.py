@@ -132,6 +132,41 @@ def operator_query(query):
     return bool(re.search(r"(?:^|\s)-?site\s*:", unicodedata.normalize("NFKC", str(query)).lower()))
 
 
+def within_28d_exposure_drop(analytics, period):
+    """Use only 28 verified consecutive daily rows; absence is not zero."""
+    if not isinstance(analytics, dict):
+        return None
+    daily = analytics.get("daily_28d")
+    if not isinstance(daily, dict) or daily.get("status") != "OBSERVED_ROWS":
+        return None
+    rows = daily.get("rows")
+    if not isinstance(rows, list) or len(rows) != 28 or daily.get("rows_returned") != 28:
+        return None
+    try:
+        if not isinstance(period, list) or len(period) != 2:
+            return None
+        start, end = (dt.date.fromisoformat(day) for day in period)
+        if (end - start).days != 27:
+            return None
+    except (ValueError, TypeError):
+        return None
+    for index, row in enumerate(rows):
+        expected = (start + dt.timedelta(days=index)).isoformat()
+        if (not isinstance(row, dict) or row.get("key") != expected or
+                type(row.get("impressions")) is not int or
+                type(row.get("clicks")) is not int or
+                row["impressions"] < 0 or not 0 <= row["clicks"] <= row["impressions"]):
+            return None
+    before = sum(row["impressions"] for row in rows[:14])
+    after = sum(row["impressions"] for row in rows[14:])
+    loss = before - after
+    if before < 100 or loss < 50 or loss * 2 < before:
+        return None
+    return {"before": before, "after": after,
+            "before_period": [start.isoformat(), (start + dt.timedelta(days=13)).isoformat()],
+            "after_period": [(start + dt.timedelta(days=14)).isoformat(), end.isoformat()]}
+
+
 def findings_for(report, kind):
     from autonomous_operations_triage import new_finding, good_path, short
     findings, summary = [], []
@@ -185,6 +220,13 @@ def findings_for(report, kind):
             state["returned_query_rows"] = {"operator": sum(operator_query(r.get("key")) for r in rows),
                                               "natural": sum(not operator_query(r.get("key")) for r in rows)}
             state["query_coverage"] = "RETURNED_ROWS_ONLY_ANONYMIZED_OR_OMITTED_TERMS_UNKNOWN"
+            shift = within_28d_exposure_drop(analytics, period)
+            if shift:
+                add(site, "GSC_WITHIN_28D_EXPOSURE_DROP", "/",
+                    "検索表示が同じ28日窓の前半14日から後半14日へ大幅に減少",
+                    f"{shift['before_period'][0]}〜{shift['before_period'][1]}: {shift['before']} → "
+                    f"{shift['after_period'][0]}〜{shift['after_period'][1]}: {shift['after']}。原因未確定")
+                state["within_28d_exposure_drop"] = shift
             pairs = analytics.get("query_pages_28d", {})
             if pairs.get("status") in ("OBSERVED_ROWS", "TOP_ROWS_LIMIT_POSSIBLE"):
                 for row in pairs.get("rows", [])[:1000]:
@@ -240,7 +282,12 @@ def assess(observations, kind):
     prior = findings_for(previous["report"], kind)[0] if independent else {}
     for key, finding in current.items():
         if key in prior:
-            finding.update(severity="P2", observation="REPEATED_DISTINCT_DATES")
+            # For a 28-day sliding series, adjacent-day rechecks heavily overlap.
+            # This particular signal needs at least seven days between source dates.
+            days = (dt.date.fromisoformat(latest["as_of"]) -
+                    dt.date.fromisoformat(previous["as_of"])).days if independent else 0
+            if finding["code"] != "GSC_WITHIN_28D_EXPOSURE_DROP" or days >= 7:
+                finding.update(severity="P2", observation="REPEATED_DISTINCT_DATES")
         finding["evidence"] += f" / run={latest['run_id']}"
     return {"status": "FRESH", "sites": summary, "findings": list(current.values()),
             "receipts": [{k: o[k] for k in ("run_id", "sha", "artifact_id", "as_of")} for o in observations]}
