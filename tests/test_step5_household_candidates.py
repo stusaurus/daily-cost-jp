@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from test_step4_purchase_audit import offer
 import step5_household_candidates as h
-from step5_prepare_preview import acquire_preview
+from step5_prepare_preview import acquire_preview, public_query_evidence
 from step4_recommendations import select_category
 
 
@@ -168,6 +168,84 @@ class HouseholdTests(unittest.TestCase):
             [{'id':'laundry'}],lambda *args:self.fail('Unexpected API call'),lambda r,c:r,lambda n:None)
         self.assertEqual(result['status'],'UNKNOWN');self.assertFalse(result['small_payment_lower'])
         self.assertEqual(result['unique_api_queries'],0)
+
+    def test_tissue_plan_comparison_preserves_small_bulk_and_uses_actual_pack_quantity(self):
+        bulk=offer(qty=60,suffix='bulk',title='ボックスティッシュ 400枚 200組 5箱×12パック')
+        small=offer(qty=5,suffix='small')
+        daily=offer(qty=15,unit_price=120,suffix='daily',title='ボックスティッシュ 300枚 150組 5箱×3個')
+        premium=offer(qty=20,unit_price=350,suffix='premium')
+        snapshot={'categories':{'tissue':{'items':[bulk]}}};before=copy.deepcopy(snapshot)
+        calls=[]
+        def fetch(cat,page):
+            q=cat['keyword'];calls.append(q)
+            if q==h.QUERIES['tissue']['small'][0]:return [small]
+            if q=='ボックスティッシュ 15箱':return [] if cat.get('_household_require_reviews') else [daily,bulk]
+            return [premium]
+        revised,r=acquire_preview(snapshot,[{'id':'tissue'}],fetch,lambda row,c:row,lambda n:None,
+            comparison_category='tissue',baseline_queries={'everyday':('ボックスティッシュ 15箱','ボックスティッシュ 20箱')},
+            baseline_tissue_reviews=True)
+        self.assertEqual(snapshot,before);self.assertEqual(len(calls),4)
+        self.assertEqual({q['has_review_flag'] for q in r['query_evidence']
+                          if q['keyword']=='ボックスティッシュ 15箱'},{0,1})
+        self.assertEqual(r['payment_lower_purposes'],['everyday'])
+        self.assertEqual(r['unchanged_purposes'],['small','bulk'])
+        self.assertEqual(r['candidate']['everyday']['tissue_specification'],
+            {'boxes':15,'pairs_per_box':150,'total_pairs':2250,'sheets_per_box':300,'sheets_per_pair':2})
+        self.assertIsNone(r['candidate']['small']['tissue_specification']['sheets_per_pair'])
+        self.assertEqual(revised['categories']['tissue']['household_acquisition']['requests'][1]['excluded_reasons'],{'requested_purpose_mismatch':1})
+
+    def test_non_laundry_comparison_requires_explicit_baseline(self):
+        with self.assertRaises(ValueError):
+            acquire_preview({},[],lambda *args:[],lambda r,c:r,lambda n:None,comparison_category='tissue')
+
+    def test_public_evidence_allowlist_drops_credentials_and_keeps_actual_title_quantity(self):
+        raw={'Item':{'itemName':'ボックスティッシュ 200組 5箱×3パック','itemCode':'shop:item',
+            'itemPrice':1800,'postageFlag':0,'itemUrl':'https://item.rakuten.co.jp/shop/item/',
+            'applicationId':'SECRET_APP','accessKey':'SECRET_KEY','itemCaption':'not exported'}}
+        result=public_query_evidence({'id':'tissue','keyword':'ティッシュ 15箱'},1,[raw],
+            lambda r,c:offer(qty=15,title=r['Item']['itemName']))
+        text=str(result)
+        self.assertNotIn('SECRET',text);self.assertNotIn('itemCaption',text)
+        self.assertEqual(result['items'][0]['parsed_quantity']['quantity'],15)
+        self.assertEqual(result['items'][0]['itemCode'],'shop:item')
+        self.assertIsNone(result['items'][0]['individual_gate_reason'])
+        self.assertEqual(public_query_evidence({'id':'tissue','keyword':'x'},1,[],lambda *a:None)['status'],'API_RESPONSE_ZERO')
+        self.assertEqual(public_query_evidence({'id':'tissue','keyword':'x'},1,{'error':'secret'},lambda *a:None)['status'],'MALFORMED')
+
+    def test_review_filter_changes_only_tissue_everyday_household_requests(self):
+        from unittest.mock import patch
+        from urllib.parse import urlsplit,parse_qs
+        import os
+        with patch.dict(os.environ,{'RAKUTEN_APPLICATION_ID':'offline-test','RAKUTEN_ACCESS_KEY':'offline-test'}):
+            import build_site_entry as entry
+        base={'id':'tissue','keyword':'ボックスティッシュ 15箱','_household':True,
+              '_supplementary':True,'_household_purpose':'everyday','_household_query_index':0}
+        for overrides,flag in (({},'0'),({'_household_require_reviews':True},'1'),
+            ({'_household_purpose':'small'},'1'),({'id':'laundry'},'1'),
+            ({'_household_query_index':1},'1'),
+            ({'_household':False},'1'),({'_household_purpose':None},'1')):
+            with self.subTest(overrides=overrides),patch.object(entry,'fetch_json',return_value={'Items':[]}) as fetch:
+                entry.fetch_page({**base,**overrides},1)
+                params=parse_qs(urlsplit(fetch.call_args.args[0].full_url).query)
+                self.assertEqual(params['hasReviewFlag'],[flag])
+                self.assertEqual(params['postageFlag'],['1'])
+                self.assertEqual(params['imageFlag'],['1'])
+                self.assertEqual(params['hits'],['30'])
+
+    def test_review_filter_cache_separates_both_plans_with_five_query_cap(self):
+        bulk=offer(qty=60,suffix='bulk',title='ボックスティッシュ 400枚 200組 5箱×12パック')
+        small=offer(qty=5,suffix='small');premium=offer(qty=20,suffix='premium')
+        calls=[]
+        def fetch(cat,page):
+            calls.append((cat['keyword'],cat.get('_household_require_reviews')))
+            if cat['_household_purpose']=='small':return [small]
+            if cat['keyword'].endswith('15箱'):return []
+            return [premium]
+        _,r=acquire_preview({'categories':{'tissue':{'items':[bulk]}}},[{'id':'tissue'}],
+            fetch,lambda x,c:x,lambda n:None,comparison_category='tissue',
+            baseline_queries={'everyday':h.QUERIES['tissue']['everyday']},baseline_tissue_reviews=True)
+        self.assertEqual(len(calls),4);self.assertEqual(r['unique_api_queries'],4)
+        self.assertEqual(r['status'],'OBSERVED');self.assertEqual(r['payment_lower_purposes'],[])
 
 
 if __name__=='__main__':unittest.main()

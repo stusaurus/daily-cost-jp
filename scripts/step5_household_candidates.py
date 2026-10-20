@@ -47,7 +47,8 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
                       'early_exit': False, 'excluded_reasons': query_reasons}
             report['requests'].append(record)
             try:
-                raw = fetch_page({**category, 'keyword': query, '_supplementary': True, '_household': True}, 1)
+                raw = fetch_page({**category, 'keyword': query, '_supplementary': True, '_household': True,
+                                  '_household_purpose': purpose,'_household_query_index':query_index}, 1)
                 if not isinstance(raw, list) or len(raw) > 30 or any(not isinstance(x, dict) for x in raw):
                     raise ValueError('Malformed API list')
                 rows = [normalize_item(x, category) for x in raw]
