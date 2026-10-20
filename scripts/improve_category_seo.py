@@ -49,10 +49,10 @@ SEARCH_TARGETS = {
     "laundry": {
         "title": "洗濯洗剤はどこが安い？送料込み単価の比較と買い目安",
         "h1": "洗濯洗剤はどこが安い？単価で価格比較",
-        "lead": "洗濯洗剤の楽天送料込み価格を100g・100mlあたりで比較。店頭価格との比べ方、詰め替えの販売個数、濃縮洗剤の1回あたりコストまで確認できます。",
+        "lead": "洗濯洗剤の楽天送料込み価格を{comparison_unit}あたりで比較。詰め替えの個数と支払総額を確認でき、店頭価格との比べ方や濃縮洗剤の使用量による違いも解説します。",
         "heading": "洗濯洗剤はどこが安い？価格とコスパの比較ポイント",
-        "intent_note": "「洗濯洗剤 どこが安い」「値段比較」「安い店」で探すときは、本体・詰め替え・大容量で総額が大きく違うため、100g・100mlあたりの単価をそろえて確認できます。",
-        "description": "洗濯洗剤はどこが安い？楽天市場の送料込み商品を毎朝更新し、100g・100mlあたりの単価で値段比較。本体・詰め替え・大容量を同じ基準で比べ、安い購入候補を探せます。",
+        "intent_note": "「洗濯洗剤 どこが安い」「値段比較」「安い店」で探すときは、本体・詰め替え・大容量で支払総額が違うため、{comparison_unit}あたりの単価だけでなく、セット数と必要量も確認してください。",
+        "description": "洗濯洗剤はどこが安い？楽天市場で送料込みと確認できた商品を{comparison_unit}あたりで値段比較。詰め替え・大容量の個数と支払総額を確認して選べます。",
     },
     "tissue": {
         "title": "ティッシュはどこが安い？今日の楽天送料込み価格・値段比較",
@@ -119,12 +119,17 @@ def schema_markup(name: str, category_id: str, description: str, page_name: str)
     return '<script id="category-seo-schema" type="application/ld+json">' + json.dumps(data, ensure_ascii=False) + "</script>"
 
 
+def render_search_copy(text: str, label: str) -> str:
+    """Fill only the known comparison-unit marker from the validated category label."""
+    return text.replace("{comparison_unit}", label)
+
+
 def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     q = urllib.parse.quote(name)
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
     target = SEARCH_TARGETS.get(category_id, {})
     heading = html.escape(target.get("heading", f"{name}はどこが安い？比較するときのポイント"))
-    intent_note = target.get("intent_note", "")
+    intent_note = render_search_copy(target.get("intent_note", ""), label)
     intent_html = f'<p class="search-intent-note">{html.escape(intent_note)}</p>' if intent_note else ""
     return f"""
 <section class="category-seo-guide" id="compare-guide">
@@ -192,8 +197,8 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
     base_title = f"{name}の安い順比較｜{label}単価・楽天送料込みランキング"
     title = target.get("title", base_title) + " | 日用品コスパ比較"
     h1 = target.get("h1", f"{name}の安い順・単価ランキング")
-    lead = target.get("lead", f"楽天市場の{name}を送料込み価格で{label}あたりに換算し、今日の安い順に比較します。")
-    description = target.get("description") or (target.get("lead", f"{alias}を楽天市場の送料込み価格で{label}あたりに換算し、安い順に比較。") + " 毎朝更新のランキングとリアルタイム価格検索で購入候補を確認できます。")
+    lead = render_search_copy(target.get("lead", f"楽天市場の{name}を送料込み価格で{label}あたりに換算し、今日の安い順に比較します。"), label)
+    description = render_search_copy(target.get("description") or (target.get("lead", f"{alias}を楽天市場の送料込み価格で{label}あたりに換算し、安い順に比較。") + " 毎朝更新のランキングとリアルタイム価格検索で購入候補を確認できます。"), label)
 
     markup = replace_once(markup, r"<title>.*?</title>", f"<title>{html.escape(title)}</title>")
     markup = replace_once(markup, r'<meta name="description" content="[^"]*">', f'<meta name="description" content="{html.escape(description, quote=True)}">')
