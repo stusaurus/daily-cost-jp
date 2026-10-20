@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from improve_category_seo import metric_label, seo_section, faq_section
+from improve_category_seo import metric_label, seo_section, faq_section, render_search_copy, SEARCH_TARGETS
 from comparison_units import comparison_unit
 
 
@@ -24,6 +24,19 @@ class SeoComparisonUnitsTests(unittest.TestCase):
         guide = seo_section("toilet-paper", "トイレットペーパー", "トイレットペーパー", label)
         self.assertIn("シングル・ダブル別の10mあたり", guide)
         self.assertNotIn("<strong>1ロールあたり</strong>", guide)
+
+    def test_laundry_search_copy_matches_actual_unit_and_does_not_claim_cost_per_wash(self):
+        target = SEARCH_TARGETS["laundry"]
+        for unit in ("100g", "100ml"):
+            for field in ("lead", "description", "intent_note"):
+                copy = render_search_copy(target[field], unit)
+                self.assertIn(f"{unit}あたり", copy)
+                self.assertNotIn("{comparison_unit}", copy)
+                self.assertNotIn("100g・100ml", copy)
+                self.assertNotIn("1回あたりコストまで確認", copy)
+            guide = seo_section("laundry", "洗濯洗剤", "洗濯洗剤", unit)
+            self.assertIn(f"{unit}あたり", guide)
+            self.assertNotIn("{comparison_unit}", guide)
 
     def test_other_categories_and_unknown_metrics_are_unchanged(self):
         for metric, expected in (("100g", "100g"), ("100ml", "100ml"), ("unknown", "同じ単位")):
