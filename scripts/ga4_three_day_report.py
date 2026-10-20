@@ -87,6 +87,14 @@ def evaluate(click_buckets, sessions, operator_dimension):
         "revenue": "NOT_CHECKED",
         "decision_confidence": "PROVISIONAL_ONLY",
         "recommended_action": "OBSERVE",
+        "traffic_evidence": {
+            "confirmed_test_clicks": totals["production_operator"] if operator_dimension else None,
+            "possible_test_or_unverified_use_clicks": totals["production_non_operator"] if operator_dimension else None,
+            "unknown_origin_clicks": totals["production_unknown"],
+            "verified_legitimate_use_clicks": None,
+            "verified_legitimate_use_status": "UNKNOWN",
+            "basis": "operator_test=0 is not evidence of a real customer; historical Rakuten reports cannot be joined to GA4 individuals",
+        },
     }
     if not operator_dimension:
         summary["reason"] = "operator_test custom event dimension is not registered in GA4"
@@ -140,6 +148,8 @@ def markdown_report(result):
         f"- 運営者テストと判明したクリック：{summary['known_operator_test_clicks']}件",
         f"- テストではない可能性があるクリック：{fmt(summary['provisional_non_operator_clicks'])}件（未検証）",
         f"- テスト区分不明のクリック：{summary['unknown_operator_clicks']}件",
+        "- operator_test=0は、未標識のテストを含む可能性がある未検証の利用です。実顧客の証拠ではありません。",
+        "- 正当な利用の根拠を確認できたクリック：UNKNOWN。過去の楽天クリックの出所も事後分類できません。",
         f"- 本番サイトのセッション：{fmt(summary['sessions'])}",
         f"- 調査の候補：{summary['recommended_action']}",
         "- 売上：**未取得**（クリックと購入は別）",

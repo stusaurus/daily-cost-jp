@@ -182,9 +182,9 @@ jobs:
               today) page='https://stusaurus.github.io/daily-cost-jp/today/?test=1' ;;
               categories) page='https://stusaurus.github.io/daily-cost-jp/categories/?test=1' ;;
             esac
-            npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "$page" --chrome-flags='--headless' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="published-design-reports/$route-mobile" --quiet
+            npm exec --yes --package=lighthouse@12.8.2 -- lighthouse "$page" --chrome-flags='--headless' --blocked-url-patterns='*googletagmanager.com/*,*google-analytics.com/*,*analytics.google.com/*,*googleadservices.com/*,*doubleclick.net/*,*hb.afl.rakuten.co.jp/*' --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path="published-design-reports/$route-mobile" --quiet
           done
-          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'https://stusaurus.github.io/daily-cost-jp/?test=1' --chrome-flags='--headless' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=published-design-reports/home-desktop --quiet
+          npm exec --yes --package=lighthouse@12.8.2 -- lighthouse 'https://stusaurus.github.io/daily-cost-jp/?test=1' --chrome-flags='--headless' --blocked-url-patterns='*googletagmanager.com/*,*google-analytics.com/*,*analytics.google.com/*,*googleadservices.com/*,*doubleclick.net/*,*hb.afl.rakuten.co.jp/*' --preset=desktop --only-categories=performance,accessibility,best-practices,seo --output=json --output=html --output-path=published-design-reports/home-desktop --quiet
       - name: Save public-page visual and accessibility evidence
         if: always()
         uses: actions/upload-artifact@v4

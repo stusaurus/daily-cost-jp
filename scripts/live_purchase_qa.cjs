@@ -1,7 +1,26 @@
 const { chromium } = require('playwright');
 const fs = require('node:fs/promises');
 const ROOT = 'https://stusaurus.github.io/daily-cost-jp/';
-const report = { at: new Date().toISOString(), browser: '', pages: [], interactions: [], errors: [] };
+const {requestPolicy} = require('./step3_ui_audit.cjs');
+const {isRakutenHref} = require('./ga4_live_cta_audit.cjs');
+const report = { at: new Date().toISOString(), browser: '', pages: [], interactions: [], errors: [],
+  analytics: 'NETWORK_BLOCKED', affiliate_navigation: 'URL_VALIDATION_ONLY', blocked_requests: 0 };
+async function isolate(context, receipt) {
+  // Context routing also covers a future popup's first request. Service workers
+  // are disabled by the caller so they cannot bypass this policy.
+  await context.route('**/*', route => {
+    const decision = requestPolicy(route.request().url(), route.request().resourceType());
+    // This existing live QA intentionally exercises the read-only Worker API.
+    // Every other external origin is denied by the shared STEP3 allowlist.
+    if (decision === 'block') { receipt.blocked_requests++; return route.abort(); }
+    return route.continue();
+  });
+}
+async function inspectAffiliateLink(link) {
+  const href = await link.getAttribute('href');
+  if (!isRakutenHref(href)) throw Error('Invalid Rakuten purchase URL');
+  return {href, status:'URL_VALIDATED_NO_CLICK', destination:'NOT_REQUESTED'};
+}
 async function check(label, fn) {
   try { const data = await fn(); report.interactions.push({ label, status:'observed', ...data }); }
   catch(e) { report.interactions.push({ label, status:'failed', error:e.message }); }
@@ -30,7 +49,7 @@ async function inspect(page, width, slug) {
   report.pages.push({width,slug,url:page.url(),title:await page.title(),...geometry,affiliateLinks:links});
   console.log(`${width} ${slug} viewport=${geometry.viewport} doc=${geometry.documentWidth} overflowing=${geometry.overflow.length} clipped=${geometry.clipped.length}`);
 }
-(async()=>{
+async function main(){
   await fs.mkdir('qa-evidence',{recursive:true});
   const browser=await chromium.launch();report.browser=browser.version();
   // QA must target the deployed revision, not the old Pages build.
@@ -44,7 +63,8 @@ async function inspect(page, width, slug) {
   }
   await deployment.close();if(!ready)throw new Error('Corrected Pages revision was not deployed');
   for(const width of [1440,390,320]) {
-    const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,deviceScaleFactor:1,locale:'ja-JP'});
+    const context=await browser.newContext({viewport:{width,height:900},isMobile:width<500,hasTouch:width<500,deviceScaleFactor:1,locale:'ja-JP',serviceWorkers:'block'});
+    await isolate(context,report);
     const page=await context.newPage();
     page.setDefaultTimeout(20000);
     page.on('pageerror',error=>report.errors.push({width,type:'pageerror',message:error.message}));
@@ -68,17 +88,9 @@ async function inspect(page, width, slug) {
             await page.locator('#show-saved').click();
             return { saved,compared,persisted:await page.locator('#purchase-tool-panel').innerText() };
           });
-          await check(`${width} category affiliate click`,async()=>{
+          await check(`${width} category affiliate URL (no outbound click)`,async()=>{
             const link=page.locator('a[href*="hb.afl.rakuten.co.jp"]').first();
-            const href=await link.getAttribute('href');
-            const popupPromise=context.waitForEvent('page');await link.click();
-            const popup=await popupPromise;
-            await popup.waitForLoadState('domcontentloaded').catch(()=>{});
-            const destination=popup.url();
-            const destinationText=await popup.locator('body').innerText({timeout:10000}).catch(()=> 'Unable to read destination');
-            await popup.screenshot({path:`qa-evidence/${width}-rakuten-category.png`,fullPage:false}).catch(()=>{});
-            const events=await page.evaluate(()=> (window.dataLayer||[]).map(x=>Array.from(x)).filter(x=>x[0]==='event'&&x[1]==='affiliate_click'));
-            await popup.close();return {href,destination,destinationText:destinationText.slice(0,8000),events};
+            return inspectAffiliateLink(link);
           });
         }
         return { url:page.url() };
@@ -105,7 +117,7 @@ async function inspect(page, width, slug) {
       await inspect(page,width,'search-ariel');
       const link=page.locator('.product-result-link:not([data-shipping-price=""])').first();
       let clicked=null;
-      if(await link.count()){const href=await link.getAttribute('href');const pop=context.waitForEvent('page');await link.click();const target=await pop;await target.waitForLoadState('domcontentloaded').catch(()=>{});clicked={href,destination:target.url(),text:(await target.locator('body').innerText().catch(()=>'' )).slice(0,10000)};await target.screenshot({path:`qa-evidence/${width}-rakuten-ariel.png`}).catch(()=>{});await target.close();}
+      if(await link.count())clicked=await inspectAffiliateLink(link);
       const events=await page.evaluate(()=> (window.dataLayer||[]).map(x=>Array.from(x)).filter(x=>x[0]==='event'&&x[1]==='affiliate_click'));
       return {text:(await page.locator('main').innerText()).slice(0,18000),clicked,events};
     });
@@ -118,7 +130,7 @@ async function inspect(page, width, slug) {
       const link=page.locator('.product-result-link[data-shipping-price]:not([data-shipping-price=""])').first();
       const priced=await link.count();
       let clicked=null;
-      if(priced){const href=await link.getAttribute('href');const pop=context.waitForEvent('page');await link.click();const target=await pop;await target.waitForLoadState('domcontentloaded').catch(()=>{});clicked={href,destination:target.url(),text:(await target.locator('body').innerText().catch(()=>'' )).slice(0,8000)};await target.screenshot({path:`qa-evidence/${width}-rakuten-search.png`}).catch(()=>{});await target.close();}
+      if(priced)clicked=await inspectAffiliateLink(link);
       const events=await page.evaluate(()=> (window.dataLayer||[]).map(x=>Array.from(x)).filter(x=>x[0]==='event'&&x[1]==='affiliate_click'));
       return {priced,clicked,events};
     });
@@ -128,4 +140,6 @@ async function inspect(page, width, slug) {
   await browser.close();
   await fs.writeFile('qa-evidence/report.json',JSON.stringify(report,null,2));
   console.log(JSON.stringify({pages:report.pages.length,failed:report.interactions.filter(x=>x.status==='failed').map(x=>({label:x.label,error:x.error})),errors:report.errors},null,2));
-})().catch(async e=>{report.fatal=e.message;await fs.writeFile('qa-evidence/report.json',JSON.stringify(report,null,2));console.error(e.message);process.exitCode=1;});
+}
+module.exports={isolate,inspectAffiliateLink};
+if(require.main===module)main().catch(async e=>{report.fatal=e.message;await fs.writeFile('qa-evidence/report.json',JSON.stringify(report,null,2));console.error(e.message);process.exitCode=1;});
