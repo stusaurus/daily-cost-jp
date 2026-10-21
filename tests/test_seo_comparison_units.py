@@ -39,6 +39,10 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             guide = seo_section("laundry", "洗濯洗剤", "洗濯洗剤", unit)
             self.assertIn(f"{unit}あたり", guide)
             self.assertNotIn("{comparison_unit}", guide)
+            faq = faq_section("laundry", "洗濯洗剤", unit)
+            self.assertIn(f"ため、{unit}あたりの単価", faq)
+            self.assertNotIn("100g・100mlあたり", faq)
+            self.assertNotIn("{comparison_unit}", faq)
 
     def test_ply_availability_note_matches_verified_single_only(self):
         item = {"name": "シングル 170m 48ロール", "metric": "roll", "unit_price": 110}
