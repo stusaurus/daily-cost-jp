@@ -19,6 +19,42 @@ test('fixed sale quantities and the affiliate URL are preserved',()=>{
   }
 });
 
+test('bulk offers without explicit pack counts never use a per-container label as evidence',()=>{
+  for (const shipping_match_name of [
+    '【まとめ買い】アリエール プロクリーン 詰め替え 超特大1340g (約1.',
+    '【ケース販売】洗濯洗剤1340g',
+    '【ケース売り】洗濯洗剤1340g',
+    '【まとめ買い】先着10個限定 洗濯洗剤1340g',
+  ]) {
+    const input={shipping_match_name,shipping_included_price:1000,
+      shipping_included_url:'https://hb.afl.rakuten.co.jp/hgc/test',
+      shipping_included_shop:'Synthetic shop',shipping_included_image:'offer.jpg',
+      sale_quantity_label:'1340g',url:'https://product.rakuten.co.jp/product/test/'};
+    const result=w.dailyCostVerifiedOffer(input);
+    assert.equal(result.offer_needs_selection,true,shipping_match_name);
+    for (const field of ['shipping_included_url','shipping_included_shop','shipping_included_image','sale_quantity_label'])
+      assert.equal(result[field],'',field);
+    assert.equal(result.shipping_included_price,null);
+    assert.equal(result.url,input.url);
+    assert.equal(input.shipping_included_price,1000,'input is unchanged');
+  }
+});
+
+test('explicit fixed bulk packs remain usable and clear an earlier rejection',()=>{
+  for (const shipping_match_name of [
+    '【まとめ買い】洗濯洗剤1340g×2個',
+    '【6個セット】まとめ買い 洗濯洗剤1340g',
+    '【ケース販売】水500ml×24本',
+    'まとめ買い 洗濯洗剤1340g 2袋入り',
+  ]) {
+    const result=w.dailyCostVerifiedOffer({shipping_match_name,
+      shipping_included_price:1000,shipping_included_url:'https://hb.afl.rakuten.co.jp/hgc/test',
+      offer_needs_selection:true});
+    assert.equal(result.offer_needs_selection,false,shipping_match_name);
+    assert.equal(result.shipping_included_price,1000,shipping_match_name);
+  }
+});
+
 test('same capacity cannot hide a different detergent type or container',()=>{
   for(const [name,shipping_match_name] of [
     ['アタックZERO 洗濯洗剤 ドラム式専用 本体(400g)', 'アタック ZERO(ゼロ) 洗濯洗剤 液体 ワンハンドプッシュ 本体 400g'],
