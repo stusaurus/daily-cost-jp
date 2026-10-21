@@ -40,6 +40,25 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             self.assertIn(f"{unit}あたり", guide)
             self.assertNotIn("{comparison_unit}", guide)
 
+    def test_laundry_faq_only_describes_the_actual_displayed_comparison_unit(self):
+        for metric in ("100g", "100ml"):
+            payload = {"categories": {"laundry": {"metric": metric}}}
+            label = metric_label("laundry", payload)
+            faq = faq_section("laundry", "洗濯洗剤", label)
+            self.assertIn(f"このページでは{metric}あたりの単価で比較します", faq)
+            self.assertNotIn("100g・100ml", faq)
+            self.assertNotIn("{comparison_unit}", faq)
+            self.assertIn("濃縮タイプは1回の使用量も確認", faq)
+            for other in ("100g", "100ml"):
+                if other != metric:
+                    self.assertNotIn(f"このページでは{other}あたり", faq)
+
+    def test_other_faqs_keep_existing_explanations(self):
+        tissue = faq_section("tissue", "ティッシュ", "100組")
+        paper = faq_section("toilet-paper", "トイレットペーパー", "シングル・ダブル別の10m")
+        self.assertIn("箱数だけでなく1箱あたりと100組あたり", tissue)
+        self.assertIn("シングル・ダブルを分けた10mあたり", paper)
+
     def test_ply_availability_note_matches_verified_single_only(self):
         item = {"name": "シングル 170m 48ロール", "metric": "roll", "unit_price": 110}
         note = toilet_ply_availability_note({"categories": {"toilet-paper": {"items": [item]}}})
