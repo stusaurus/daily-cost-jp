@@ -186,7 +186,7 @@ PRIORITY_FAQS = {
         ("トイレットペーパーの最安値はどう比較しますか？", "送料込みの商品にそろえ、シングル・ダブルを分けて10mあたりの単価を確認します。1ロール価格が安くても巻きが短ければ、同じ長さでは割高になる場合があります。"),
     ],
     "laundry": [
-        ("洗濯洗剤はどこが安いか、どう比較しますか？", "本体・詰め替え・大容量で総額が違うため、100g・100mlあたりの単価にそろえて比較します。濃縮タイプは1回の使用量も確認すると実際のコストを判断しやすくなります。"),
+        ("洗濯洗剤はどこが安いか、どう比較しますか？", "本体・詰め替え・大容量で総額が違うため、{comparison_unit}あたりの単価にそろえて比較します。濃縮タイプは1回の使用量も確認すると実際のコストを判断しやすくなります。"),
         ("洗濯洗剤の安い店を探すときの注意点は？", "表示価格だけでなく容量とセット数、送料を確認します。このページでは楽天市場で送料込みと確認できた商品を同じ単位に換算して比較しています。"),
     ],
 }
@@ -194,7 +194,7 @@ PRIORITY_FAQS = {
 def faq_section(category_id: str, name: str, label: str) -> str:
     safe_name, safe_label = html.escape(name), html.escape(label)
     extra = "".join(
-        f"<details><summary>{html.escape(q)}</summary><p>{html.escape(a)}</p></details>"
+        f"<details><summary>{html.escape(q)}</summary><p>{html.escape(render_search_copy(a, label))}</p></details>"
         for q, a in PRIORITY_FAQS.get(category_id, [])
     )
     return f"""
