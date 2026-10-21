@@ -25,10 +25,15 @@ window.dailyCostVerifiedOffer = function(product) {
   });
   const varyingPacks = ['個','袋','本','箱','パック'].some(unit =>
     new Set([...title.matchAll(new RegExp('(\\d+)\\s*' + unit, 'g'))].map(m => Number(m[1]))).size > 1);
+  // A truncated bulk listing may show only the size of ONE container.
+  // A capacity-derived sale_quantity_label is not independent pack evidence.
+  const packTitle = title.replace(/(?:先着|限定)\s*\d+\s*(?:個|袋|本|箱|パック)(?:限定)?/g, '');
+  const unknownBulkQuantity = /まとめ買い|ケース販売|ケース売り/.test(packTitle) &&
+    !/[1-9]\d*\s*(?:個|袋|本|箱|パック)(?:入り|入|セット)?/.test(packTitle);
   // Multiple capacities may also mean a mixed bundle. Do not infer its price.
   // Clear stale rejection flags if a subsequent lookup finds a matching offer.
   p.offer_type_mismatch = differentType;
-  p.offer_needs_selection = Boolean(selectable || new Set(capacities).size > 1 || (capacities.length && varyingPacks));
+  p.offer_needs_selection = Boolean(unknownBulkQuantity || selectable || new Set(capacities).size > 1 || (capacities.length && varyingPacks));
   if (p.offer_type_mismatch || p.offer_needs_selection) {
     p.shipping_included_price = null;
     p.shipping_included_url = '';

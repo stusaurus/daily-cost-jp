@@ -159,7 +159,7 @@ script = f"""
       button = '楽天で価格を確認';
     }} else {{
       priceHtml = '<span class="shipping-price-unavailable">送料込み価格を取得できません</span>';
-      detail = `<div class="shipping-price-note">${{p.offer_type_mismatch ? '用途・タイプが一致する購入候補を確認できないため、価格を表示していません' : p.offer_needs_selection ? '容量・個数の選択で価格が変わるため、単一価格を表示していません' : p.shipping_lookup_status==='API_FAILURE' ? '送料確認APIに接続できませんでした。時間をおいて再検索してください' : p.shipping_lookup_status==='TIME_LIMIT' ? '追加確認が時間内に完了しませんでした。商品がないという意味ではありません' : p.shipping_lookup_status==='UNVERIFIED' ? 'APIは応答しましたが、同一商品の送料込み出品を確認できませんでした' : '価格は楽天サイトでご確認ください'}}</div>`;
+      detail = `<div class="shipping-price-note">${{p.offer_type_mismatch ? '用途・タイプが一致する購入候補を確認できないため、価格を表示していません' : p.offer_needs_selection ? '販売数量・選択条件を確認できないため、単一価格を表示していません' : p.shipping_lookup_status==='API_FAILURE' ? '送料確認APIに接続できませんでした。時間をおいて再検索してください' : p.shipping_lookup_status==='TIME_LIMIT' ? '追加確認が時間内に完了しませんでした。商品がないという意味ではありません' : p.shipping_lookup_status==='UNVERIFIED' ? 'APIは応答しましたが、同一商品の送料込み出品を確認できませんでした' : '価格は楽天サイトでご確認ください'}}</div>`;
       button = '楽天で容量と価格を確認';
     }}
 

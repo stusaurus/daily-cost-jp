@@ -45,3 +45,30 @@ test('legacy search remains primary; corrected shipping is conditional and guard
     dom.window.close();
   }
 });
+
+test('unknown bulk quantities cannot become priced cards via initial or fallback offers', async () => {
+  const html=execFileSync('python',['tests/render_analytics_fixture.py'],{encoding:'utf8'});
+  for (const phase of ['initial','fallback']) {
+    const product={product_id:'bulk',name:'アリエール プロクリーン 洗濯洗剤1340g',
+      url:'https://product.rakuten.co.jp/product/bulk/'};
+    const offer={found:true,shipping_match_name:'【まとめ買い】アリエール プロクリーン 詰め替え1340g (約1.',
+      shipping_included_price:1000,sale_quantity_label:'1340g',
+      shipping_included_url:'https://hb.afl.rakuten.co.jp/hgc/unsafe-bulk'};
+    const dom=new JSDOM(html,{url:'https://stusaurus.github.io/daily-cost-jp/products/?test=1',
+      runScripts:'dangerously',beforeParse(w){w.CSS={escape:s=>s};w.fetch=async url=>({ok:true,json:async()=>
+        url.includes('product-search')?{products:[phase==='initial'?{...product,...offer}:product]}:offer});}});
+    const w=dom.window;const q=w.document.querySelector('#q');q.value='アリエール';
+    q.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    for(let i=0;i<100;i++) {
+      await new Promise(r=>setTimeout(r,10));
+      const status=w.document.querySelector('#status');
+      if(status?.dataset.searchDiagnosticStatus==='NO_SAFE_PRICED_CANDIDATES')break;
+    }
+    const link=w.document.querySelector('.product-result-link');
+    assert.equal(link.dataset.shippingPrice,'',phase);
+    assert.equal(link.href,product.url,phase);
+    assert.doesNotMatch(w.document.querySelector('#results').textContent,/1,000/);
+    assert.match(w.document.querySelector('#results').textContent,/販売数量・選択条件を確認できない/);
+    dom.window.close();
+  }
+});
