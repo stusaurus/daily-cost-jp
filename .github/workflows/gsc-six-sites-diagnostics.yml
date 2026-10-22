@@ -2,6 +2,11 @@ name: GSC Six-Site Discovery Diagnostics (Read Only)
 
 on:
   workflow_dispatch:
+    inputs:
+      include_sitemaps:
+        description: 'Read sitemaps.get/list once per configured property (no submissions)'
+        type: boolean
+        default: false
   schedule:
     # Monday 09:45 JST, after the existing six-site aggregate at 09:00.
     - cron: '45 0 * * 1'
@@ -30,7 +35,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify six-site scope, zero safeguards, query and URL response isolation
-        run: python3 -m unittest discover -s tests -p 'test_gsc_six_sites_diagnostics.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_gsc_six_sites_diagnostics.py' -v
+          python3 -m unittest discover -s tests -p 'test_gsc_sitemap_evidence.py' -v
 
   read-only-diagnostics:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -41,6 +48,7 @@ jobs:
       contents: read
       id-token: write
     env:
+      GSC_INCLUDE_SITEMAPS: ${{ github.event_name == 'workflow_dispatch' && inputs.include_sitemaps && 'true' || 'false' }}
       GCP_WIF_PROVIDER: 'projects/557507311026/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions'
       GCP_SERVICE_ACCOUNT: 'daily-cost-ga4-reader@daily-cost-analytics.iam.gserviceaccount.com'
     steps:
@@ -51,7 +59,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validate read-only diagnostics offline
-        run: python3 -m unittest discover -s tests -p 'test_gsc_six_sites_diagnostics.py' -v
+        run: |
+          python3 -m unittest discover -s tests -p 'test_gsc_six_sites_diagnostics.py' -v
+          python3 -m unittest discover -s tests -p 'test_gsc_sitemap_evidence.py' -v
       - name: Authenticate through existing short-lived OIDC
         uses: google-github-actions/auth@v2
         with:
