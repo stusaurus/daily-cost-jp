@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from urllib.request import urlopen
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from html.parser import HTMLParser
 
 from scripts import gsc_six_sites as base
@@ -19,6 +19,59 @@ from scripts import gsc_six_sites as base
 INDEX_ENDPOINT = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
 OUTPUT = Path("audit-results")
 ROW_LIMIT = 1000
+
+
+def sitemap_evidence(session, site):
+    """One list and one get, exact configured property; never submit or retry."""
+    if site not in dict(base.SITES).values():
+        raise ValueError("unconfigured sitemap property")
+    target = site + "sitemap.xml"
+    endpoint = base.ROOT + "/sites/" + quote(site, safe="") + "/sitemaps"
+    fields = ("path", "isPending", "lastSubmitted", "lastDownloaded", "type", "errors", "warnings")
+
+    def safe_row(row):
+        if not isinstance(row, dict) or row.get("path") != target:
+            raise ValueError("unexpected sitemap")
+        result = {key: row.get(key) for key in fields}
+        # Missing API fields stay null. They are never defaulted to false/zero.
+        result["contents"] = [{"type": c.get("type"), "submitted": c.get("submitted")}
+                              for c in row.get("contents", []) if isinstance(c, dict)]
+        result["contents_reported"] = "contents" in row
+        return result
+
+    result = {"status": "OBSERVED", "read_only": True, "list": None, "get": None}
+    for method, url in (("list", endpoint), ("get", endpoint + "/" + quote(target, safe=""))):
+        try:
+            response = session.get(url, timeout=30)
+            if response.status_code != 200:
+                result[method] = {"status": "UNAVAILABLE", "http_status": response.status_code}
+                result["status"] = "PARTIAL"
+                continue
+            payload = response.json()
+            if method == "list":
+                rows = payload.get("sitemap", [])
+                if not isinstance(rows, list) or len(rows) > 100:
+                    raise ValueError("invalid sitemap list")
+                matching = [safe_row(row) for row in rows if isinstance(row, dict) and row.get("path") == target]
+                result[method] = {"status": "OBSERVED" if matching else "NO_MATCHING_REGISTRATION", "rows": matching}
+            else:
+                result[method] = {"status": "OBSERVED", "row": safe_row(payload)}
+        except Exception:
+            result[method] = {"status": "UNAVAILABLE", "reason": "INVALID_OR_FAILED_RESPONSE"}
+            result["status"] = "PARTIAL"
+    row = (result.get("get") or {}).get("row", {})
+    if row.get("isPending") is True:
+        state = "PENDING"
+    elif row.get("errors") is not None and str(row["errors"]).isdigit() and int(row["errors"]) > 0:
+        state = "REPORTED_ERRORS"
+    elif (row.get("isPending") is False and row.get("lastDownloaded")
+          and row.get("type") in ("sitemap", "rssFeed", "atomFeed") and str(row.get("errors")) == "0"
+          and row.get("contents_reported")):
+        state = "DOWNLOADED_AND_PROCESSED"
+    else:
+        state = "PROCESSING_NOT_CONFIRMED"
+    result["processing_state"] = state
+    return result
 TARGET_PATHS = {
     "日用品": ("/categories/laundry/", "/categories/tissue/", "/categories/toilet-paper/"),
     "ベビー用品": ("/", "/diapers/pants/m/"),
@@ -196,7 +249,7 @@ def site_diagnostics(session, name, site, windows, permissions):
     return result
 
 
-def make_report(today, session=None, permissions=None, auth_problem=None):
+def make_report(today, session=None, permissions=None, auth_problem=None, include_sitemaps=False):
     windows = base.date_windows(today)
     sites = []
     for name, site in base.SITES:
@@ -204,7 +257,10 @@ def make_report(today, session=None, permissions=None, auth_problem=None):
             sites.append({"name": name, "property": site, "status": "NOT_CONNECTED", "reason": auth_problem,
                           "analytics": {}, "inspection": []})
         else:
-            sites.append(site_diagnostics(session, name, site, windows, permissions))
+            item = site_diagnostics(session, name, site, windows, permissions)
+            if include_sitemaps and permissions and permissions.get(site) in base.AUTHORIZED_LEVELS:
+                item["sitemaps"] = sitemap_evidence(session, site)
+            sites.append(item)
     passed = sum(s["status"] == "OBSERVED" for s in sites)
     return {
         "source": "Google Search Console Search Analytics + URL Inspection APIs (read-only)",
@@ -232,6 +288,9 @@ def markdown(report):
     ]
     for site in report["sites"]:
         lines.extend(["## " + site["name"], "", "- 診断：" + site["status"]])
+        if "sitemaps" in site:
+            lines.extend(["", "### サイトマップ公式API（登録状態とページ登録は別）", "",
+                          "```json", json.dumps(site["sitemaps"], ensure_ascii=False, indent=2), "```"])
         if "reason" in site:
             lines.append("- 理由：" + site["reason"])
         for label, title in (("queries_28d", "28日間"), ("queries_7d", "7日間")):
@@ -309,7 +368,8 @@ def main():
                                for item in data.get("siteEntry", []) if isinstance(item, dict)
                                and isinstance(item.get("siteUrl"), str)
                                and isinstance(item.get("permissionLevel"), str)}
-                report = make_report(today, session, permissions)
+                report = make_report(today, session, permissions,
+                                     include_sitemaps=os.environ.get("GSC_INCLUDE_SITEMAPS") == "true")
         except Exception:
             report = make_report(today, auth_problem="AUTH_OR_PROPERTY_LIST_FAILED")
     OUTPUT.mkdir(parents=True, exist_ok=True)
