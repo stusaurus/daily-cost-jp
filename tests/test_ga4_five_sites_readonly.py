@@ -92,7 +92,8 @@ class FiveSitesTests(unittest.TestCase):
     def test_config_mapping_is_not_fabricated_stream_verification(self):
         m=g.mappings(['G-GFVSZ8YDQ5'],{})[0]
         self.assertIsNone(m['stream_id']);self.assertIn('UNVERIFIED',m['basis'])
-        self.assertEqual(g.mappings(['G-6STQ5HXRDH'],{}),[])
+        self.assertEqual(g.mappings(['G-6STQ5HXRDH'],{})[0]['property_id'],'558239521')
+        self.assertEqual(g.mappings(['G-UNKNOWN999'],{}),[])
 
     def test_discovery_redacts_unrelated_names_and_uris(self):
         a,streams=g.discover(Session(),{'G-Q1N14V276G'})
@@ -104,8 +105,8 @@ class FiveSitesTests(unittest.TestCase):
         def public(site):
             return {'status':'OBSERVED','measurement_ids':['G-GFVSZ8YDQ5' if site in g.SITES[:3] else 'G-6STQ5HXRDH']}
         r=g.collect(s,dt.date(2026,10,23),public)
-        self.assertEqual([x['status'] for x in r['sites']],['QUERIED']*3+['PROPERTY_UNKNOWN']*2)
-        self.assertEqual(len([c for c in s.calls if c[0]=='post']),24)
+        self.assertEqual([x['status'] for x in r['sites']],['QUERIED']*5)
+        self.assertEqual(len([c for c in s.calls if c[0]=='post']),40)
         for _,url,p in (c for c in s.calls if c[0]=='post'):
             self.assertTrue(url.endswith(':runReport'))
             if p['metrics']==[{'name':'sessions'}]:self.assertEqual(p['dimensions'],[{'name':'sessionDefaultChannelGroup'}])
@@ -115,6 +116,19 @@ class FiveSitesTests(unittest.TestCase):
         s=Session('RATE')
         r=g.collect(s,dt.date(2026,10,23),lambda _: {'measurement_ids':['G-GFVSZ8YDQ5']})
         self.assertEqual(r['status'],'RATE_LIMITED_STOP');self.assertEqual(len(s.calls),1)
+
+    def test_known_property_permission_failure_keeps_counts_unavailable(self):
+        class Denied(Session):
+            def get(self,url,**kwargs):
+                if url.endswith('properties/558239521/metadata'):
+                    self.calls.append(('get',url,kwargs))
+                    return Response({'error':{}},403)
+                return super().get(url,**kwargs)
+        r=g.collect(Denied(),dt.date(2026,10,23),lambda _: {'measurement_ids':['G-6STQ5HXRDH']})
+        for site in r['sites']:
+            self.assertEqual(site['status'],'DATA_API_UNAVAILABLE')
+            self.assertEqual(site['data_api_metadata']['reason'],'PERMISSION_DENIED')
+            self.assertEqual(site['periods'],{})
 
     def test_food_guide_is_an_exact_saved_inspection_target(self):
         import scripts.gsc_six_sites_diagnostics as existing
