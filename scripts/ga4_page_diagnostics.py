@@ -328,4 +328,12 @@ def fetch():
 
 
 if __name__ == "__main__":
-    fetch()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--five-sites', action='store_true', help='Manual read-only site-scoped aggregates using existing OIDC')
+    args = parser.parse_args()
+    if args.five_sites:
+        from ga4_five_sites_readonly import main
+        main()
+    else:
+        fetch()
