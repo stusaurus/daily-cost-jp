@@ -76,7 +76,7 @@ TARGET_PATHS = {
     "日用品": ("/categories/laundry/", "/categories/tissue/", "/categories/toilet-paper/"),
     "ベビー用品": ("/", "/diapers/pants/m/"),
     "ペット用品": ("/", "/categories/pet-sheets/", "/categories/cat-litter/"),
-    "食品": ("/", "/categories/rice/", "/categories/pack-rice/"),
+    "食品": ("/", "/categories/rice/", "/categories/pack-rice/", "/guides/pack-rice-24-servings-cost/"),
     "ボードゲーム": ("/", "/scenes/two-player/"),
     "SOTOJITAKU": ("/", "/camp/", "/car-stay/", "/fishing/"),
 }
