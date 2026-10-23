@@ -45,3 +45,33 @@ GitHub PagesとSEOの本番コードには触れないため、10/19まで観察
 - https://developers.google.com/webmaster-tools/v1/urlInspection.index/inspect
 - https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule
 - https://docs.github.com/en/actions/concepts/workflows-and-actions/notifications-for-workflow-runs
+# STEP23: existing identity, manual five-site GA4 read
+
+The existing manual workflow has an optional `include_five_site_ga4` input
+(default false). It calls `ga4_page_diagnostics.py --five-sites`, preserving the
+default daily-only report, weekly schedule, OIDC provider/service account,
+environment, and permissions. No Google keys or browser login are required.
+The food 24-serving guide is now an exact URL Inspection snapshot target.
+
+The optional read uses the existing `analytics.readonly` scope. It checks the
+five published Measurement IDs, accessible Admin API account summaries and web
+streams, then Data API metadata and site-scoped 7/28 day reports. Admin discovery
+is capped at 20 accessible properties. Unrelated account names/default URLs are
+not saved. It never changes API enablement, property access, streams or Google
+settings. A 429 stops further authenticated reads without retries.
+
+Hostname, full HTTPS page-location prefix and slash-terminated page-path prefix
+separate sites; verified stream IDs add a stream filter. The existing shared-ID
+property correlation is explicitly labelled when Admin stream verification is
+unavailable. Unknown properties are not guessed. Permission denial, disabled
+API, missing mapping, empty observed rows and quality-withheld data remain
+distinct. Thresholding, sampling, truncation or a non-JST property calendar
+withhold counts. Periods end two JST days before execution, allowing latency;
+these GA4 windows are not GSC final-data windows.
+
+Session reports are aggregated once per site/channel, not summed across pages.
+All-scope, marked-non-operator and marked-operator sessions are separate reports:
+their populations can overlap and must not be added/subtracted to infer real
+users. Unclassified event flags remain unclassified. Event counts are neither
+unique users nor confirmed commissions. The JSON is stored in the existing
+diagnostic artifact; there is no new scheduler, issue writer, or publication.
