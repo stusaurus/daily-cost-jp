@@ -11,9 +11,11 @@ HOST = 'stusaurus.github.io'
 SITES = ('baby-cost-jp', 'pet-cost-jp', 'food-cost-jp', 'kyo-bodo-jp', 'sotojitaku')
 ADMIN = 'https://analyticsadmin.googleapis.com/v1beta/'
 DATA = 'https://analyticsdata.googleapis.com/v1beta/'
-# Existing daily deployment and GA4 workflow correlate this ID and property.
+# Existing deployments and dated analytics audits correlate these IDs/properties.
+# kyo-bodo-jp/docs/seo-pilot-20261012/AUDIT.md and
+# sotojitaku/docs/growth-phase1/REPORT.md contain the prior official mapping.
 # Admin verification is reported separately; this is not a discovered stream ID.
-EXISTING_MAPPING = {'G-GFVSZ8YDQ5': '552907444'}
+EXISTING_MAPPING = {'G-GFVSZ8YDQ5': '552907444', 'G-Q1N14V276G': '556462193', 'G-6STQ5HXRDH': '558239521'}
 LIMIT = 1000
 
 
@@ -83,7 +85,7 @@ def safe_default_uri(value):
 
 def discover(session, allowed_ids):
     result = api(session, 'get', ADMIN + 'accountSummaries?pageSize=200')
-    properties = {'552907444'}
+    properties = set(EXISTING_MAPPING.values())
     if result.get('http_status') == 429:
         return result, {}
     if result['status'] == 'OBSERVED':
@@ -105,7 +107,7 @@ def discover(session, allowed_ids):
                  'default_uri': safe_default_uri(s.get('webStreamData', {}).get('defaultUri'))}
                 for s in streams['data'].get('dataStreams', []) if s.get('type') == 'WEB_DATA_STREAM'
                 and s.get('webStreamData', {}).get('measurementId') in allowed_ids]}
-        if prop == '552907444' or streams.get('streams'):
+        if prop in EXISTING_MAPPING.values() or streams.get('streams'):
             found[prop] = streams
         if streams.get('http_status') == 429:
             result.update(status='UNAVAILABLE', http_status=429, reason='RATE_LIMITED_STOP')
