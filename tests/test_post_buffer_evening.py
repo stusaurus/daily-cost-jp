@@ -48,8 +48,24 @@ class EveningXDelayTests(unittest.TestCase):
         fetch.assert_called_once_with(
             not_before=refresh,
             expected_date="2026-10-15",
+            allow_newer=True,
         )
+
+    def test_main_skips_when_next_day_payload_is_already_live(self):
+        refresh = datetime(2026, 10, 15, 19, 0, tzinfo=JST)
+        payload = {"date": "2026-10-16", "text": "newer", "items": [{"id": "tissue"}]}
+        with (
+            mock.patch.object(evening, "required_evening_refresh_time", return_value=refresh),
+            mock.patch.object(evening.buffer, "fetch_today_social", return_value=payload),
+            mock.patch.object(evening, "build_evening_text") as build_text,
+            mock.patch.object(evening.buffer, "discover_x_channel") as discover,
+        ):
+            evening.main()
+
+        build_text.assert_not_called()
+        discover.assert_not_called()
 
 
 if __name__ == "__main__":
     unittest.main()
+
