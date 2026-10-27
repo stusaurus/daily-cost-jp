@@ -68,7 +68,7 @@ jobs:
   pr-browser-qa:
     name: Verify new browser QA against production (PR only)
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -243,7 +243,7 @@ jobs:
     name: Read-only production browser CTA audit
     needs: [cadence, report]
     if: needs.cadence.outputs.due == 'true' && needs.report.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
