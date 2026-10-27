@@ -19,6 +19,38 @@ class SeoComparisonUnitsTests(unittest.TestCase):
         self.assertIn("100組あたり", faq_section("tissue", "ティッシュ", label))
         self.assertNotIn("<strong>1箱あたり</strong>", seo_section("tissue", "ティッシュ", "ティッシュ", label))
 
+    def test_tissue_snippet_and_intro_use_primary_100pair_unit_without_rewriting_prices(self):
+        import improve_category_seo as module
+        target = SEARCH_TARGETS["tissue"]
+        self.assertIn("100組あたりで比較", target["lead"])
+        self.assertIn("100組あたりで値段比較", target["description"])
+        self.assertNotIn("1箱あたりで比較", target["lead"])
+        self.assertNotIn("1箱・100組あたりで値段比較", target["description"])
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            path = root / "categories" / "tissue" / "index.html"
+            path.parent.mkdir(parents=True)
+            original = (
+                '<html><head><title>Before</title>'
+                '<meta name="description" content="Before"></head>'
+                '<body><main class="container"><h1>Before</h1>'
+                '<p class="lead">Before</p>'
+                '<section id="tissue"><span data-fixture="ranking">¥44.16／100組</span></section>'
+                '<section class="related-categories"></section>'
+                '</main></body></html>'
+            )
+            path.write_text(original, encoding="utf-8")
+            payload = {"categories": {"tissue": {"metric": "box"}}}
+            with patch.object(module, "SITE_DIR", root):
+                self.assertTrue(module.enhance_page("tissue", "ティッシュ", "📦", "ティッシュペーパー", payload))
+            page = path.read_text(encoding="utf-8")
+            self.assertIn("ティッシュの楽天送料込み価格を100組あたりで比較", page)
+            self.assertIn("組数が違う商品を100組あたりで値段比較", page)
+            self.assertIn('data-fixture="ranking">¥44.16／100組', page)
+            self.assertNotIn("1箱あたりで比較", page)
+            self.assertIn("ティッシュはどこが安い？今日の楽天送料込み価格・値段比較", page)
+            self.assertIn('id="category-seo-schema"', page)
+
     def test_toilet_guide_keeps_ply_separation_and_normalized_length(self):
         payload = {"categories": {"toilet-paper": {"metric": "roll"}}}
         label = metric_label("toilet-paper", payload)
@@ -56,7 +88,7 @@ class SeoComparisonUnitsTests(unittest.TestCase):
     def test_other_faqs_keep_existing_explanations(self):
         tissue = faq_section("tissue", "ティッシュ", "100組")
         paper = faq_section("toilet-paper", "トイレットペーパー", "シングル・ダブル別の10m")
-        self.assertIn("箱数だけでなく1箱あたりと100組あたり", tissue)
+        self.assertIn("箱数だけでなく1箱の組数を確認し、100組あたりの価格で比較", tissue)
         self.assertIn("シングル・ダブルを分けた10mあたり", paper)
 
     def test_ply_availability_note_matches_verified_single_only(self):
