@@ -125,10 +125,19 @@ def main() -> None:
     # If GitHub starts this scheduled job after midnight, the relevant payload
     # is still the one produced by the previous evening's 19:00 refresh.
     refresh_time = required_evening_refresh_time()
+    expected_date = refresh_time.date().isoformat()
     payload = buffer.fetch_today_social(
         not_before=refresh_time,
-        expected_date=refresh_time.date().isoformat(),
+        expected_date=expected_date,
+        allow_newer=True,
     )
+    payload_date = str(payload.get("date") or "").strip()
+    if payload_date != expected_date:
+        print(
+            "Skipping delayed evening X post because a newer daily payload "
+            f"is already live: expected={expected_date}, got={payload_date}"
+        )
+        return
     text = build_evening_text(payload)
     org_id, org_name, channel = buffer.discover_x_channel()
     channel_id = str(channel.get("id") or "")
@@ -143,3 +152,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

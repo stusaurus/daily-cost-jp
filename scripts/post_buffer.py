@@ -64,7 +64,23 @@ def gql(query: str) -> dict:
     return payload.get("data") or {}
 
 
-def fetch_today_social(not_before=None, expected_date: str | None = None) -> dict:
+def is_newer_payload_date(payload_date: object, expected_date: str) -> bool:
+    """Return whether an ISO payload date is later than the requested date."""
+    try:
+        return (
+            datetime.fromisoformat(str(payload_date)).date()
+            > datetime.fromisoformat(expected_date).date()
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+def fetch_today_social(
+    not_before=None,
+    expected_date: str | None = None,
+    *,
+    allow_newer: bool = False,
+) -> dict:
     expected_date = expected_date or datetime.now(JST).date().isoformat()
     last_date = None
 
@@ -84,6 +100,16 @@ def fetch_today_social(not_before=None, expected_date: str | None = None) -> dic
             with urllib.request.urlopen(request, timeout=20) as response:
                 payload = json.loads(response.read().decode("utf-8"))
             last_date = payload.get("date")
+            if (
+                allow_newer
+                and is_newer_payload_date(last_date, expected_date)
+                and str(payload.get("text") or "").strip()
+            ):
+                print(
+                    "A newer Pages payload is already live; "
+                    f"expected={expected_date}, got={last_date}"
+                )
+                return payload
             if last_date == expected_date and str(payload.get("text") or "").strip():
                 request = urllib.request.Request(
                     f"{CATALOG_URL}?v={int(time.time())}",
@@ -298,3 +324,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
