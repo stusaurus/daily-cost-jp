@@ -106,6 +106,25 @@ class FeedbackArtifactTests(unittest.TestCase):
             r=a.read_feedback('fake-test-token')
         self.assertTrue(a.feedback_valid(r));self.assertEqual(r['evidence_run_id'],123456)
         self.assertIn('branch=main',api.call_args_list[0].args[0]);self.assertIn('/actions/runs/123456/',api.call_args_list[1].args[0])
+    def test_skipped_cadence_run_is_skipped_but_missing_real_report_fails_closed(self):
+        import io, zipfile
+        now=dt.datetime.now(dt.timezone.utc)
+        control=a.diagnose(catalog(),True,now=now)
+        buf=io.BytesIO()
+        with zipfile.ZipFile(buf,'w') as z:z.writestr('step4-control.json',json.dumps(control))
+        response=unittest.mock.MagicMock();response.__enter__.return_value.read.return_value=buf.getvalue()
+        opener=unittest.mock.MagicMock();opener.open.return_value=response
+        runs={'workflow_runs':[{'id':1,'head_branch':'main','event':'schedule','conclusion':'success','updated_at':now.isoformat()}, {'id':2,'head_branch':'main','event':'schedule','conclusion':'success','updated_at':now.isoformat()}]}
+        empty={'artifacts':[]}; skipped={'jobs':[{'name':'report','conclusion':'skipped'}]}
+        artifact={'artifacts':[{'id':42,'name':'step4-operations-feedback','expired':False,'size_in_bytes':1000}]}
+        with patch('autonomous_operations_issue.github_request',side_effect=[runs,empty,skipped,artifact]),patch('urllib.request.build_opener',return_value=opener):
+            self.assertEqual(a.read_feedback('fake')['evidence_run_id'],2)
+        with patch('autonomous_operations_issue.github_request',side_effect=[runs,empty,{'jobs':[{'name':'report','conclusion':'success'}]}]):
+            self.assertIsNone(a.read_feedback('fake'))
+        failed={'workflow_runs':[runs['workflow_runs'][0],{**runs['workflow_runs'][1], 'conclusion':'failure'}]}
+        with patch('autonomous_operations_issue.github_request',side_effect=[failed,empty,skipped]):
+            self.assertIsNone(a.read_feedback('fake'))
+
     def test_other_branch_and_bad_archive_cannot_authorize_content(self):
         runs={'workflow_runs':[{'id':123456,'head_branch':'malicious','event':'workflow_dispatch','conclusion':'success'}]}
         with patch('autonomous_operations_issue.github_request',return_value=runs):self.assertIsNone(a.read_feedback('fake-test-token'))

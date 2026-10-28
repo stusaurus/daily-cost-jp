@@ -59,7 +59,11 @@ def sale_band(cid, item, qty):
     text = normalize(item['name'])
     if cid == 'laundry':
         # Six separate bottles are not a household trial even at modest volume.
-        counts = re.findall(r'x\s*(\d+)', text, re.I) + re.findall(r'(?:【\s*|\[\s*)(\d+)\s*(?:個|袋|本)(?:セット)?', text, re.I)
+        # Align with the quantity parser: explicit unbracketed packs are sale
+        # counts too, while "先着3セット" denotes an offer limit, not pack size.
+        pack_text = re.sub(r'(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?', '', text)
+        counts = (re.findall(r'x\s*(\d+)', pack_text, re.I) +
+                  re.findall(r'(?<![\d.])(\d+)\s*(?:個|袋|本|パック|セット)', pack_text))
         if counts and max(map(int, counts)) > 2: return 'bulk'
         if re.search(r'業務用', text): return 'bulk'
     return 'small' if qty <= small else 'bulk' if qty >= bulk else 'everyday'
@@ -169,7 +173,9 @@ def block(cid, result, name):
             image = p.get('image','')
             photo = f'<img src="{esc(image)}" alt="" loading="lazy" width="96" height="96">' if isinstance(image,str) and image.startswith('https://') else ''
             content = (photo + f'<h4>{esc(clean_display_name(p["name"]))}</h4><p>確認できた総数量：{esc(qty_label)}</p>'
+                       f'<p>数量の根拠：{esc(parsed_quantity(cid, p["name"])["evidence"])}</p>'
                        f'<p>支払総額 <strong>¥{p["price"]:,.0f}</strong>（送料込み）</p>'
+                       f'<p>ショップ：{esc(p.get("shop") or "不明")}</p>'
                        f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)}{normalized}</p>'
                        f'<p class="step4-reason">{esc(label)}：' + ('この数量区分の確認済み候補から同じ比較単位の単価を重視。保管場所もご確認ください。' if purpose=='bulk' else 'この数量区分の確認済み候補から支払総額を重視。用途・ブランドもご確認ください。') + '</p>'
                        f'<a class="buy-button" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener" data-conversion-source="category" data-category-id="{cid}" data-id="{esc(r["spec_ref"])}" data-purchase-purpose="{purpose}" data-shipping-price="{p["price"]}">楽天でこの商品を確認する ↗</a>')

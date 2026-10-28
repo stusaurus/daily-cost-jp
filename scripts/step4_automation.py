@@ -77,15 +77,26 @@ def read_feedback(token):
             if result:result.remove_header('Authorization')
             return result
     try:
-        runs=github_request('/actions/workflows/ga4-three-day-analysis.yml/runs?branch=main&status=success&per_page=5',token)['workflow_runs']
-        run=next((r for r in runs if r.get('head_branch')=='main' and r.get('event') in ('schedule','workflow_dispatch','push') and r.get('conclusion')=='success'),None)
-        if not run:return None
-        instant=dt.datetime.fromisoformat(run['updated_at'].replace('Z','+00:00'))
-        if instant.tzinfo is None or not 0 <= (dt.datetime.now(dt.timezone.utc)-instant).total_seconds() <= 4*86400:return None
-        artifacts=github_request(f"/actions/runs/{run['id']}/artifacts?per_page=100",token)['artifacts']
-        matches=[a for a in artifacts if a.get('name')=='step4-operations-feedback' and not a.get('expired')]
-        if len(matches)!=1:return None
-        artifact=matches[0]
+        runs=github_request('/actions/workflows/ga4-three-day-analysis.yml/runs?branch=main&status=completed&per_page=10',token)['workflow_runs']
+        artifact = None
+        for run in runs:
+            if run.get('head_branch') != 'main' or run.get('event') not in ('schedule','workflow_dispatch','push'):
+                continue
+            if run.get('conclusion') != 'success':return None
+            instant=dt.datetime.fromisoformat(run['updated_at'].replace('Z','+00:00'))
+            if instant.tzinfo is None or not 0 <= (dt.datetime.now(dt.timezone.utc)-instant).total_seconds() <= 4*86400:return None
+            artifacts=github_request(f"/actions/runs/{run['id']}/artifacts?per_page=100",token)['artifacts']
+            matches=[a for a in artifacts if a.get('name')=='step4-operations-feedback' and not a.get('expired')]
+            if len(matches)==1:
+                artifact=matches[0]
+                break
+            if matches:return None
+            # Only a conclusively skipped report can be ignored. A missing
+            # artifact from a real analysis remains a fail-closed condition.
+            jobs=github_request(f"/actions/runs/{run['id']}/jobs?per_page=100",token)['jobs']
+            report=[j for j in jobs if j.get('name') == 'report']
+            if len(report)!=1 or report[0].get('conclusion')!='skipped':return None
+        if artifact is None:return None
         if artifact.get('size_in_bytes',0)>300000:return None
         url=f"https://api.github.com/repos/{REPO}/actions/artifacts/{artifact['id']}/zip"
         req=Request(url,headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'})

@@ -368,7 +368,7 @@ jobs:
     name: Classify and prepare at most one tested Draft PR (never deploy)
     needs: [cadence, operations-priority]
     if: always() && needs.cadence.outputs.due == 'true' && needs.operations-priority.result == 'success' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: write
