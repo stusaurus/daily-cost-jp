@@ -249,3 +249,9 @@ class HouseholdTests(unittest.TestCase):
 
 
 if __name__=='__main__':unittest.main()
+
+class Step56PackClassificationTests(unittest.TestCase):
+    def test_three_explicit_sets_are_bulk(self):
+        from step4_recommendations import sale_band
+        item={'name':'【3セット】 アタック抗菌EX 洗濯洗剤 850g 詰替','metric':'100g'}
+        self.assertEqual(sale_band('laundry',item,25.5),'bulk')
