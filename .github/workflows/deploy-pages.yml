@@ -25,6 +25,8 @@ on:
       - "scripts/build_site.py"
       - "scripts/sale_quantity.py"
       - "scripts/product_quality.py"
+      - "scripts/step4_automation.py"
+      - "scripts/step4_recommendations.py"
       - "scripts/candidate_acquisition.py"
       - "scripts/product_display.py"
       - "scripts/validate_product_quality.py"
