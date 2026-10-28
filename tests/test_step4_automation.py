@@ -121,6 +121,9 @@ class FeedbackArtifactTests(unittest.TestCase):
             self.assertEqual(a.read_feedback('fake')['evidence_run_id'],2)
         with patch('autonomous_operations_issue.github_request',side_effect=[runs,empty,{'jobs':[{'name':'report','conclusion':'success'}]}]):
             self.assertIsNone(a.read_feedback('fake'))
+        failed={'workflow_runs':[runs['workflow_runs'][0],{**runs['workflow_runs'][1], 'conclusion':'failure'}]}
+        with patch('autonomous_operations_issue.github_request',side_effect=[failed,empty,skipped]):
+            self.assertIsNone(a.read_feedback('fake'))
 
     def test_other_branch_and_bad_archive_cannot_authorize_content(self):
         runs={'workflow_runs':[{'id':123456,'head_branch':'malicious','event':'workflow_dispatch','conclusion':'success'}]}

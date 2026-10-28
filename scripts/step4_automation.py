@@ -77,11 +77,12 @@ def read_feedback(token):
             if result:result.remove_header('Authorization')
             return result
     try:
-        runs=github_request('/actions/workflows/ga4-three-day-analysis.yml/runs?branch=main&status=success&per_page=5',token)['workflow_runs']
+        runs=github_request('/actions/workflows/ga4-three-day-analysis.yml/runs?branch=main&status=completed&per_page=10',token)['workflow_runs']
         artifact = None
         for run in runs:
-            if run.get('head_branch') != 'main' or run.get('event') not in ('schedule','workflow_dispatch','push') or run.get('conclusion') != 'success':
+            if run.get('head_branch') != 'main' or run.get('event') not in ('schedule','workflow_dispatch','push'):
                 continue
+            if run.get('conclusion') != 'success':return None
             instant=dt.datetime.fromisoformat(run['updated_at'].replace('Z','+00:00'))
             if instant.tzinfo is None or not 0 <= (dt.datetime.now(dt.timezone.utc)-instant).total_seconds() <= 4*86400:return None
             artifacts=github_request(f"/actions/runs/{run['id']}/artifacts?per_page=100",token)['artifacts']
