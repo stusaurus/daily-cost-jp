@@ -59,7 +59,11 @@ def sale_band(cid, item, qty):
     text = normalize(item['name'])
     if cid == 'laundry':
         # Six separate bottles are not a household trial even at modest volume.
-        counts = re.findall(r'x\s*(\d+)', text, re.I) + re.findall(r'(?:【\s*|\[\s*)(\d+)\s*(?:個|袋|本|セット)(?:セット)?', text, re.I)
+        # Align with the quantity parser: explicit unbracketed packs are sale
+        # counts too, while "先着3セット" denotes an offer limit, not pack size.
+        pack_text = re.sub(r'(?:先着|限定)\s*\d+\s*(?:個|袋|本|パック|セット)(?:限定)?', '', text)
+        counts = (re.findall(r'x\s*(\d+)', pack_text, re.I) +
+                  re.findall(r'(?<![\d.])(\d+)\s*(?:個|袋|本|パック|セット)', pack_text))
         if counts and max(map(int, counts)) > 2: return 'bulk'
         if re.search(r'業務用', text): return 'bulk'
     return 'small' if qty <= small else 'bulk' if qty >= bulk else 'everyday'
