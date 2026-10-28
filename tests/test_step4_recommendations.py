@@ -29,6 +29,27 @@ class RecommendationsTests(unittest.TestCase):
         p=offer('laundry',6,'100ml',title='洗濯洗剤 100ml×6')
         slots=r.select_category('laundry',{'items':[p]})['slots']
         self.assertIsNone(slots['small']);self.assertIsNone(slots['everyday']);self.assertIsNotNone(slots['bulk'])
+    def test_detergent_unbracketed_multipacks_are_bulk_not_everyday(self):
+        cases = (
+            ('【3セット】 洗濯洗剤 850g', 'bulk'),
+            ('洗濯洗剤 850g 3セット', 'bulk'),
+            ('洗濯洗剤 850g 3本セット', 'bulk'),
+            ('洗濯洗剤 850g×3袋', 'bulk'),
+            ('洗濯洗剤 850g 2セット', 'everyday'),
+            ('洗濯洗剤 850g 先着3セット限定', 'everyday'),
+        )
+        for name,expected in cases:
+            with self.subTest(name=name):
+                self.assertEqual(r.sale_band('laundry',{'name':name,'metric':'100g'},25.5),expected)
+
+    def test_unbracketed_three_sets_cannot_enter_everyday_supplementary_pool(self):
+        bulk=offer('laundry',90,'100g',title='洗濯洗剤 1500g×6本')
+        three=offer('laundry',25.5,'100g',title='洗濯洗剤 850g 3セット',suffix='three')
+        result=r.select_category('laundry',{'items':[bulk],'purpose_candidates':[three]})
+        self.assertIsNone(result['slots']['everyday'])
+        self.assertIsNone(result['slots']['small'])
+        self.assertIsNotNone(result['slots']['bulk'])
+
     def test_three_offers_one_pack_not_three_choices(self):
         rows=[offer(qty=5,suffix=str(i)) for i in range(3)]
         result=r.select_category('tissue',{'items':rows})
