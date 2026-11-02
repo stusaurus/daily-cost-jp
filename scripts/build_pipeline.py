@@ -46,6 +46,7 @@ STEPS = (
     'step4_automation',
     'step5_evaluation',
     'step6_seo_content',
+    'build_laundry_cost_page',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',
