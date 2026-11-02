@@ -1,0 +1,77 @@
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+from bs4 import BeautifulSoup
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from build_laundry_cost_page import build
+
+
+class QuestionFirstPageTests(unittest.TestCase):
+    def _site(self, tmp):
+        site = Path(tmp)
+        target = site / "categories/laundry/index.html"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text('<!doctype html><html lang="ja"><head>'
+                          '<title>既存の洗剤ページ</title></head><body>'
+                          '<main id="lab-content"><section id="current-ranking">'
+                          '商品一覧</section></main></body></html>',
+                          encoding="utf-8")
+        return site, target
+
+    def test_build_generates_one_distinct_page_and_crawlable_internal_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site, category = self._site(tmp)
+            build(site)
+            page = site / "tools/laundry-cost-per-wash/index.html"
+            self.assertTrue(page.is_file())
+            self.assertTrue((site / "assets/laundry-per-wash.js").is_file())
+            content = BeautifulSoup(page.read_text(encoding="utf-8"), "html.parser")
+            self.assertEqual(len(content.select("h1")), 1)
+            self.assertEqual(content.html["lang"], "ja")
+            self.assertEqual(content.select_one('link[rel="canonical"]')["href"],
+                             "https://stusaurus.github.io/daily-cost-jp/tools/laundry-cost-per-wash/")
+            self.assertEqual(content.select_one('meta[name="robots"]')["content"],
+                             "index,follow")
+            self.assertEqual(len(content.select('#wash-calc input')), 11)
+            self.assertIsNotNone(content.select_one("#wash-result[hidden]"))
+            self.assertIsNotNone(content.select_one('script[src="/daily-cost-jp/assets/laundry-per-wash.js"]'))
+            self.assertIsNone(content.select_one("a[href*='rakuten.co.jp']"))
+            self.assertIn("楽天アフィリエイト", content.get_text())
+            link = BeautifulSoup(category.read_text(encoding="utf-8"), "html.parser")
+            self.assertEqual(len(link.select('#wash-cost-link')), 1)
+            self.assertEqual(link.select_one("#wash-cost-link a")["href"],
+                             "/daily-cost-jp/tools/laundry-cost-per-wash/")
+            self.assertIsNotNone(link.select_one("#current-ranking"))
+
+    def test_generator_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site, category = self._site(tmp)
+            build(site)
+            first = category.read_bytes()
+            build(site)
+            self.assertEqual(category.read_bytes(), first)
+            self.assertEqual(category.read_text(encoding="utf-8").count('id="wash-cost-link"'), 1)
+
+    def test_orphan_page_cannot_be_published(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp)
+            with self.assertRaises(RuntimeError):
+                build(site)
+            self.assertFalse((site / "tools").exists())
+
+    @unittest.skipUnless(shutil.which("node"), "Node is not installed")
+    def test_javascript_calculation_and_error_boundaries(self):
+        result = subprocess.run(
+            ["node", "--test", str(ROOT / "tests/test_laundry_per_wash.cjs")],
+            cwd=ROOT, capture_output=True, text=True, check=False, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
