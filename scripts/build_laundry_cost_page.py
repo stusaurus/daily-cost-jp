@@ -178,7 +178,7 @@ def build(site: Path = SITE) -> None:
             "html.parser"
         ).section
         main.insert(0, link)
-    category.write_text(str(soup), encoding="utf-8")
+        category.write_text(str(soup), encoding="utf-8")
     print("Built question-first laundry comparison with verified internal link.")
 
 
