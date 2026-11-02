@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import shutil
+import re
 from pathlib import Path
-
-from bs4 import BeautifulSoup
 
 SITE = Path("site")
 SITE_URL = "https://stusaurus.github.io/daily-cost-jp/"
@@ -162,23 +161,23 @@ def build(site: Path = SITE) -> None:
     assets.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(script, assets / "laundry-per-wash.js")
 
-    soup = BeautifulSoup(category.read_text(encoding="utf-8"), "html.parser")
-    main = soup.select_one("main")
-    if main is None:
-        raise RuntimeError("category page main missing")
-    if not soup.select_one("#wash-cost-link"):
-        link = BeautifulSoup(
+    raw = category.read_text(encoding="utf-8")
+    if 'id="wash-cost-link"' not in raw:
+        # Do not reserialize the source: STEP6 protects exact approved FAQ bytes.
+        main = re.search(r"<main\\b[^>]*>", raw, flags=re.IGNORECASE)
+        if main is None:
+            raise RuntimeError("category page main missing")
+        link = (
             '<section id="wash-cost-link" style="padding:18px;margin:16px 0;border:1px solid #dcd3ca;'
             'border-radius:14px;background:#fff8f1">'
             '<h2 style="font-size:19px;margin:0 0 7px">洗剤の本当のコストは、1回いくら？</h2>'
             '<p>濃縮タイプやまとめ買いは使用量も含めて比べましょう。'
             '洗剤A・Bの1回・月・年の費用を計算できます。</p>'
             '<a href="/daily-cost-jp/tools/laundry-cost-per-wash/">'
-            '1回あたりの洗剤代を比較する →</a></section>',
-            "html.parser"
-        ).section
-        main.insert(0, link)
-        category.write_text(str(soup), encoding="utf-8")
+            '1回あたりの洗剤代を比較する →</a></section>'
+        )
+        category.write_text(raw[:main.end()] + "\n" + link + "\n" + raw[main.end():],
+                            encoding="utf-8")
     print("Built question-first laundry comparison with verified internal link.")
 
 
