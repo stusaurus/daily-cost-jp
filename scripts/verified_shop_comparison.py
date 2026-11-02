@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 MARKER = '<!-- verified-same-sku-shop-comparison-v1 -->'
-ANCHOR = '<section class="step4-recommendations"'
+ANCHOR = '<section class="purchase-answer lab-answer" id="buying-answer">'
 CSS = """<style id="same-sku-shop-css">
 .same-sku-shop{margin:20px 0;padding:22px;border:1px solid #d6e4d9;border-radius:18px;background:#f5faf6}
 .same-sku-shop h2{font-size:clamp(19px,2.2vw,25px);line-height:1.4;margin:0 0 10px;color:#1e3930}
