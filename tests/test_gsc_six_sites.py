@@ -147,6 +147,21 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertEqual(result["page_changes_28d"][0]["change_impressions"], -58)
         self.assertEqual(result["page_changes_28d"][0]["change_clicks"], -2)
 
+    def test_prior_page_api_failure_does_not_break_current_gsc_report(self):
+        class PriorUnavailable(FakeSession):
+            def post(self, url, json=None, timeout=None):
+                if json.get("dimensions") == ["page"] and json["startDate"] == "2026-08-17":
+                    return Response(status=429)
+                return super().post(url, json=json, timeout=timeout)
+        site = g.SITES[0][1]
+        result = g.analyze_site(PriorUnavailable(), "日用品", site,
+                                g.date_windows(dt.date(2026, 10, 14)),
+                                {site: "siteRestrictedUser"})
+        self.assertEqual(result["status"], "OBSERVED")
+        self.assertEqual(result["prior_page_coverage"]["status"], "UNAVAILABLE")
+        self.assertEqual(result["page_changes_28d"], [])
+        self.assertEqual(result["top_pages"][0]["path"], "/categories/tissue/")
+
     def test_weekly_decline_flagged_with_sufficient_sample(self):
         earlier = {"impressions": 100}
         later = {"impressions": 30}
