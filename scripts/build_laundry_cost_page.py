@@ -164,7 +164,7 @@ def build(site: Path = SITE) -> None:
     raw = category.read_text(encoding="utf-8")
     if 'id="wash-cost-link"' not in raw:
         # Do not reserialize the source: STEP6 protects exact approved FAQ bytes.
-        main = re.search(r"<main\\b[^>]*>", raw, flags=re.IGNORECASE)
+        main = re.search(r"<main\b[^>]*>", raw, flags=re.IGNORECASE)
         if main is None:
             raise RuntimeError("category page main missing")
         link = (
