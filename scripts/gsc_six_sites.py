@@ -190,8 +190,13 @@ def analyze_site(session, name, site, windows, permissions):
             aggregates[key] = aggregate(query(session, site, value))
         stage = "top_pages"
         pages = page_summary(query(session, site, windows["last_28"], ["page"]), site)
-        stage = "prior_top_pages"
-        prior_pages = page_summary(query(session, site, windows["prior_28"], ["page"]), site)
+        # The additional historical query is optional. It must never turn
+        # a valid current-week report into a failed six-site diagnosis.
+        try:
+            prior_pages = page_summary(
+                query(session, site, windows["prior_28"], ["page"]), site)
+        except Exception:
+            prior_pages = {"status": "UNAVAILABLE", "rows_returned": 0, "top_pages": []}
         result.update({
             "status": "OBSERVED" if any(x["status"] == "OBSERVED" for x in aggregates.values())
                       else "NO_ROWS",
@@ -200,8 +205,9 @@ def analyze_site(session, name, site, windows, permissions):
             "top_pages": pages["top_pages"],
             "prior_top_pages": prior_pages["top_pages"],
             "prior_page_coverage": {k: prior_pages[k] for k in ("status", "rows_returned")},
-            "page_changes_28d": compare_page_windows(
-                pages["top_pages"], prior_pages["top_pages"]),
+            "page_changes_28d": (compare_page_windows(
+                pages["top_pages"], prior_pages["top_pages"])
+                if prior_pages["status"] != "UNAVAILABLE" else []),
             "changes": {
                 "week": change(aggregates["last_7"]["metrics"], aggregates["prior_7"]["metrics"]),
                 "month": change(aggregates["last_28"]["metrics"], aggregates["prior_28"]["metrics"]),
