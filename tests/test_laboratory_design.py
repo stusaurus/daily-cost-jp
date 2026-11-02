@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from bs4 import BeautifulSoup
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from redesign_laboratory import main, photo_url, sample_pair, price_markup, category_showroom, demo_markup, recommendation_picks, buying_modes_markup, display_name
+from redesign_laboratory import main, photo_url, sample_pair, price_markup, category_showroom, demo_markup, recommendation_picks, buying_modes_markup, display_name, published_category_anchor_links, catalog_item_by_url
 from art_direction import art_picture, CATEGORY_ART
 
 class LaboratoryDesignTests(unittest.TestCase):
@@ -88,8 +88,24 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertIn('/a.jpg',showroom.select_one('img')['src'])
         self.assertIn('100組で比較',showroom.text)
 
+    def test_archive_links_use_actual_published_products_not_raw_rank(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site=Path(tmp)
+            page=site/'categories/tissue/index.html'
+            page.parent.mkdir(parents=True)
+            # The first catalog item is not published; the second moves to rank 1.
+            page.write_text('<article class="product-card" id="tissue-rank-1">'
+                            '<a class="buy-button" href="https://hb.afl.rakuten.co.jp/b">'
+                            '楽天へ</a></article>')
+            published=published_category_anchor_links(site, 'tissue')
+            self.assertEqual(published, {'https://hb.afl.rakuten.co.jp/b': 'tissue-rank-1'})
+            self.assertIsNone(published.get(self.items[0]['url']))
+            self.assertEqual(catalog_item_by_url(self.categories['tissue'],self.items[1]['url'])['name'],
+                             self.items[1]['name'])
+            self.assertIsNone(catalog_item_by_url(self.categories['tissue'],'https://example.com/unpublished'))
+
     def test_rebuild_preserves_metadata_urls_scripts_tools_and_idempotence(self):
-        markup='''<!doctype html><html lang="ja"><head><title>既存SEO</title><meta name="description" content="既存の説明"><link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/"><script type="application/ld+json">{"@type":"WebSite"}</script><style>body{color:red}</style></head><body><header><h1>旧画面</h1><p class="updated">更新日時</p></header><main><section class="purchase-answer" id="buying-answer"><h2>今日の比較</h2><div class="answer-pick"><a href="#tissue-rank-1">商品A</a><p><strong>100組単価</strong></p></div><p class="answer-price">1箱参考</p></section><section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><section id="product-finder-home"><form><input name="q" placeholder="商品名"></form></section><section id="exact-store-compare"><input id="exact-name"></section><section id="buy-judge"><button id="judge-button"></button></section><section class="category-section" id="tissue"><div class="product-list"><article class="product-card" id="tissue-rank-1"></article><article class="product-card" id="tissue-rank-2"></article></div></section><script>window.feature = 'keep';</script></main></body></html>'''
+        markup='''<!doctype html><html lang="ja"><head><title>既存SEO</title><meta name="description" content="既存の説明"><link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/"><script type="application/ld+json">{"@type":"WebSite"}</script><style>body{color:red}</style></head><body><header><h1>旧画面</h1><p class="updated">更新日時</p></header><main><section class="purchase-answer" id="buying-answer"><h2>今日の比較</h2><div class="answer-pick"><a href="#tissue-rank-1">商品A</a><p><strong>100組単価</strong></p></div><p class="answer-price">1箱参考</p></section><section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><section id="product-finder-home"><form><input name="q" placeholder="商品名"></form></section><section id="exact-store-compare"><input id="exact-name"></section><section id="buy-judge"><button id="judge-button"></button></section><section class="category-section" id="tissue"><div class="product-list"><article class="product-card" id="tissue-rank-1"><a class="buy-button" href="https://hb.afl.rakuten.co.jp/a">楽天へ</a></article><article class="product-card" id="tissue-rank-2"><a class="buy-button" href="https://hb.afl.rakuten.co.jp/b">楽天へ</a></article></div></section><script>window.feature = 'keep';</script></main></body></html>'''
         with tempfile.TemporaryDirectory() as tmp:
             site=Path(tmp);(site/'today').mkdir();(site/'assets').mkdir()
             (site/'data.json').write_text(json.dumps({'updated_at':'2026-10-03','categories':self.categories}))
