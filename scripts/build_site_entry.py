@@ -227,6 +227,20 @@ EXTRA_CSS = r"""
 IMPROVED_HEAD = core.HTML_HEAD.replace("  </style>", EXTRA_CSS + "\n  </style>")
 
 
+def stable_published_ranking(category_id, ranked):
+    """Enforce that the final <=12 offers still pass the shared quality gate.
+
+    Outlier checks depend on the candidate pool; an already-filtered large pool
+    can yield a new isolated outlier after ranking chooses its small subset.
+    Remove such candidates, never relax thresholds or silently reinstate them.
+    """
+    while True:
+        verified = filter_items(category_id, ranked)
+        if len(verified) == len(ranked):
+            return verified
+        ranked = verified
+
+
 def build_site_improved():
     ACQUISITION_REPORT.clear()
     core.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -250,6 +264,12 @@ def build_site_improved():
 
         items = filter_items(category["id"], items, quality_report)
         metric, ranked = core.choose_ranked_items(items)
+        original_count = len(ranked)
+        ranked = stable_published_ranking(category["id"], ranked)
+        if len(ranked) != original_count:
+            print(f"{category['id']}: removed {original_count - len(ranked)} post-ranking safety outlier(s)")
+        if not ranked:
+            metric = None
         quality_report[category['id']]['acquisition'] = ACQUISITION_REPORT.get(category['id'], {})
         quality_report[category['id']]['published'] = len(ranked)
         quality_report[category['id']]['published_products'] = [
@@ -276,7 +296,7 @@ def build_site_improved():
             serializable[category["id"]]["small_pack_boxes"] = snapshot["boxes"]
             quality_report[category["id"]]["small_pack_status"] = snapshot["status"]
         category_snapshots.append((category, metric, ranked))
-        category_results.append(core.render_category(category, items, error=error))
+        category_results.append(core.render_category(category, ranked, error=error))
 
         if index < len(core.CATEGORIES) - 1:
             time.sleep(1.15)

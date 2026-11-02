@@ -35,6 +35,23 @@ class QuantityRankingTests(unittest.TestCase):
     def test_safe_bulk_pack_keeps_its_quantity(self):
         self.assertEqual(entry.safer_parse_measure_quantity('【6個セット】さらさ1490g', 'measure')['quantity'], 89.4)
 
+    def test_published_ranking_is_stable_after_quality_outlier_recheck(self):
+        prices = [1, 20, 21, 22]
+        candidates = [{
+            'name': f'マウスウォッシュ 500ml 商品{index}',
+            'price': unit * 5,
+            'unit_price': float(unit),
+            'metric': '100ml',
+            'confidence': 0.99,
+            'postage': '送料込み',
+            'url': f'https://item.rakuten.co.jp/example/mouthwash-{index}/',
+        } for index, unit in enumerate(prices, 1)]
+        stable = entry.stable_published_ranking('mouthwash', candidates)
+        self.assertLess(len(stable), len(candidates))
+        self.assertEqual(len(entry.filter_items('mouthwash', stable)), len(stable))
+        self.assertNotIn(candidates[0]['url'], {p['url'] for p in stable})
+        self.assertEqual([p['unit_price'] for p in stable], [20.0,21.0,22.0])
+
     def test_iri_bulk_sheet_pack_is_not_counted_as_one_pack(self):
         title = '山崎産業 フローリング用 ウェットシート 20枚入り×50個（1ケース）'
         parsed = entry.safer_parse_count_quantity(title, {'枚': 'sheet'})
