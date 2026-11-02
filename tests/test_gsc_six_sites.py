@@ -110,8 +110,42 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertEqual(report["sites"][0]["status"], "OBSERVED")
         self.assertEqual(report["sites"][0]["top_pages"][0]["path"], "/categories/tissue/")
         self.assertEqual(report["sites"][1]["status"], "NOT_CONNECTED")
-        self.assertEqual(len(session.calls), 5)
+        self.assertEqual(len(session.calls), 6)
         self.assertTrue(all(call[1]["dataState"] == "final" for call in session.calls))
+
+    def test_page_comparison_preserves_missing_rows(self):
+        now = [{"path": "/categories/laundry/", "impressions": 72, "clicks": 0},
+               {"path": "/categories/tissue/", "impressions": 18, "clicks": 0}]
+        prior = [{"path": "/categories/laundry/", "impressions": 130, "clicks": 2},
+                 {"path": "/categories/toilet-paper/", "impressions": 94, "clicks": 1}]
+        pairs = {row["path"]: row for row in g.compare_page_windows(now, prior)}
+        self.assertEqual(pairs["/categories/laundry/"]["change_impressions"], -58)
+        self.assertEqual(pairs["/categories/laundry/"]["change_clicks"], -2)
+        self.assertIsNone(pairs["/categories/tissue/"]["change_impressions"])
+        self.assertEqual(pairs["/categories/tissue/"]["status"], "PAGE_ROW_NOT_RETURNED")
+        self.assertIsNone(pairs["/categories/toilet-paper/"]["last_28"])
+
+    def test_page_window_report_handles_two_independent_periods(self):
+        class PeriodSession(FakeSession):
+            def post(self, url, json=None, timeout=None):
+                if json.get("dimensions") == ["page"]:
+                    old = json["startDate"] == "2026-08-17"
+                    return Response(payload={"rows": [{
+                        "keys": [g.SITES[0][1] + "categories/laundry/"],
+                        "clicks": 2 if old else 0,
+                        "impressions": 130 if old else 72,
+                        "ctr": 2 / 130 if old else 0,
+                        "position": 13 if old else 11,
+                    }]})
+                return super().post(url, json=json, timeout=timeout)
+        site = g.SITES[0][1]
+        result = g.analyze_site(
+            PeriodSession(), "日用品", site,
+            g.date_windows(dt.date(2026, 10, 14)),
+            {site: "siteRestrictedUser"})
+        self.assertEqual(result["status"], "OBSERVED")
+        self.assertEqual(result["page_changes_28d"][0]["change_impressions"], -58)
+        self.assertEqual(result["page_changes_28d"][0]["change_clicks"], -2)
 
     def test_weekly_decline_flagged_with_sufficient_sample(self):
         earlier = {"impressions": 100}
@@ -129,6 +163,8 @@ class SixSiteReportTests(unittest.TestCase):
         self.assertIn('| 日用品 | 7日 | 30 / 1 | 30 / 1 | 0 (0.0%) | 0 | OBSERVE |', rendered)
         self.assertIn('| 日用品 | 28日 |', rendered)
         self.assertIn('前28日：2026-08-17〜2026-09-13', rendered)
+        self.assertIn('ページ別の独立した前後28日比較', rendered)
+        self.assertIn('OBSERVED_IN_BOTH', rendered)
 
     def test_invalid_metrics_diagnostics_are_aggregate_only_and_fail_closed(self):
         class InvalidSession(FakeSession):
