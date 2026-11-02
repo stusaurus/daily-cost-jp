@@ -58,6 +58,22 @@ class QuestionFirstPageTests(unittest.TestCase):
             self.assertEqual(category.read_bytes(), first)
             self.assertEqual(category.read_text(encoding="utf-8").count('id="wash-cost-link"'), 1)
 
+    def test_existing_step6_seo_markup_is_byte_preserved(self):
+        marker = '<section id="step6-comparison-help"><p data-verification="a &amp; b">重要FAQ</p></section>'
+        with tempfile.TemporaryDirectory() as tmp:
+            site, category = self._site(tmp)
+            original = category.read_text(encoding="utf-8").replace(
+                '<section id="current-ranking">', marker + '<section id="current-ranking">')
+            category.write_text(original, encoding="utf-8")
+            build(site)
+            updated = category.read_text(encoding="utf-8")
+            self.assertIn(marker, updated)
+            self.assertEqual(updated.count(marker), 1)
+            self.assertEqual(updated.replace(
+                '\n' + updated[updated.index('<section id="wash-cost-link"'):
+                   updated.index('</section>', updated.index('<section id="wash-cost-link"')) + len('</section>')] + '\n', ''),
+                original)
+
     def test_orphan_page_cannot_be_published(self):
         with tempfile.TemporaryDirectory() as tmp:
             site = Path(tmp)
