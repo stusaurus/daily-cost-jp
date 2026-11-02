@@ -214,7 +214,25 @@ def masthead():
 def footer():
     return f'<footer class="lab-footer"><div class="lab-footer-brand">同じものさしで、暮らしの値段を。</div><p>日用品コスパ比較 / 暮らしの価格研究所</p><nav aria-label="フッターナビゲーション"><a href="{ROOT}categories/">21カテゴリの比較</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名から探す</a><a href="{ROOT}guides/tissue-price-per-box/">単価の計算方法</a><a href="{ROOT}trends/">楽天総合ランキング</a></nav><p>当サイトは楽天アフィリエイトを利用しています。リンク経由の購入により運営者に報酬が発生する場合があります。楽天グループ株式会社が運営するサイトではありません。掲載時点の取得データに基づく比較です。価格・在庫・地域別送料は楽天の商品ページで確認してください。</p></footer>'
 
-def redesign_home(soup,payload,today):
+def published_category_anchor_links(site, category_id):
+    """Use only product anchors actually present in the generated category page."""
+    page = site / "categories" / category_id / "index.html"
+    if not page.is_file():
+        return {}
+    result = {}
+    for card in fragment(page.read_text(encoding="utf-8")).select("article.product-card[id]"):
+        buy = card.select_one("a.buy-button[href]")
+        if buy and buy.get("href"):
+            result[buy["href"]] = card["id"]
+    return result
+
+
+def catalog_item_by_url(category, url):
+    """Rank numbers may shift after product-quality revalidation."""
+    return next((item for item in category["items"] if item.get("url") == url), None)
+
+
+def redesign_home(soup,payload,today,site=SITE):
     categories=payload['categories']; main=soup.main
     soup.body['class']=['lab-home']
     header=soup.header
@@ -262,10 +280,14 @@ def redesign_home(soup,payload,today):
         # of duplicate purchase widgets on the homepage.
         archive=soup.new_tag('section',attrs={'id':cid,'class':'lab-archive-category'})
         heading=soup.new_tag('h2');heading.string=c['name'];archive.append(heading)
+        published_links = published_category_anchor_links(site, cid)
         for rank,item in enumerate(c['items'],1):
             unit=comparison_unit(cid,item)
             label,value=unit if unit else (LABELS.get(item['metric'],item['metric']),item['unit_price'])
-            row=fragment(f'<div class="lab-archive-row" id="{cid}-rank-{rank}"><a class="category-page-link" href="{ROOT}categories/{cid}/#{cid}-rank-{rank}">{esc(clean_display_name(item["name"]))}</a><strong>{money(value)} <small>／{esc(label)}</small></strong></div>').div
+            actual_anchor = published_links.get(item.get("url"))
+            category_url = f"{ROOT}categories/{cid}/"
+            destination = category_url + (f"#{actual_anchor}" if actual_anchor else "")
+            row=fragment(f'<div class="lab-archive-row" id="{cid}-rank-{rank}"><a class="category-page-link" href="{esc(destination)}">{esc(clean_display_name(item["name"]))}</a><strong>{money(value)} <small>／{esc(label)}</small></strong></div>').div
             archive.append(row)
         details.append(archive);el.decompose()
     main.append(details)
@@ -282,8 +304,9 @@ def group_normalized_cards(soup,categories):
         if not old:continue
         groups={}
         for card in list(old.select('.product-card')):
-            rank=int(card['id'].rsplit('-',1)[1]);item=categories[cid]['items'][rank-1]
-            unit=comparison_unit(cid,item)
+            link = card.select_one("a.buy-button[href]")
+            item = catalog_item_by_url(categories[cid], link.get("href")) if link else None
+            unit = comparison_unit(cid, item) if item else None
             label=unit[0] if unit else '条件が未確認の商品'
             groups.setdefault(label,[]).append((unit[1] if unit else float('inf'),card))
         wrapper=soup.new_tag('div',attrs={'class':'lab-unit-groups'})
@@ -326,7 +349,7 @@ def main(site=SITE):
         soup.body.insert(0,fragment(masthead()))
         soup.main['id']='lab-content'
         ishome=path==site/'index.html'
-        if ishome:redesign_home(soup,payload,today)
+        if ishome:redesign_home(soup,payload,today,site)
         if path==site/'categories/index.html':
             block=soup.select_one('.category-pages-block')
             if block:
@@ -344,8 +367,11 @@ def main(site=SITE):
             anchor=el.get('id','');match=re.fullmatch(r'(.+)-rank-(\d+)',anchor)
             if not match:continue
             cid,rank=match[1],int(match[2]);c=payload['categories'].get(cid)
-            if not c or rank>len(c['items']):continue
-            el.replace_with(fragment(card_markup(cid,c,c['items'][rank-1],rank,anchor)))
+            if not c:continue
+            link = el.select_one("a.buy-button[href]")
+            item = catalog_item_by_url(c, link.get("href")) if link else None
+            if item is None:continue
+            el.replace_with(fragment(card_markup(cid,c,item,rank,anchor)))
         for field in soup.select('input:not([aria-label]):not([id])'):
             if field.get('placeholder'):field['aria-label']=field['placeholder']
         group_normalized_cards(soup,payload['categories'])
