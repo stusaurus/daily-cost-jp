@@ -136,6 +136,26 @@ def change(current, prior):
     }
 
 
+def compare_page_windows(current_pages, prior_pages):
+    """Compare returned page rows without mistaking missing rows for zero."""
+    current = {row["path"]: row for row in current_pages}
+    prior = {row["path"]: row for row in prior_pages}
+    paths = sorted(set(current) | set(prior),
+                   key=lambda p: (-max(current.get(p, {}).get("impressions", 0),
+                                       prior.get(p, {}).get("impressions", 0)), p))
+    result = []
+    for path in paths:
+        now, before = current.get(path), prior.get(path)
+        both = now is not None and before is not None
+        result.append({
+            "path": path, "last_28": now, "prior_28": before,
+            "status": "OBSERVED_IN_BOTH" if both else "PAGE_ROW_NOT_RETURNED",
+            "change_impressions": now["impressions"] - before["impressions"] if both else None,
+            "change_clicks": now["clicks"] - before["clicks"] if both else None,
+        })
+    return result
+
+
 def query(session, site, window, dimensions=None):
     body = {
         "startDate": window[0], "endDate": window[1],
@@ -153,7 +173,8 @@ def query(session, site, window, dimensions=None):
 def analyze_site(session, name, site, windows, permissions):
     result = {
         "name": name, "property": site, "status": "NOT_CONNECTED",
-        "windows": {}, "top_pages": [], "changes": {},
+        "windows": {}, "top_pages": [], "prior_top_pages": [],
+        "page_changes_28d": [], "changes": {},
     }
     if permissions is None:
         result["reason"] = "PROPERTY_LIST_UNAVAILABLE"
@@ -169,12 +190,24 @@ def analyze_site(session, name, site, windows, permissions):
             aggregates[key] = aggregate(query(session, site, value))
         stage = "top_pages"
         pages = page_summary(query(session, site, windows["last_28"], ["page"]), site)
+        # The additional historical query is optional. It must never turn
+        # a valid current-week report into a failed six-site diagnosis.
+        try:
+            prior_pages = page_summary(
+                query(session, site, windows["prior_28"], ["page"]), site)
+        except Exception:
+            prior_pages = {"status": "UNAVAILABLE", "rows_returned": 0, "top_pages": []}
         result.update({
             "status": "OBSERVED" if any(x["status"] == "OBSERVED" for x in aggregates.values())
                       else "NO_ROWS",
             "windows": aggregates,
             "page_coverage": {k: pages[k] for k in ("status", "rows_returned")},
             "top_pages": pages["top_pages"],
+            "prior_top_pages": prior_pages["top_pages"],
+            "prior_page_coverage": {k: prior_pages[k] for k in ("status", "rows_returned")},
+            "page_changes_28d": (compare_page_windows(
+                pages["top_pages"], prior_pages["top_pages"])
+                if prior_pages["status"] != "UNAVAILABLE" else []),
             "changes": {
                 "week": change(aggregates["last_7"]["metrics"], aggregates["prior_7"]["metrics"]),
                 "month": change(aggregates["last_28"]["metrics"], aggregates["prior_28"]["metrics"]),
@@ -198,7 +231,8 @@ def make_report(today, session=None, permissions=None, auth_problem=None):
         if auth_problem:
             entries.append({
                 "name": name, "property": site, "status": "NOT_CONNECTED",
-                "reason": auth_problem, "windows": {}, "top_pages": [], "changes": {},
+                "reason": auth_problem, "windows": {}, "top_pages": [],
+                "prior_top_pages": [], "page_changes_28d": [], "changes": {},
             })
         else:
             entries.append(analyze_site(session, name, site, windows, permissions))
@@ -214,6 +248,7 @@ def make_report(today, session=None, permissions=None, auth_problem=None):
             "NOT_CONNECTED is not zero impressions; a no-row response is not proof of zero traffic.",
             "Search Console clicks are not X referral visits, GA4 sessions, or Rakuten conversions.",
             "Search Analytics may omit anonymized queries and some low-volume/page rows.",
+            "Page comparison reports only the top five returned rows per window; absent rows are unknown, not zero.",
             "No published-site changes, index submissions, credential files, or automatic SEO rewrites.",
         ],
     }
@@ -278,7 +313,21 @@ def markdown(report):
                 lines.append("- " + page["path"] + "：表示 " +
                              str(page["impressions"]) + "、クリック " + str(page["clicks"]))
         lines.append("")
-    lines.extend(["※検索表示の増減だけでは順位低下・ペナルティ・インデックス問題と断定できません。",
+    lines.extend(["", "## ページ別の独立した前後28日比較（各期間の上位5ページのみ）", "",
+                  "※返却されなかったページは0回ではなく「未確認」です。上位行は非網羅的で、サイト集計には合算しません。",
+                  "| サイト | ページ | 前28日表示 | 直近28日表示 | 表示差 | 状態 |",
+                  "|---|---|---:|---:|---:|---|"])
+    for item in report["sites"]:
+        for row in item.get("page_changes_28d", []):
+            before, now = row["prior_28"], row["last_28"]
+            lines.append("| " + " | ".join([
+                item["name"], row["path"],
+                str(before["impressions"]) if before is not None else "未確認",
+                str(now["impressions"]) if now is not None else "未確認",
+                str(row["change_impressions"]) if row["change_impressions"] is not None else "算出不可",
+                row["status"],
+            ]) + " |")
+    lines.extend(["", "※検索表示の増減だけでは順位低下・ペナルティ・インデックス問題と断定できません。",
                   "※Xのアクセス解析と楽天の売上実績は別集計です。",
                   "※Search Consoleへの書込み、サイトの変更、商品・価格・楽天リンクの更新はしていません。", ""])
     return "\n".join(lines)
