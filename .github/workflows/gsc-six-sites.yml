@@ -2,6 +2,12 @@ name: GSC Six-Site Direct API (Read Only)
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/gsc_category_query_delta.py'
+      - 'tests/test_gsc_category_query_delta.py'
   schedule:
     # Monday 09:00 JST (GitHub schedules may run later)
     - cron: '0 0 * * 1'
