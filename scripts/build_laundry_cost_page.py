@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
-from product_quality import filter_items, parsed_quantity
+if __package__:
+    from .product_quality import filter_items, parsed_quantity
+else:
+    from product_quality import filter_items, parsed_quantity
 
 SITE = Path("site")
 SITE_URL = "https://stusaurus.github.io/daily-cost-jp/"
