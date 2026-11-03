@@ -87,5 +87,6 @@ if(require.main===module)(async()=>{
    await page.close();
   }
   await require('./first_revenue_search_qa.cjs')(browser,`http://127.0.0.1:${server.address().port}`);
+  await require('./laundry_per_wash_qa.cjs')(browser,`http://127.0.0.1:${server.address().port}`);
  }finally{await browser?.close();server.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
