@@ -310,6 +310,11 @@ def markdown(report):
                           "```json", json.dumps(site["sitemaps"], ensure_ascii=False, indent=2), "```"])
         if "reason" in site:
             lines.append("- 理由：" + site["reason"])
+        lines.extend(["", "### 比較内訳の取得状態（未返却は0ではありません）", "",
+                      "| 内訳 | 状態 | 返却行数 |", "|---|---|---:|"])
+        for label, part in site["analytics"].items():
+            lines.append("| " + label + " | " + part.get("status", "UNAVAILABLE") + " | "
+                         + str(part.get("rows_returned", "不明")) + " |")
         for label, title in (("queries_28d", "28日間"), ("queries_7d", "7日間")):
             data = site["analytics"].get(label, {})
             status = data.get("status", "UNAVAILABLE")
