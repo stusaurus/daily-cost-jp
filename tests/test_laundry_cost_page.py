@@ -1,4 +1,6 @@
 import shutil
+import json
+from datetime import datetime, timedelta, timezone
 import subprocess
 import sys
 import tempfile
@@ -52,6 +54,39 @@ class QuestionFirstPageTests(unittest.TestCase):
             self.assertEqual(link.select_one("#wash-cost-link a")["href"],
                              "/daily-cost-jp/tools/laundry-cost-per-wash/")
             self.assertIsNotNone(link.select_one("#current-ranking"))
+
+    def test_verified_catalog_prefill_requires_recent_safe_quantity_and_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            site, _ = self._site(tmp)
+            item = {
+                "name": "アタック 洗濯洗剤 詰め替え 850g",
+                "metric": "100g", "price": 850, "unit_price": 100,
+                "postage": "送料込み", "confidence": .99,
+                "url": "https://item.rakuten.co.jp/example-shop/850g/",
+            }
+            payload = {
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "categories": {"laundry": {"items": [item]}}
+            }
+            source = site / "data.json"
+            source.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            build(site)
+            page = BeautifulSoup((site / "tools/laundry-cost-per-wash/index.html")
+                                 .read_text(encoding="utf-8"), "html.parser")
+            cards = page.select("#wash-verified-picks .pick-card")
+            self.assertEqual(len(cards), 1)
+            a = cards[0].select_one('button[data-pick-target="a"]')
+            self.assertEqual(a["data-pick-price"], "850")
+            self.assertEqual(a["data-pick-total"], "850")
+            self.assertEqual(a["data-pick-unit"], "g")
+            self.assertNotIn("data-pick-dose", a.attrs)
+            self.assertIsNone(page.select_one('#wash-verified-picks a[href*="rakuten"]'))
+
+            payload["updated_at"] = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+            source.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+            build(site)
+            stale = (site / "tools/laundry-cost-per-wash/index.html").read_text(encoding="utf-8")
+            self.assertNotIn('id="wash-verified-picks"', stale)
 
     def test_generator_is_idempotent(self):
         with tempfile.TemporaryDirectory() as tmp:
