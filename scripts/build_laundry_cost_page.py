@@ -3,7 +3,13 @@ from __future__ import annotations
 
 import shutil
 import re
+import json
+import math
+from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
+
+from product_quality import filter_items, parsed_quantity
 
 SITE = Path("site")
 SITE_URL = "https://stusaurus.github.io/daily-cost-jp/"
@@ -51,6 +57,12 @@ p{margin:8px 0 12px}
 .calc-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:12px}
 .secondary{border:1px solid #c6b8ae;border-radius:9px;background:#fff;padding:8px 14px;color:#6b2c21;cursor:pointer;font-size:14px;font-weight:700}
 .offer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pick-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pick-card{min-width:0;border:1px solid var(--line);background:#fcfaf8;border-radius:12px;padding:13px}
+.pick-card strong{display:block;font-size:14px;overflow-wrap:anywhere}
+.pick-card p{font-size:13px}
+.pick-actions{display:flex;flex-wrap:wrap;gap:6px}
+.pick-actions button{min-height:44px;flex:1 1 100px}
 .offer{background:#fcfaf8;padding:18px;border:1px solid var(--line);border-radius:14px}
 .offer:nth-child(2){background:#f9fbfa}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
@@ -78,7 +90,7 @@ p{margin:8px 0 12px}
 .steps li{margin-bottom:8px}
 footer{padding:28px 0;background:#2b2928;color:#e9e4e1;font-size:13px}
 footer a{color:#fff}
-@media(max-width:660px){.site-nav .wrap{align-items:flex-start;flex-direction:column;padding:12px 0}.hero{padding:30px 0}.panel{padding:17px}.offer-grid,.intro-grid,.result-grid{grid-template-columns:1fr}.offer{padding:14px}.calc-actions{display:block}.calc-actions .field{max-width:none;margin-bottom:12px}.primary{width:100%}}
+@media(max-width:660px){.site-nav .wrap{align-items:flex-start;flex-direction:column;padding:12px 0}.hero{padding:30px 0}.panel{padding:17px}.offer-grid,.intro-grid,.result-grid,.pick-grid{grid-template-columns:1fr}.offer{padding:14px}.calc-actions{display:block}.calc-actions .field{max-width:none;margin-bottom:12px}.primary{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 <script src="/daily-cost-jp/assets/laundry-per-wash.js" defer></script>
@@ -98,9 +110,11 @@ footer a{color:#fff}
 <p><b>02｜実際に買うセット数</b>1〜12か月分の使用量から算出</p>
 <p><b>03｜買いすぎの防止</b>見積支払額と使い残しを表示</p>
 </section>
+<!-- verified laundry presets -->
 <section class="panel" aria-labelledby="calc-title">
 <div class="calc-head"><div><div class="eyebrow">自分の条件で比べる</div><h2 id="calc-title">洗剤A・洗剤Bを比較</h2></div><button id="wash-sample" type="button" class="secondary">架空の入力例を試す</button></div>
-<p class="editor-note">税込セット価格、送料、1個分の内容量とセット入り数、製品の表示にある1回使用量を入力。gとmLは換算せず、各製品の表示単位をそのまま使います。</p>
+<p class="editor-note">税込セット価格、送料、1個分の内容量とセット入り数、製品の表示にある1回使用量を入力。gとmLは換算せず、各製品の表示単位をそのまま使います。上の候補から選ぶ場合、販売中の1セットを「内容量×1個」として入力します。</p>
+<p id="wash-picked-note" class="editor-note" role="status" aria-live="polite"></p>
 <form id="wash-calc" novalidate>
 <div class="offer-grid">
 <fieldset class="offer"><legend><h3>洗剤A</h3></legend><div class="fields">
@@ -159,13 +173,88 @@ footer a{color:#fff}
 '''
 
 
+def verified_picks(site: Path) -> str:
+    """Only copy price and base quantity from published, revalidated offers.
+
+    Dosage is never inferred from density, brand or package title.
+    When the catalog is missing/stale/unsafe, the calculator stays manual.
+    """
+    source = site / "data.json"
+    if not source.is_file():
+        return ""
+    try:
+        catalog = json.loads(source.read_text(encoding="utf-8"))
+        stamp = datetime.fromisoformat(catalog["updated_at"])
+        if stamp.tzinfo is None:
+            return ""
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
+        if age < -3600 or age > 172800:
+            return ""
+        items = filter_items("laundry", catalog["categories"]["laundry"]["items"])
+    except (KeyError, ValueError, TypeError, OSError, json.JSONDecodeError):
+        return ""
+
+    candidates = []
+    seen = set()
+    for item in items:
+        qty = parsed_quantity("laundry", item["name"])
+        metric = item["metric"]
+        if not qty or qty["metric"] != metric or metric not in ("100g", "100ml"):
+            continue
+        total = qty["quantity"] * 100
+        price = float(item["price"])
+        if not all(math.isfinite(value) and value > 0 for value in (total, price)):
+            continue
+        if total > 1000000000 or price > 1000000000:
+            continue
+        identity = item["url"]
+        if identity in seen:
+            continue
+        seen.add(identity)
+        candidates.append((total, price, "g" if metric == "100g" else "mL", item))
+
+    if not candidates:
+        return ""
+    candidates.sort(key=lambda x: (x[0], x[1], x[3]["name"]))
+    # Include different purchase sizes rather than three very similar top-ranked bundles.
+    indexes = list(dict.fromkeys((0, (len(candidates) - 1) // 2, len(candidates) - 1)))
+    chosen = [candidates[i] for i in indexes]
+    cards = []
+    for total, price, unit, item in chosen:
+        title = escape(item["name"][:105])
+        total_text = f"{total:g}"
+        price_text = f"{price:g}"
+        common = (f'data-pick-price="{price_text}" data-pick-total="{total_text}" '
+                  f'data-pick-unit="{unit}" data-pick-name="{escape(item["name"][:75], quote=True)}"')
+        cards.append(
+            f'<article class="pick-card"><strong>{title}</strong>'
+            f'<p>1販売セットの総量 {total_text}{unit}・掲載価格 ¥{price:,.0f}（送料込み表示）</p>'
+            f'<div class="pick-actions">'
+            f'<button type="button" class="secondary" data-pick-target="a" {common}>Aに入力</button>'
+            f'<button type="button" class="secondary" data-pick-target="b" {common}>Bに入力</button>'
+            f'</div></article>'
+        )
+    updated = escape(stamp.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+    return (
+        '<section class="panel" id="wash-verified-picks" aria-labelledby="verified-title">'
+        '<h2 id="verified-title">検証済み掲載候補から選んで入力を省略</h2>'
+        '<p>価格・送料込みの販売セット総量をA/Bに反映します。'
+        '<strong>1回の使用量はメーカーのラベルで調べて入力してください。</strong>'
+        '異なるタイプ・濃縮度は同じ水量・洗濯物量の標準使用量で比較してください。</p>'
+        f'<div class="pick-grid">{"".join(cards)}</div>'
+        f'<p class="editor-note">掲載データ更新：{updated}。楽天市場の取得候補だけで市場全体を網羅していません。'
+        '販売条件・価格・在庫・配送先送料は購入直前に再確認してください。'
+        '価格・容量を変えた場合の計算は、変更後の入力値に基づきます。</p></section>'
+    )
+
+
 def build(site: Path = SITE) -> None:
     category = site / "categories/laundry/index.html"
     if not category.is_file():
         raise RuntimeError("laundry category missing; do not publish orphan page")
     page = site / DEST / "index.html"
     page.parent.mkdir(parents=True, exist_ok=True)
-    page.write_text(PAGE, encoding="utf-8")
+    page.write_text(PAGE.replace("<!-- verified laundry presets -->", verified_picks(site)), encoding="utf-8")
     script = Path(__file__).resolve().parent / "assets/laundry-per-wash.js"
     assets = site / "assets"
     assets.mkdir(parents=True, exist_ok=True)
