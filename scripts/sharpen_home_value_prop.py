@@ -37,7 +37,7 @@ def main():
     replacement = f'''<header>
   <div class="container">
     <span class="eyebrow">無料・登録不要｜毎朝自動更新</span>
-    <h1>その日用品、本当に安い？</h1>
+    <h1>日用品は、単価も支払額も見て選ぶ。</h1>
     <p class="lead">いつも買う日用品を、1枚・1ロール・100mlなど同じ単位で比較。単価だけでなく、セットで払う金額と数量も確かめてから選べます。</p>
     <div class="value-props" aria-label="このサイトの特徴">
       <span class="value-prop">確認できた送料込み候補</span>
