@@ -50,6 +50,7 @@ STEPS = (
     'build_laundry_cost_page',
     'buying_decision_summary',
     'add_a8_matsukiyo',
+    'add_a8_lenet',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',

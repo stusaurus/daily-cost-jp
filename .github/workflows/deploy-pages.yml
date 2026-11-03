@@ -70,6 +70,8 @@ on:
       - "scripts/add_trend_conversion_tracking.py"
       - "scripts/add_back_to_top.py"
       - "scripts/add_analytics.py"
+      - "scripts/add_a8_matsukiyo.py"
+      - "scripts/add_a8_lenet.py"
       - "scripts/analytics_runtime.js"
       - "scripts/offer_validation.js"
       - "scripts/improve_purchase_pages.py"
