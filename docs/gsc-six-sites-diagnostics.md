@@ -75,3 +75,9 @@ their populations can overlap and must not be added/subtracted to infer real
 users. Unclassified event flags remain unclassified. Event counts are neither
 unique users nor confirmed commissions. The JSON is stored in the existing
 diagnostic artifact; there is no new scheduler, issue writer, or publication.
+
+## STEP82（2026-11-03）：比較期間と新規公開URLの欠落を解消
+
+既存キーを保持し、query / query×page / pageを各4期間（直近7日、前7日、直近28日、前28日）で収集する。各リクエストはfinal・最大1000行・ページングなし・再試行なし。1サイト13 Search Analytics取得（以前4）、URL Inspectionは既存18から26URLへ拡張。SOTOJITAKUのURLは変更しない。未返却をゼロ補完せず、異なる窓・集計軸の行を合算しない。
+
+追加対象は洗剤1回費用、幼児食、犬用フード、食品宅配/水比較、きょうボド小学生/ito/デュエット。公開HTMLが取得できないURLはGoogle検査を行わず未取得として保持する。マージ時の対象診断ファイルpushで既存read-onlyジョブを実行し、週次診断も継続する。新たな認証・独立監視・自動SEO変更・登録リクエストは追加しない。GA4は従来通りmanual明示入力時のみ。

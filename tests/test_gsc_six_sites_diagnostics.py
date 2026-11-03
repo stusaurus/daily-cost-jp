@@ -29,7 +29,7 @@ class FakeSession:
                 "googleCanonical": json["inspectionUrl"],
             }}})
         dimension = json.get("dimensions")
-        key = "2026-10-10" if dimension == ["date"] else "紙おむつ 価格 比較"
+        key = "2026-10-10" if dimension == ["date"] else unquote(url.split("/sites/")[1].split("/searchAnalytics")[0]) if dimension == ["page"] else "紙おむつ 価格 比較"
         return Response(payload={"rows": [{
             "keys": ([key, unquote(url.split("/sites/")[1].split("/searchAnalytics")[0])] if dimension == ["query", "page"] else [key]), "clicks": 0, "impressions": 2, "ctr": 0.0, "position": 21.0,
         }]})
@@ -48,6 +48,28 @@ class DiagnosticsTests(unittest.TestCase):
         for paths in g.TARGET_PATHS.values():
             self.assertEqual(len(set(paths)), len(paths))
             self.assertTrue(all(path.startswith("/") and not path.startswith("//") for path in paths))
+
+    def test_comparison_requests_use_independent_final_windows_and_dimensions(self):
+        session = FakeSession()
+        result = g.site_diagnostics(session, self.first_name, self.first_site,
+                                    self.windows, {self.first_site: "siteRestrictedUser"})
+        for stem, dims in (("queries", ["query"]), ("query_pages", ["query", "page"]),
+                           ("pages", ["page"])):
+            for suffix, window in (("28d", "last_28"), ("7d", "last_7"),
+                                   ("prior_28d", "prior_28"), ("prior_7d", "prior_7")):
+                self.assertEqual(result["analytics"][stem + "_" + suffix]["status"], "OBSERVED_ROWS")
+                matching = [body for _, body, _ in session.calls if body.get("dimensions") == dims
+                            and [body.get("startDate"), body.get("endDate")] == list(self.windows[window])]
+                self.assertEqual(len(matching), 1)
+                self.assertEqual(matching[0]["dataState"], "final")
+
+    def test_page_rows_are_property_scoped_and_not_zero_filled(self):
+        row = {"keys": [self.first_site + "categories/tissue/"], "clicks": 0,
+               "impressions": 2, "ctr": 0.0, "position": 10.0}
+        self.assertEqual(g.analytics_rows({"rows": [row]}, "page", property_url=self.first_site)["rows"][0]["path"], "/categories/tissue/")
+        with self.assertRaises(ValueError):
+            g.analytics_rows({"rows": [{**row, "keys": ["https://example.com/"]}]}, "page", property_url=self.first_site)
+        self.assertEqual(g.analytics_rows({}, "page", property_url=self.first_site)["status"], "NO_ROWS")
 
     def test_non_exhaustive_query_rows_sorted_by_impressions(self):
         rows = {"rows": [
@@ -94,8 +116,8 @@ class DiagnosticsTests(unittest.TestCase):
         self.assertEqual(result["status"], "PARTIAL")
         self.assertEqual(result["sites"][0]["status"], "OBSERVED")
         self.assertEqual(result["sites"][1]["status"], "NOT_CONNECTED")
-        self.assertEqual(len(session.calls), 4 + len(g.TARGET_PATHS[self.first_name]))
-        self.assertTrue(all(call[1].get("dataState") == "final" for call in session.calls[:4]))
+        self.assertEqual(len(session.calls), 13 + len(g.TARGET_PATHS[self.first_name]))
+        self.assertTrue(all(call[1].get("dataState") == "final" for call in session.calls[:13]))
 
     def test_all_six_return_report(self):
         session = FakeSession()
@@ -171,7 +193,7 @@ class PairAndPublicTests(unittest.TestCase):
         with patch.object(g, "public_state", return_value={"status": "PUBLIC_CHECK_UNAVAILABLE"}):
             result = g.site_diagnostics(session, name, site, g.base.date_windows(dt.date(2026, 10, 18)), {site: "siteRestrictedUser"})
         self.assertEqual(result["status"], "PARTIAL")
-        self.assertEqual(len(session.calls), 4)
+        self.assertEqual(len(session.calls), 13)
         self.assertTrue(all(r["status"] == "UNAVAILABLE" and "verdict" not in r for r in result["inspection"]))
 
     def test_public_probe_is_anonymous_bounded_and_rejects_redirect(self):

@@ -73,11 +73,12 @@ def sitemap_evidence(session, site):
     result["processing_state"] = state
     return result
 TARGET_PATHS = {
-    "日用品": ("/categories/laundry/", "/categories/tissue/", "/categories/toilet-paper/"),
-    "ベビー用品": ("/", "/diapers/pants/m/"),
-    "ペット用品": ("/", "/categories/pet-sheets/", "/categories/cat-litter/"),
-    "食品": ("/", "/categories/rice/", "/categories/pack-rice/", "/guides/pack-rice-24-servings-cost/"),
-    "ボードゲーム": ("/", "/scenes/two-player/"),
+    "日用品": ("/categories/laundry/", "/categories/tissue/", "/categories/toilet-paper/", "/tools/laundry-cost-per-wash/"),
+    "ベビー用品": ("/", "/diapers/pants/m/", "/guides/toddler-meals/"),
+    "ペット用品": ("/", "/categories/pet-sheets/", "/categories/cat-litter/", "/categories/dog-food/"),
+    "食品": ("/", "/categories/rice/", "/categories/pack-rice/", "/guides/pack-rice-24-servings-cost/",
+           "/guides/family-meal-delivery-budget/", "/guides/water-server-vs-bottled-water/"),
+    "ボードゲーム": ("/", "/scenes/two-player/", "/scenes/children/", "/games/ito/", "/games/codenames-duet/"),
     "SOTOJITAKU": ("/", "/camp/", "/car-stay/", "/fishing/"),
 }
 
@@ -95,7 +96,7 @@ def analytics_rows(payload, dimension, *, property_url=None):
     if not isinstance(payload, dict) or not isinstance(payload.get("rows", []), list):
         raise ValueError("invalid analytics payload")
     dimensions = ("query", "page") if dimension == "query_page" else (dimension,)
-    if dimensions not in (("query",), ("date",), ("query", "page")):
+    if dimensions not in (("query",), ("date",), ("page",), ("query", "page")):
         raise ValueError("unsupported dimensions")
     rows = payload.get("rows", [])
     if len(rows) > ROW_LIMIT:
@@ -114,8 +115,15 @@ def analytics_rows(payload, dimension, *, property_url=None):
                 raise ValueError("invalid date dimension") from error
             if parsed_date.isoformat() != key:
                 raise ValueError("invalid date format")
+        if dimension == "page":
+            if not property_url or base.safe_page(key, property_url) is None:
+                raise ValueError("page outside exact property")
+            if any(part in (".", "..") for part in urlsplit(key).path.split("/")):
+                raise ValueError("ambiguous page path")
         item = {"key": cleaned(key) if dimension in ("query", "query_page") else key,
                 **base.safe_metrics(row)}
+        if dimension == "page":
+            item["path"] = base.safe_page(key, property_url)
         if dimension == "query_page":
             page = row["keys"][1]
             if not property_url or not isinstance(page, str) or base.safe_page(page, property_url) is None:
@@ -219,6 +227,15 @@ def site_diagnostics(session, name, site, windows, permissions):
         ("queries_7d", windows["last_7"], "query"),
         ("daily_28d", windows["last_28"], "date"),
         ("query_pages_28d", windows["last_28"], "query_page"),
+        ("queries_prior_28d", windows["prior_28"], "query"),
+        ("queries_prior_7d", windows["prior_7"], "query"),
+        ("query_pages_7d", windows["last_7"], "query_page"),
+        ("query_pages_prior_28d", windows["prior_28"], "query_page"),
+        ("query_pages_prior_7d", windows["prior_7"], "query_page"),
+        ("pages_28d", windows["last_28"], "page"),
+        ("pages_7d", windows["last_7"], "page"),
+        ("pages_prior_28d", windows["prior_28"], "page"),
+        ("pages_prior_7d", windows["prior_7"], "page"),
     )
     for label, period, dimension in requests:
         try:

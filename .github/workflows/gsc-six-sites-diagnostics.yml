@@ -11,6 +11,11 @@ on:
         description: 'Read site-scoped GA4 aggregates with existing OIDC (manual only)'
         type: boolean
         default: false
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/gsc_six_sites_diagnostics.py'
+      - '.github/workflows/gsc-six-sites-diagnostics.yml'
   schedule:
     # Monday 09:45 JST, after the existing six-site aggregate at 09:00.
     - cron: '45 0 * * 1'
