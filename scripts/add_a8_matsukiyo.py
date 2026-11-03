@@ -81,7 +81,7 @@ def validate(page: str, category: str) -> None:
     for tag in (
         'href="https://px.a8.net/svt/ejp?a8mat=4BGCF1+A1E4Z6+5QFO+5YJRM" rel="nofollow"',
         'src="https://www19.a8.net/0.gif?a8mat=4BGCF1+A1E4Z6+5QFO+5YJRM"',
-        '広告｜A8.netアフィリエイト',
+        '<p class="a8-disclosure">広告｜A8.netアフィリエイト</p>',
         f'data-a8-category="{category}"',
         'id="a8-matsukiyo-click-tracker"',
     ):
