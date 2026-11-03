@@ -156,6 +156,34 @@
       }
     }
     form.addEventListener('submit', calculate);
+    for (const button of doc.querySelectorAll('[data-pick-target]')) {
+      button.addEventListener('click', function () {
+        const key = button.dataset.pickTarget;
+        const price = Number(button.dataset.pickPrice);
+        const total = Number(button.dataset.pickTotal);
+        const unit = button.dataset.pickUnit;
+        if (!['a', 'b'].includes(key) || !(price > 0) || !(total > 0) ||
+            !['g', 'mL'].includes(unit)) return;
+        // One verified sale bundle is one calculator item; never invent bag counts.
+        byId('wash-' + key + '-price').value = String(price);
+        byId('wash-' + key + '-shipping').value = '0';
+        byId('wash-' + key + '-content').value = String(total);
+        byId('wash-' + key + '-packs').value = '1';
+        byId('wash-' + key + '-unit').value = unit;
+        // Dosage cannot be inferred from the offer title or another product.
+        byId('wash-' + key + '-dose').value = '';
+        byId('wash-picked-note').textContent =
+          '洗剤' + key.toUpperCase() + 'に「' +
+          (button.dataset.pickName || '掲載候補') +
+          '」の価格と1販売セットの総内容量を入力しました。' +
+          '洗濯機の条件に合う1回使用量を製品ラベルで確認してください。';
+        byId('wash-example-note').hidden = true;
+        result.hidden = true;
+        error.textContent = '';
+        mark('laundry_verified_offer_prefill', {slot: key.toUpperCase()});
+        byId('wash-' + key + '-dose').focus();
+      });
+    }
     const shop = doc.querySelector('.purchase-horizon a[href="/daily-cost-jp/categories/laundry/"]');
     if (shop) shop.addEventListener('click', () => mark('laundry_purchase_plan_to_products', {}));
     byId('wash-sample').addEventListener('click', function () {
@@ -169,17 +197,24 @@
       };
       for (const [id, value] of Object.entries(sample)) byId(id).value = value;
       byId('wash-example-note').hidden = false;
+      byId('wash-picked-note').textContent = '';
       form.requestSubmit();
     });
     form.addEventListener('reset', function () {
       result.hidden = true;
       error.textContent = '';
       byId('wash-example-note').hidden = true;
+      byId('wash-picked-note').textContent = '';
     });
     for (const input of form.querySelectorAll('input, select')) {
       const invalidate = function () {
         result.hidden = true;
         error.textContent = '';
+        if (/^wash-[ab]-(price|shipping|content|packs|unit)$/.test(input.id) &&
+            byId('wash-picked-note').textContent) {
+          byId('wash-picked-note').textContent =
+            '価格・容量・販売単位を手動で変更しました。現在の入力は掲載候補と異なる場合があります。';
+        }
         // Sample values remain in other fields after any individual edit.
         // Keep their fictional provenance visible until the form is reset.
       };
