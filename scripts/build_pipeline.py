@@ -48,6 +48,7 @@ STEPS = (
     'step6_seo_content',
     'verified_shop_comparison',
     'build_laundry_cost_page',
+    'buying_decision_summary',
     'add_a8_matsukiyo',
     'add_analytics',
     'generate_seo_files',

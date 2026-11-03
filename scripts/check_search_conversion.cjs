@@ -36,6 +36,19 @@ if(require.main===module)(async()=>{
    const errors=[];page.on('pageerror',error=>errors.push(error.message));
    await page.goto(`http://127.0.0.1:${server.address().port}/daily-cost-jp/categories/${cid}/?test=1`,{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('h1').count(),1);
+   const decisions=page.locator('#buying-decisions');
+   assert.equal(await decisions.count(),1);
+   assert(await decisions.locator('tbody tr').count()>=2);
+   for(const row of await decisions.locator('tbody tr').all()){
+    const target=await row.getAttribute('data-decision-target');
+    const card=page.locator('#'+target);
+    assert.equal(await card.count(),1);
+    const price=await card.locator('.buy-button').getAttribute('data-shipping-price');
+    assert((await row.innerText()).includes('¥'+Number(price).toLocaleString('ja-JP')));
+    await row.locator('a').click();
+    assert.equal(new URL(page.url()).hash,'#'+target);
+   }
+
    assert.ok(await page.locator('.search-price-group').count()>0);
    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'horizontal overflow '+cid+' '+width);
    if(cid==='tissue'){
