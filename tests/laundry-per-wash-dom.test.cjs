@@ -96,7 +96,7 @@ test('One-tap offer prefill copies only verified listed price and quantity, not 
     assert.equal(d.getElementById('wash-result').hidden, true);
     assert.equal(d.getElementById('wash-example-note').hidden, true);
     assert.match(d.getElementById('wash-picked-note').textContent, /製品ラベル/);
-    assert.deepEqual(events.at(-1), {
+    assert.deepEqual(JSON.parse(JSON.stringify(events.at(-1))), {
       command:'event', name:'laundry_verified_offer_prefill',
       params:{category_id:'laundry',tool_id:'laundry_per_wash',slot:'A'}
     });
