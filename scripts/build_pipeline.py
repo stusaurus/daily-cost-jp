@@ -47,6 +47,7 @@ STEPS = (
     'step5_evaluation',
     'step6_seo_content',
     'verified_shop_comparison',
+    'add_a8_matsukiyo',
     'add_analytics',
     'generate_seo_files',
     'validate_generated_site',
