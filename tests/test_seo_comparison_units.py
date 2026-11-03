@@ -10,6 +10,46 @@ from comparison_units import comparison_unit
 
 
 class SeoComparisonUnitsTests(unittest.TestCase):
+    def test_water_category_links_to_existing_annual_cost_calculator_only(self):
+        import improve_category_seo as module
+        url = "https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/"
+        guide = module.seo_section("water", "水・ミネラルウォーター", "ミネラルウォーター", "1L")
+        self.assertIn(f'href="{url}"', guide)
+        self.assertEqual(guide.count(url), 1)
+        self.assertIn("サーバー月額・電気代・初期費用", guide)
+        self.assertIn("1Lあたり", guide)
+        self.assertNotIn("最も安いウォーターサーバー", guide)
+        self.assertNotIn("data-affiliate", guide)
+        for cid in ("laundry", "tissue", "toilet-paper", "dish", "coffee"):
+            other = module.seo_section(cid, cid, cid, "100g")
+            self.assertNotIn(url, other)
+
+    def test_water_category_renders_one_contextual_link_and_preserves_ranking(self):
+        import improve_category_seo as module
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            path = root / "categories" / "water" / "index.html"
+            path.parent.mkdir(parents=True)
+            source = ('<html><head><title>Before</title>'
+                      '<meta name="description" content="Before">'
+                      '<link rel="canonical" href="https://stusaurus.github.io/daily-cost-jp/categories/water/">'
+                      '</head><body><main class="container">'
+                      '<h1>Before</h1><p class="lead">Before</p>'
+                      '<section data-fixture="ranking">¥50／1L</section>'
+                      '<section class="related-categories"></section>'
+                      '</main></body></html>')
+            path.write_text(source, encoding="utf-8")
+            payload = {"categories": {"water": {"metric": "1L"}}}
+            with patch.object(module, "SITE_DIR", root):
+                self.assertTrue(module.enhance_page("water", "水・ミネラルウォーター", "💧", "ミネラルウォーター", payload))
+            page = path.read_text(encoding="utf-8")
+            self.assertEqual(page.count("https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/"), 1)
+            self.assertEqual(page.count('class="category-related-tool"'), 1)
+            self.assertEqual(page.count('<link rel="canonical"'), 1)
+            self.assertIn('data-fixture="ranking">¥50／1L', page)
+            self.assertIn('href="../../products/?q=', page)
+            self.assertIn('id="category-seo-schema"', page)
+
     def test_tissue_guide_matches_normalized_ranking_not_catalog_box(self):
         payload = {"categories": {"tissue": {"metric": "box"}}}
         label = metric_label("tissue", payload)
