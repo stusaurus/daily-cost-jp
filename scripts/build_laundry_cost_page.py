@@ -78,7 +78,7 @@ p{margin:8px 0 12px}
 .steps li{margin-bottom:8px}
 footer{padding:28px 0;background:#2b2928;color:#e9e4e1;font-size:13px}
 footer a{color:#fff}
-@media(max-width:660px){.site-nav .wrap{align-items:flex-start;flex-direction:column;padding:12px 0}.hero{padding:30px 0}.panel{padding:17px}.offer-grid,.intro-grid{grid-template-columns:1fr}.offer{padding:14px}.calc-actions{display:block}.calc-actions .field{max-width:none;margin-bottom:12px}.primary{width:100%}}
+@media(max-width:660px){.site-nav .wrap{align-items:flex-start;flex-direction:column;padding:12px 0}.hero{padding:30px 0}.panel{padding:17px}.offer-grid,.intro-grid,.result-grid{grid-template-columns:1fr}.offer{padding:14px}.calc-actions{display:block}.calc-actions .field{max-width:none;margin-bottom:12px}.primary{width:100%}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 </style>
 <script src="/daily-cost-jp/assets/laundry-per-wash.js" defer></script>
