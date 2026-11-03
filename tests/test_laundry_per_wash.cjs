@@ -39,3 +39,35 @@ test('Missing/negative/zero or impossible inputs never emit a comparison', () =>
   assert.throws(() => compare(normal, normal, 1001));
   assert.throws(() => compare({...normal, price:'Infinity'}, normal, 1));
 });
+
+test('A low per-wash cost can require higher cash outlay over three months', () => {
+  const a = {price:2000, shipping:0, content:4000, packs:1, dose:20};
+  const b = {price:350, shipping:0, content:400, packs:1, dose:20};
+  const short = compare(a, b, 20, 3);
+  assert.equal(short.winner, 'A');
+  assert.equal(short.washesNeeded, 60);
+  assert.equal(short.purchaseWinner, 'B');
+  assert.deepEqual(short.purchaseA, {sets:1, payment:2000, unused:2800});
+  assert.deepEqual(short.purchaseB, {sets:3, payment:1050, unused:0});
+  const year = compare(a, b, 20, 12);
+  assert.equal(year.purchaseWinner, 'A');
+  assert.equal(year.purchaseA.payment, 4000);
+  assert.equal(year.purchaseB.payment, 4200);
+});
+test('Shipping is counted once per combined order, while packs are rounded up', () => {
+  const a = {price:600, shipping:550, content:1000, packs:1, dose:20};
+  const b = {price:1000, shipping:0, content:1500, packs:1, dose:20};
+  const result = compare(a, b, 30, 3);
+  assert.equal(result.purchaseA.sets, 2);
+  assert.equal(result.purchaseA.payment, 1750);
+  assert.equal(result.purchaseA.unused, 200);
+  assert.equal(result.purchaseB.sets, 2);
+});
+test('Purchase horizon rejects invalid months, overflow and impossible purchases', () => {
+  const a = {price:600, shipping:0, content:1000, packs:1, dose:20};
+  for (const months of ['', 0, -1, 1.5, 13, 'Infinity']) {
+    assert.throws(() => compare(a, a, 20, months));
+  }
+  const impossible = {price:1000000000, shipping:0, content:1, packs:1, dose:1};
+  assert.throws(() => compare(impossible, impossible, 1000, 12));
+});
