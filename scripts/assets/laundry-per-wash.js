@@ -1,4 +1,4 @@
-/* Questions-first pilot: no network calls or local storage of entered prices. */
+/* Purchase planning stays local; GA4 receives only completion flags, never household inputs. */
 (function (root, makeModule) {
   'use strict';
   const api = makeModule();
@@ -84,6 +84,14 @@
       annualDifference: Math.abs(delta) * times * 12
     };
   }
+  function mark(name, flags) {
+    // Production injects the site's existing GA4 wrapper after this script loads.
+    // No prices, doses, quantities or household usage inputs are transmitted.
+    const gtag = typeof window !== 'undefined' && window.gtag;
+    if (typeof gtag === 'function') gtag('event', name, {
+      category_id: 'laundry', tool_id: 'laundry_per_wash', ...flags
+    });
+  }
   function mount(doc) {
     const form = doc.getElementById('wash-calc');
     if (!form) return;
@@ -138,11 +146,18 @@
             '注意：1回あたりの安さと、この期間の購入支払額は逆転しています。' +
             '余った分を後で使うか、今の支払いを抑えるかで選び方が変わります。' : '';
         result.hidden = false;
+        mark('laundry_purchase_plan_complete', {
+          example_mode: byId('wash-example-note').hidden ? '0' : '1',
+          purchase_winner_reversed: (r.purchaseWinner !== 'same' &&
+            r.winner !== 'same' && r.purchaseWinner !== r.winner) ? '1' : '0'
+        });
       } catch (e) {
         error.textContent = e.message;
       }
     }
     form.addEventListener('submit', calculate);
+    const shop = doc.querySelector('.purchase-horizon a[href="/daily-cost-jp/categories/laundry/"]');
+    if (shop) shop.addEventListener('click', () => mark('laundry_purchase_plan_to_products', {}));
     byId('wash-sample').addEventListener('click', function () {
       // Deliberately fictional inputs. Not product prices, not a sales claim.
       const sample = {
