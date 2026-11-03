@@ -38,11 +38,11 @@ def main():
   <div class="container">
     <span class="eyebrow">無料・登録不要｜毎朝自動更新</span>
     <h1>その日用品、本当に安い？</h1>
-    <p class="lead">店頭価格を1個・1ロール・100mlなど同じ単位に換算して、今日の楽天・送料込み候補と比較。欲しい商品名から送料込み価格も探せます。</p>
+    <p class="lead">いつも買う日用品を、1枚・1ロール・100mlなど同じ単位で比較。単価だけでなく、セットで払う金額と数量も確かめてから選べます。</p>
     <div class="value-props" aria-label="このサイトの特徴">
-      <span class="value-prop">送料込み候補で比較</span>
-      <span class="value-prop">同じ単位に自動換算</span>
-      <span class="value-prop">不確かな価格は出さない</span>
+      <span class="value-prop">確認できた送料込み候補</span>
+      <span class="value-prop">数量・単価・支払額を分けて表示</span>
+      <span class="value-prop">数量不明の商品は順位に入れない</span>
     </div>
     {updated}
   </div>
