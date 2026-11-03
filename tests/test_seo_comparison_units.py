@@ -45,6 +45,7 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             page = path.read_text(encoding="utf-8")
             self.assertEqual(page.count("https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/"), 1)
             self.assertEqual(page.count('class="category-related-tool"'), 1)
+            self.assertEqual(page.count('id="water-related-tool-style"'), 1)
             self.assertEqual(page.count('<link rel="canonical"'), 1)
             self.assertIn('data-fixture="ranking">¥50／1L', page)
             self.assertIn('href="../../products/?q=', page)
@@ -84,6 +85,7 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             with patch.object(module, "SITE_DIR", root):
                 self.assertTrue(module.enhance_page("tissue", "ティッシュ", "📦", "ティッシュペーパー", payload))
             page = path.read_text(encoding="utf-8")
+            self.assertNotIn('water-related-tool-style', page)
             self.assertIn("ティッシュの楽天送料込み価格を100組あたりで比較", page)
             self.assertIn("組数が違う商品を100組あたりで値段比較", page)
             self.assertIn('data-fixture="ranking">¥44.16／100組', page)
