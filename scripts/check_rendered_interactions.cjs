@@ -30,4 +30,16 @@ const catalog=JSON.parse(fs.readFileSync('site/assets/comparison-catalog.json','
   if(!last||last.conversion_source!=='saved'||!last.category_id||!last.product_name||!last.page_path||last.operator_test!=='0')throw Error(file+': saved affiliate parameters incomplete');
   dom.window.close();process.stdout.write('Generated scripts and save/compare passed: '+file+'\n');
  }
+ const costUrl='https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/';
+ const water=new JSDOM(fs.readFileSync('site/categories/water/index.html','utf8'));
+ const dest=[...water.window.document.querySelectorAll('.category-related-tool a')];
+ if(dest.length!==1||dest[0].href!==costUrl)throw Error('Water category must link to exactly one existing annual water cost calculator');
+ if(!water.window.document.body.textContent.includes('サーバー月額・電気代・初期費用'))throw Error('Water cost comparison must disclose inputs, not assert an unverified discount');
+ water.window.close();
+ for(const cat of ['laundry','tissue','toilet-paper']){
+   const doc=new JSDOM(fs.readFileSync('site/categories/'+cat+'/index.html','utf8'));
+   if(doc.window.document.querySelector('.category-related-tool'))throw Error(cat+': protected SEO page unexpectedly received water-cost link');
+   doc.window.close();
+ }
+ process.stdout.write('Generated water-only annual cost navigation passed\\n');
 })().catch(e=>{process.stderr.write(e.stack+'\n');process.exitCode=1;});

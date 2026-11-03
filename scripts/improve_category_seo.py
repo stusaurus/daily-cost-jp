@@ -154,6 +154,22 @@ def toilet_ply_availability_note(payload: dict) -> str:
     )
 
 
+def relevant_water_cost_route(category_id: str) -> str:
+    """Link two distinct, existing utilities for water buyers; never imply a price ranking."""
+    if category_id != "water":
+        return ""
+    return (
+        '<aside class="category-related-tool" aria-label="水の年間費用を考える">'
+        '<strong>水を買う量だけでなく、1年間の支出も比較する</strong>'
+        '<p>このページではペットボトル水の1L単価を比較しています。'
+        'ウォーターサーバーとの違いを確かめたい方は、家庭で使う水量・ケース価格・'
+        '送料・サーバー月額・電気代・初期費用を入力して、年間支払額を計算できます。</p>'
+        '<a href="https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/">'
+        'ペットボトルとウォーターサーバーの年間費用を計算する →</a>'
+        '</aside>'
+    )
+
+
 def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     q = urllib.parse.quote(name)
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
@@ -172,6 +188,7 @@ def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     <li><strong>毎朝更新：</strong>取得できた楽天市場の商品情報をもとに安い順を更新</li>
   </ul>
   <a class="category-search-cta" href="../../products/?q={q}">商品名を指定して楽天の送料込み価格を検索 →</a>
+  {relevant_water_cost_route(category_id)}
 </section>
 """
 
@@ -219,6 +236,15 @@ CSS = """
 """
 
 
+# Keep styles for the cross-site water decision route off the protected priority pages.
+WATER_ROUTE_CSS = """<style id="water-related-tool-style">
+.category-related-tool{margin:14px 0 0;padding:13px;border:1px solid #d5e2e1;border-radius:12px;background:#f4faf9}
+.category-related-tool strong{display:block;font-size:14px;line-height:1.6;color:#203e3a}
+.category-related-tool p{margin:5px 0 8px;font-size:13px;line-height:1.7}
+.category-related-tool a{display:inline-block;min-height:44px;padding:10px 0;color:#1e4e49;text-decoration:underline;font-size:13px;font-weight:800}
+</style>"""
+
+
 def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: dict) -> bool:
     path = SITE_DIR / "categories" / category_id / "index.html"
     if not path.exists(): return False
@@ -245,6 +271,10 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
 
     if 'id="category-seo-style"' not in markup:
         markup = markup.replace("</head>", CSS + "\n" + schema_markup(name, category_id, description, h1) + "\n</head>", 1)
+    if category_id == "water" and 'id="water-related-tool-style"' not in markup:
+        if "</head>" not in markup:
+            raise ValueError("Missing head for water route style")
+        markup = markup.replace("</head>", WATER_ROUTE_CSS + "\n</head>", 1)
     if 'id="compare-guide"' not in markup:
         summary_end = markup.find("</div>", markup.find('class="category-summary"'))
         if summary_end != -1:
