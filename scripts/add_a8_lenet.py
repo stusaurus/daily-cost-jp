@@ -73,7 +73,7 @@ def validate(page):
         'id="a8-lenet-title"',
         'id="a8-lenet-style"',
         'id="a8-lenet-click-tracker"',
-        '広告｜A8.netアフィリエイト',
+        '<p class="a8-lenet-label">広告｜A8.netアフィリエイト</p>',
     )
     for part in required:
         if page.count(part) != 1:
