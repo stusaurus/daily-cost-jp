@@ -80,21 +80,28 @@ def validate(page):
             raise ValueError("missing/duplicate A8 Lenet component: " + part[:80])
     if page.count(LINK) != 1 or page.count(PIXEL) != 1:
         raise ValueError("A8 Lenet tracking URLs must occur exactly once each")
-    if page.count('<section class="related-categories">') != 1:
-        raise ValueError("missing/duplicate category closing section")
+    if page.count("<main ") != 1 or page.count("</main>") != 1:
+        raise ValueError("unexpected category main region")
+    if not (page.index("<main ") < page.index('id="a8-lenet-option"') < page.index("</main>")):
+        raise ValueError("Lenet advertisement must remain inside main content")
 
 
 def inject(page):
     if MARKER in page:
         validate(page)
         return page
-    if (page.count('<main class="container">') != 1
+    if (page.count("<main ") != 1
             or page.count("</main>") != 1
             or page.count("</head>") != 1
-            or page.count("</body>") != 1
-            or page.count('<section class="related-categories">') != 1):
+            or page.count("</body>") != 1):
         raise ValueError("unexpected laundry comparison page structure")
-    page = page.replace('<section class="related-categories">', card() + '\n<section class="related-categories">', 1)
+    anchor = '<section class="related-categories">'
+    if page.count(anchor) == 1:
+        page = page.replace(anchor, card() + '\n' + anchor, 1)
+    else:
+        # Redesigned pages may not retain the original related-category block.
+        # Match the existing Matsukiyo A8 injector's safe fallback.
+        page = page.replace("</main>", card() + '\n</main>', 1)
     page = page.replace("</head>", CSS + "\n</head>", 1)
     page = page.replace("</body>", CLICK_TRACKER + "\n</body>", 1)
     validate(page)
