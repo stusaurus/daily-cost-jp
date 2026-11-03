@@ -9,10 +9,7 @@ from datetime import datetime, timezone
 from html import escape
 from pathlib import Path
 
-if __package__:
-    from .product_quality import filter_items, parsed_quantity
-else:
-    from product_quality import filter_items, parsed_quantity
+
 
 SITE = Path("site")
 SITE_URL = "https://stusaurus.github.io/daily-cost-jp/"
@@ -182,6 +179,12 @@ def verified_picks(site: Path) -> str:
     Dosage is never inferred from density, brand or package title.
     When the catalog is missing/stale/unsafe, the calculator stays manual.
     """
+    # Import only during a build; PAGE-only browser tests do not need catalog dependencies.
+    import sys
+    script_dir = str(Path(__file__).resolve().parent)
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+    from product_quality import filter_items, parsed_quantity
     source = site / "data.json"
     if not source.is_file():
         return ""
