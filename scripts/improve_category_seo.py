@@ -154,6 +154,22 @@ def toilet_ply_availability_note(payload: dict) -> str:
     )
 
 
+def relevant_water_cost_route(category_id: str) -> str:
+    """Link two distinct, existing utilities for water buyers; never imply a price ranking."""
+    if category_id != "water":
+        return ""
+    return (
+        '<aside class="category-related-tool" aria-label="水の年間費用を考える">'
+        '<strong>水を買う量だけでなく、1年間の支出も比較する</strong>'
+        '<p>このページではペットボトル水の1L単価を比較しています。'
+        'ウォーターサーバーとの違いを確かめたい方は、家庭で使う水量・ケース価格・'
+        '送料・サーバー月額・電気代・初期費用を入力して、年間支払額を計算できます。</p>'
+        '<a href="https://stusaurus.github.io/food-cost-jp/guides/water-server-vs-bottled-water/">'
+        'ペットボトルとウォーターサーバーの年間費用を計算する →</a>'
+        '</aside>'
+    )
+
+
 def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     q = urllib.parse.quote(name)
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
@@ -172,6 +188,7 @@ def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     <li><strong>毎朝更新：</strong>取得できた楽天市場の商品情報をもとに安い順を更新</li>
   </ul>
   <a class="category-search-cta" href="../../products/?q={q}">商品名を指定して楽天の送料込み価格を検索 →</a>
+  {relevant_water_cost_route(category_id)}
 </section>
 """
 
@@ -213,6 +230,10 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
+.category-related-tool{margin:14px 0 0;padding:13px;border:1px solid #d5e2e1;border-radius:12px;background:#f4faf9}
+.category-related-tool strong{display:block;font-size:14px;line-height:1.6;color:#203e3a}
+.category-related-tool p{margin:5px 0 8px;font-size:13px;line-height:1.7}
+.category-related-tool a{display:inline-block;min-height:44px;padding:10px 0;color:#1e4e49;text-decoration:underline;font-size:13px;font-weight:800}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
