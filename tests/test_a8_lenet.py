@@ -72,6 +72,20 @@ class LenetA8Tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             a8.validate(a8.inject(fixture()) + a8.AD_CREATIVE)
 
+    def test_redesigned_page_without_related_section_uses_main_fallback(self):
+        base = fixture().replace(
+            '<section class="related-categories"><h2>ほかのカテゴリ</h2></section>', ''
+        )
+        from scripts import add_a8_matsukiyo as matsukiyo
+        with_retailer = matsukiyo.inject(base, "laundry", "洗濯洗剤")
+        result = a8.inject(with_retailer)
+        a8.validate(result)
+        matsukiyo.validate(result, "laundry")
+        self.assertLess(result.index('id="a8-matsukiyo-option"'),
+                        result.index('id="a8-lenet-option"'))
+        self.assertLess(result.index('id="a8-lenet-option"'), result.index("</main>"))
+        self.assertEqual(result, a8.inject(result))
+
     def test_coexists_with_matsukiyo_ad_without_duplicate_analytics(self):
         from scripts import add_a8_matsukiyo as matsukiyo
         with_retailer = matsukiyo.inject(fixture(), "laundry", "洗濯洗剤")
