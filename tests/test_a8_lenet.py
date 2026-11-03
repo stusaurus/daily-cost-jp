@@ -72,6 +72,16 @@ class LenetA8Tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             a8.validate(a8.inject(fixture()) + a8.AD_CREATIVE)
 
+    def test_coexists_with_matsukiyo_ad_without_duplicate_analytics(self):
+        from scripts import add_a8_matsukiyo as matsukiyo
+        with_retailer = matsukiyo.inject(fixture(), "laundry", "洗濯洗剤")
+        with_both = a8.inject(with_retailer)
+        a8.validate(with_both)
+        matsukiyo.validate(with_both, "laundry")
+        self.assertEqual(with_both.count("広告｜A8.netアフィリエイト"), 2)
+        self.assertEqual(with_both.count("<h1>"), 1)
+        self.assertLess(with_both.index('id="a8-matsukiyo-option"'), with_both.index('id="a8-lenet-option"'))
+
     def test_only_laundry_and_repeat_build_safe(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
