@@ -39,3 +39,20 @@ test('Changing unit invalidates the old comparison and clears old errors', () =>
     assert.equal(d.getElementById('wash-error').textContent,'');
   } finally {dom.window.close();}
 });
+
+test('Purchase result shows both cash outlay and leftovers; edits invalidate it', () => {
+  const dom = calculator(), d = dom.window.document;
+  try {
+    d.getElementById('wash-sample').click();
+    assert.equal(d.getElementById('wash-result').hidden, false);
+    assert.equal(d.getElementById('wash-purchase-count').textContent, '3か月・60回分');
+    assert.match(d.getElementById('wash-a-payment').textContent, /円/);
+    assert.match(d.getElementById('wash-b-unused').textContent, /mL/);
+    assert.match(d.getElementById('wash-purchase-tradeoff').textContent, /逆転/);
+    const period=d.getElementById('wash-period');
+    period.value='12'; period.dispatchEvent(new dom.window.Event('input'));
+    assert.equal(d.getElementById('wash-result').hidden,true);
+    d.getElementById('wash-calc').requestSubmit();
+    assert.equal(d.getElementById('wash-purchase-count').textContent, '12か月・240回分');
+  } finally {dom.window.close();}
+});
