@@ -230,14 +230,19 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
-.category-related-tool{margin:14px 0 0;padding:13px;border:1px solid #d5e2e1;border-radius:12px;background:#f4faf9}
-.category-related-tool strong{display:block;font-size:14px;line-height:1.6;color:#203e3a}
-.category-related-tool p{margin:5px 0 8px;font-size:13px;line-height:1.7}
-.category-related-tool a{display:inline-block;min-height:44px;padding:10px 0;color:#1e4e49;text-decoration:underline;font-size:13px;font-weight:800}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
 """
+
+
+# Keep styles for the cross-site water decision route off the protected priority pages.
+WATER_ROUTE_CSS = """<style id="water-related-tool-style">
+.category-related-tool{margin:14px 0 0;padding:13px;border:1px solid #d5e2e1;border-radius:12px;background:#f4faf9}
+.category-related-tool strong{display:block;font-size:14px;line-height:1.6;color:#203e3a}
+.category-related-tool p{margin:5px 0 8px;font-size:13px;line-height:1.7}
+.category-related-tool a{display:inline-block;min-height:44px;padding:10px 0;color:#1e4e49;text-decoration:underline;font-size:13px;font-weight:800}
+</style>"""
 
 
 def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: dict) -> bool:
@@ -266,6 +271,10 @@ def enhance_page(category_id: str, name: str, emoji: str, alias: str, payload: d
 
     if 'id="category-seo-style"' not in markup:
         markup = markup.replace("</head>", CSS + "\n" + schema_markup(name, category_id, description, h1) + "\n</head>", 1)
+    if category_id == "water" and 'id="water-related-tool-style"' not in markup:
+        if "</head>" not in markup:
+            raise ValueError("Missing head for water route style")
+        markup = markup.replace("</head>", WATER_ROUTE_CSS + "\n</head>", 1)
     if 'id="compare-guide"' not in markup:
         summary_end = markup.find("</div>", markup.find('class="category-summary"'))
         if summary_end != -1:
