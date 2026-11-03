@@ -56,3 +56,22 @@ test('Purchase result shows both cash outlay and leftovers; edits invalidate it'
     assert.equal(d.getElementById('wash-purchase-count').textContent, '12か月・240回分');
   } finally {dom.window.close();}
 });
+
+test('Analytics emits only completion flags and product-navigation intent', () => {
+  const dom = calculator(), d = dom.window.document;
+  try {
+    const events = [];
+    dom.window.gtag = (command, name, params) => events.push({command, name, params});
+    d.getElementById('wash-sample').click();
+    assert.equal(events.filter(x => x.name === 'laundry_purchase_plan_complete').length,1);
+    const last = events[events.length-1];
+    assert.equal(last.params.example_mode, '1');
+    assert.equal(last.params.purchase_winner_reversed, '1');
+    assert.deepEqual(Object.keys(last.params).sort(),
+      ['category_id','example_mode','purchase_winner_reversed','tool_id'].sort());
+    d.querySelector('.purchase-horizon a[href="/daily-cost-jp/categories/laundry/"]')
+      .dispatchEvent(new dom.window.Event('click'));
+    assert.equal(events.at(-1).name, 'laundry_purchase_plan_to_products');
+    assert.deepEqual(Object.keys(events.at(-1).params).sort(), ['category_id','tool_id']);
+  } finally {dom.window.close();}
+});
