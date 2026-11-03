@@ -113,11 +113,15 @@
       error.textContent = '';
       byId('wash-example-note').hidden = true;
     });
-    for (const input of form.querySelectorAll('input')) {
-      input.addEventListener('input', function () {
+    for (const input of form.querySelectorAll('input, select')) {
+      const invalidate = function () {
         result.hidden = true;
-        byId('wash-example-note').hidden = true;
-      });
+        error.textContent = '';
+        // Sample values remain in other fields after any individual edit.
+        // Keep their fictional provenance visible until the form is reset.
+      };
+      input.addEventListener('input', invalidate);
+      input.addEventListener('change', invalidate);
     }
   }
   return {offer, compare, mount};
