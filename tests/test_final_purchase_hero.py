@@ -17,7 +17,7 @@ class FinalHeroTests(unittest.TestCase):
         style.parent.mkdir(exist_ok=True)
         style.write_text(".art-purchase-links a{min-height:44px}",encoding="utf-8")
         nav='<nav class="art-purchase-links" aria-label="商品へ直行">' + ''.join(
-            f'<a href="/daily-cost-jp/categories/{route}/">{route}</a>' for route in ROUTES
+            f'<a class="category-page-link" data-conversion-source="category" href="/daily-cost-jp/categories/{route}/">{route}</a>' for route in ROUTES
         )+'</nav>' if with_nav else ""
         html='<html><head><link rel="stylesheet" href="/daily-cost-jp/assets/art-purchase-entry.css?v=unit-test"></head><body><header class="art-cover"><h1>日用品の価格、単価も総額も。</h1><p class="lead">数量と支払額を確かめる</p>'+nav+'</header></body></html>'
         (root/"index.html").write_text(html,encoding="utf-8")
