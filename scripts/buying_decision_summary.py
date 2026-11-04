@@ -36,7 +36,7 @@ def render(markup, category, cid):
     if not rows:return ''
     extra='<p><a href="/daily-cost-jp/tools/laundry-cost-per-wash/">濃縮度が違う洗剤は、ラベル使用量で1回費用を比較 →</a></p>' if cid=='laundry' else ''
     return ('<section id="buying-decisions" class="buying-decisions" aria-labelledby="buying-decisions-title"><h2 id="buying-decisions-title">単価と支払総額、どちらを優先する？</h2>'
-        '<p>掲載ランキングの商品を、今回払う金額と単価の2通りで比較。必要な量と保管場所も確認してください。</p><table><thead><tr><th>選ぶ基準</th><th>購入する量・送料込総額</th><th>単価・商品詳細</th></tr></thead><tbody>'+''.join(rows)+'</tbody></table>'+''.join(insights)
+        '<p>掲載ランキングの商品を、今回払う金額と単価の2通りで比較。必要な量と保管場所も確認してください。</p><table><thead><tr><th>選ぶ基準</th><th>購入する量・送料込総額</th><th>単価・商品詳細</th></tr></thead><tbody>'+''.join(rows)+'</tbody></table>'+''.join(insights)+
         '<p>同じ商品が両方に入る場合があります。異なる銘柄・数量の価格差は、同一商品の値引き額ではありません。重ね数・比較単位が違う商品同士は順位付けしません。</p>'+extra+'</section>')
 
 def build(site=Path('site')):
