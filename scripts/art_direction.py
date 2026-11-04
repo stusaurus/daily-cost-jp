@@ -50,12 +50,17 @@ def apply_art(soup, path, site):
         soup.select_one('.lab-hero').replace_with(fragment(
             '<header class="art-cover">'+art_picture('hero',True)+
             '<div class="container art-cover-content"><p class="lab-kicker">日用品を、アートにする。 / DAILY COST</p>'
-            '<h1>その日用品、<br>本当に安い？</h1>'
-            '<p class="lead">同じものさしで比べれば、わかります。<br>容量も、個数も、送料も。日用品の価格を、同じ単位へ。</p>'
+            '<h1>日用品の価格、<br>単価も総額も。</h1>'
+            '<p class="lead">1枚・1ロール・100mlなど同じ単位で比較。<br>送料込みの候補を、買う量と支払額まで確かめて選べます。</p>'
             '<div id="art-cover-search"></div><div class="lab-actions">'
             '<a class="lab-button" href="#lab-categories">カテゴリから比べる ↓</a>'
             '<a class="lab-button secondary" href="'+ROOT+'today/" data-conversion-source="daily_pick">今日の比較候補 ↗</a>'
-            '</div><p class="updated"></p></div>'
+            '</div><nav class="art-purchase-links" aria-label="よく比較する日用品への近道">'
+            '<span>すぐに商品を見る</span>'
+            '<a href="'+ROOT+'categories/laundry/" data-conversion-source="art_quick_laundry">洗濯洗剤 →</a>'
+            '<a href="'+ROOT+'categories/tissue/" data-conversion-source="art_quick_tissue">ティッシュ →</a>'
+            '<a href="'+ROOT+'categories/toilet-paper/" data-conversion-source="art_quick_toilet_paper">トイレットペーパー →</a>'
+            '</nav><p class="updated"></p></div>'
             '<span class="art-credit">EVERYDAY ART 01 / 紙・布・ガラス</span></header>'))
         soup.select_one('.art-cover .updated').string=stamp
         finder = soup.select_one('#product-finder-home')
