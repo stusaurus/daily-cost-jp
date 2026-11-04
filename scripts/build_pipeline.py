@@ -43,6 +43,7 @@ STEPS = (
     'complete_purchase_flow',
     'add_back_to_top',
     'redesign_laboratory',
+    'verify_final_purchase_hero',
     'step4_automation',
     'step5_evaluation',
     'step6_seo_content',
