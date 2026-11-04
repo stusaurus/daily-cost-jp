@@ -10,5 +10,6 @@ class SummaryTests(unittest.TestCase):
   offers={'items':[{'url':f'https://example.com/{i}','price':p,'postage':post}for i,p,post in [(1,500,'送料込み'),(2,1000,'送料込み'),(3,1,'不明')]]}
   d=BeautifulSoup(render(raw,offers,'laundry'),'html.parser')
   self.assertEqual([r['data-decision-target']for r in d.select('tbody tr')],['laundry-rank-1','laundry-rank-2'])
+  self.assertIn('単価最安と支払総額最安は違います',d.get_text());self.assertIn('¥500高くなります',d.get_text());
   self.assertIn('1袋',d.get_text());self.assertIn('2袋',d.get_text());self.assertIn('¥500',d.get_text());self.assertEqual(d.select_one('tbody a')['href'],'#laundry-rank-1')
   self.assertEqual(render(raw,{'items':[]},'laundry'),'')
