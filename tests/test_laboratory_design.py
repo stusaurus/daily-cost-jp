@@ -129,7 +129,10 @@ class LaboratoryDesignTests(unittest.TestCase):
             self.assertEqual(c.select_one('#tissue .product-list .product-card')['id'],'tissue-rank-2')
             self.assertEqual(c.select_one('#tissue-rank-2 .buy-button')['data-rank'],'2')
             self.assertEqual(len(s.select('h1')),1)
-            self.assertIn('本当に安い',s.h1.text)
+            self.assertIn('単価も総額も',s.h1.text)
+            self.assertIn('支払額',s.select_one('.art-cover p.lead').get_text())
+            for route in ('laundry','tissue','toilet-paper'):
+                self.assertEqual(len(s.select('.art-purchase-links a[href="/daily-cost-jp/categories/'+route+'/"'])),1)
             self.assertEqual(len(s.select('#product-finder-home')),1)
             self.assertIsNotNone(s.select_one('.art-cover #product-finder-home'))
             self.assertIsNotNone(s.select_one('#art-data .lab-sample-photo img[src*="rakuten"]'))
