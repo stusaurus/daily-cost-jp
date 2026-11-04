@@ -34,6 +34,24 @@ async function inspect(browser,root,route,width,phase){
   const beforeWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
   assert(beforeWidth<=width+2,'Horizontal overflow '+beforeWidth);
   assert.equal(errors.length,0,errors.join(';'));
+  if(phase==='after'&&route===''){
+   const hero=page.locator('header.art-cover');
+   assert.equal(await hero.count(),1,'final art cover must be rendered');
+   const decision=await hero.locator('h1, p.lead').allTextContents();
+   assert(decision.join(' ').includes('単価も総額も')&&decision.join(' ').includes('支払額'),
+     'final visible headline must explain unit versus payment total');
+   const links=await hero.locator('nav.art-purchase-links a').evaluateAll(es=>es.map(a=>{
+     const r=a.getBoundingClientRect(),c=getComputedStyle(a);
+     return {href:a.getAttribute('href'),height:r.height,width:r.width,display:c.display,visibility:c.visibility,name:a.textContent.trim()};
+   }));
+   assert.equal(links.length,3,'must expose 3 direct shopping destinations');
+   for(const cat of ['laundry','tissue','toilet-paper']){
+    const entry=links.find(l=>l.href==='/daily-cost-jp/categories/'+cat+'/');
+    assert(entry,'shortcut missing for '+cat);
+    assert(entry.height>=44&&entry.width>40&&entry.display!=='none'&&entry.visibility!=='hidden'&&entry.name,
+      'shortcut not touch-friendly for '+cat+' at '+width);
+   }
+  }
   if(route==='products/'){
    await page.locator('#q').fill('アリエール');await page.locator('#searchBtn').click();
    await page.waitForFunction(()=>document.querySelector('#status').textContent.includes('候補：0件'));
