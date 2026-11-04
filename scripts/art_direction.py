@@ -24,6 +24,7 @@ def install_art(site):
     target.mkdir(parents=True, exist_ok=True)
     for source in SOURCE.glob('*.webp'):
         shutil.copy2(source, target/source.name)
+    shutil.copy2(Path('scripts/design/art-purchase-entry.css'), site/'assets/art-purchase-entry.css')
 
 def art_picture(key, hero=False):
     widths = (800,1600) if hero else (480,960)
@@ -46,6 +47,9 @@ def art_picture(key, hero=False):
 def apply_art(soup, path, site):
     home = path == site/'index.html'
     if home:
+        style=site/'assets/art-purchase-entry.css'
+        version=hashlib.sha256(style.read_bytes()).hexdigest()[:10]
+        soup.head.append(soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/art-purchase-entry.css?v='+version))
         stamp = soup.select_one('.lab-hero .updated').get_text()
         soup.select_one('.lab-hero').replace_with(fragment(
             '<header class="art-cover">'+art_picture('hero',True)+
