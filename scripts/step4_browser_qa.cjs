@@ -34,7 +34,9 @@ async function inspect(browser,root,route,width,phase){
   const beforeWidth=await page.evaluate(()=>document.documentElement.scrollWidth);
   assert(beforeWidth<=width+2,'Horizontal overflow '+beforeWidth);
   assert.equal(errors.length,0,errors.join(';'));
-  if(phase==='after'&&route===''){
+  // STEP4 standalone audits a captured public snapshot, not this PR's final-art output.
+  // Apply the new purchase-hero invariant only to STEP6's real generated-page pair.
+  if(phase==='after'&&route===''&&(process.argv[3]||'').includes('step6-after')){
    const hero=page.locator('header.art-cover');
    assert.equal(await hero.count(),1,'final art cover must be rendered');
    const decision=await hero.locator('h1, p.lead').allTextContents();
