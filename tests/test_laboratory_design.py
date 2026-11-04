@@ -132,7 +132,8 @@ class LaboratoryDesignTests(unittest.TestCase):
             self.assertIn('単価も総額も',s.h1.text)
             self.assertIn('支払額',s.select_one('.art-cover p.lead').get_text())
             for route in ('laundry','tissue','toilet-paper'):
-                self.assertEqual(len(s.select('.art-purchase-links a[href="/daily-cost-jp/categories/'+route+'/"'])),1)
+                selector=f'.art-purchase-links a[href="/daily-cost-jp/categories/{route}/"]'
+                self.assertEqual(len(s.select(selector)),1)
             self.assertEqual(len(s.select('#product-finder-home')),1)
             self.assertIsNotNone(s.select_one('.art-cover #product-finder-home'))
             self.assertIsNotNone(s.select_one('#art-data .lab-sample-photo img[src*="rakuten"]'))
