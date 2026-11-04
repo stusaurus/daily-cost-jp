@@ -31,9 +31,12 @@ def validate(root=ROOT):
             if len(links)!=1: errors.append("missing/duplicate real category shortcut: "+route)
             if not (root/"categories"/route/"index.html").is_file():
                 errors.append("shortcut destination missing: "+route)
-    css=root/"assets"/"laboratory.css"
+    css=root/"assets"/"art-purchase-entry.css"
     if not css.is_file() or ".art-purchase-links" not in css.read_text(encoding="utf-8"):
         errors.append("final art shortcut style missing")
+    links=soup.select('link[rel="stylesheet"][href^="/daily-cost-jp/assets/art-purchase-entry.css"]')
+    if len(links)!=1:
+        errors.append("final art shortcut stylesheet link missing or duplicate")
     if len(soup.select("h1"))!=1:
         errors.append("homepage must retain exactly one h1")
     return errors
