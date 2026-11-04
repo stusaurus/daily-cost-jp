@@ -29,6 +29,8 @@ def validate(root=ROOT):
             href=BASE+"categories/"+route+"/"
             links=nav.select('a[href="'+href+'"]')
             if len(links)!=1: errors.append("missing/duplicate real category shortcut: "+route)
+            elif "category-page-link" not in links[0].get("class",[]) or links[0].get("data-conversion-source")!="category":
+                errors.append("shortcut missing existing GA4 category tracking: "+route)
             if not (root/"categories"/route/"index.html").is_file():
                 errors.append("shortcut destination missing: "+route)
     css=root/"assets"/"art-purchase-entry.css"
