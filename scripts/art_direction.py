@@ -55,7 +55,7 @@ def apply_art(soup, path, site):
             '<header class="art-cover">'+art_picture('hero',True)+
             '<div class="container art-cover-content"><p class="lab-kicker">日用品を、アートにする。 / DAILY COST</p>'
             '<h1>日用品の価格、<br>単価も総額も。</h1>'
-            '<p class="lead">1枚・1ロール・100mlなど同じ単位で比較。<br>送料込みの候補を、買う量と支払額まで確かめて選べます。</p>'
+            '<p class="lead">100組・10m・100mlなど、商品ごとに適切な単位で比較。<br>送料込みの候補を、買う量と支払額まで確かめて選べます。</p>'
             '<div id="art-cover-search"></div><div class="lab-actions">'
             '<a class="lab-button" href="#lab-categories">カテゴリから比べる ↓</a>'
             '<a class="lab-button secondary" href="'+ROOT+'today/" data-conversion-source="daily_pick">今日の比較候補 ↗</a>'
