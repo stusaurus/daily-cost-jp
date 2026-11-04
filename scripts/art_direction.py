@@ -61,9 +61,9 @@ def apply_art(soup, path, site):
             '<a class="lab-button secondary" href="'+ROOT+'today/" data-conversion-source="daily_pick">今日の比較候補 ↗</a>'
             '</div><nav class="art-purchase-links" aria-label="よく比較する日用品への近道">'
             '<span>すぐに商品を見る</span>'
-            '<a href="'+ROOT+'categories/laundry/" data-conversion-source="art_quick_laundry">洗濯洗剤 →</a>'
-            '<a href="'+ROOT+'categories/tissue/" data-conversion-source="art_quick_tissue">ティッシュ →</a>'
-            '<a href="'+ROOT+'categories/toilet-paper/" data-conversion-source="art_quick_toilet_paper">トイレットペーパー →</a>'
+            '<a class="category-page-link" href="'+ROOT+'categories/laundry/" data-conversion-source="category">洗濯洗剤 →</a>'
+            '<a class="category-page-link" href="'+ROOT+'categories/tissue/" data-conversion-source="category">ティッシュ →</a>'
+            '<a class="category-page-link" href="'+ROOT+'categories/toilet-paper/" data-conversion-source="category">トイレットペーパー →</a>'
             '</nav><p class="updated"></p></div>'
             '<span class="art-credit">EVERYDAY ART 01 / 紙・布・ガラス</span></header>'))
         soup.select_one('.art-cover .updated').string=stamp
