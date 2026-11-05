@@ -92,6 +92,7 @@ def _query_page_evidence(part, property_url):
             return None
         query, path, page = row.get("key"), row.get("path"), row.get("page")
         if (not isinstance(query, str) or not query.strip() or len(query) > 120
+                or "<" in query or ">" in query
                 or SITE_OPERATOR.search(query) or PRIVATE_QUERY.search(query)):
             continue
         if (not isinstance(path, str) or not SAFE_PATH.fullmatch(path)
