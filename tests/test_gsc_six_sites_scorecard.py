@@ -98,13 +98,13 @@ class GscSixSitesScorecardTests(unittest.TestCase):
         report = fixture()
         report["sites"][0]["analytics"]["daily_28d"]["rows"].append(
             report["sites"][0]["analytics"]["daily_28d"]["rows"][0].copy())
-        self.assertIsNone(scorecard(report)["sites"][0]["daily"])
+        self.assertIsNone(next(row for row in scorecard(report)["sites"] if row["name"] == "日用品")["daily"])
         report = fixture()
         report["sites"][0]["analytics"]["daily_28d"]["rows"][0]["key"] = "2026-11-04"
-        self.assertIsNone(scorecard(report)["sites"][0]["daily"])
+        self.assertIsNone(next(row for row in scorecard(report)["sites"] if row["name"] == "日用品")["daily"])
         report = fixture()
         report["sites"][0]["analytics"]["daily_28d"]["rows"][0]["impressions"] = -1
-        self.assertIsNone(scorecard(report)["sites"][0]["daily"])
+        self.assertIsNone(next(row for row in scorecard(report)["sites"] if row["name"] == "日用品")["daily"])
 
     def test_cross_site_property_mismatch_never_reuses_numbers(self):
         report = fixture()
