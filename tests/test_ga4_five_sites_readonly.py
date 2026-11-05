@@ -135,4 +135,80 @@ class FiveSitesTests(unittest.TestCase):
         self.assertIn('/guides/pack-rice-24-servings-cost/',existing.TARGET_PATHS['食品'])
 
 
+
+class WeeklyFunnelEvidenceTests(unittest.TestCase):
+    def test_operator_flags_stay_distinct_from_real_people(self):
+        rows={'status':'OBSERVED_ROWS','rows':[
+            {'dimensions':['affiliate_click','0'],'count':3},
+            {'dimensions':['affiliate_click','1'],'count':2},
+            {'dimensions':['affiliate_click','(not set)'],'count':4},
+            {'dimensions':['page_view','0'],'count':90}]}
+        e=g.event_evidence(rows,'affiliate_click',True)
+        self.assertEqual((e['count'],e['marked_operator'],
+                          e['marked_non_operator_unverified'],e['unclassified']),
+                         (9,2,3,4))
+        self.assertNotIn('conversion_rate',e)
+        self.assertNotIn('users',e)
+
+    def test_unregistered_operator_is_unknown(self):
+        e=g.event_evidence({'status':'OBSERVED_ROWS','rows':[
+            {'dimensions':['affiliate_click'],'count':12}]},
+            'affiliate_click',False)
+        self.assertEqual(e['unclassified'],12)
+        self.assertEqual(e['marked_non_operator_unverified'],0)
+
+    def test_no_rows_and_withheld_are_not_zeros(self):
+        for status in ('NO_REPORTED_ROWS','WITHHELD_DATA_QUALITY',
+                       'UNAVAILABLE','WITHHELD_PROPERTY_TIMEZONE'):
+            e=g.event_evidence({'status':status},'affiliate_click',True)
+            self.assertEqual(e['status'],status)
+            self.assertNotIn('count',e)
+        e=g.event_evidence({'status':'OBSERVED_ROWS','rows':[
+            {'dimensions':['page_view','0'],'count':5}]},'affiliate_click',True)
+        self.assertEqual(e['status'],'EVENT_NOT_REPORTED')
+        self.assertNotIn('count',e)
+
+    def test_duplicate_negative_and_bad_dimensions_rejected(self):
+        cases=[
+            [{'dimensions':['affiliate_click','0'],'count':2},
+             {'dimensions':['affiliate_click','0'],'count':2}],
+            [{'dimensions':['affiliate_click','0'],'count':-2}],
+            [{'dimensions':['affiliate_click'],'count':2}]]
+        for rows in cases:
+            e=g.event_evidence({'status':'OBSERVED_ROWS','rows':rows},
+                               'affiliate_click',True)
+            self.assertNotEqual(e['status'],'OBSERVED_EVENT_ROWS')
+        self.assertEqual(g.event_evidence(
+            {'status':'OBSERVED_ROWS','rows':cases[1]},
+            'affiliate_click',None)['status'],'OPERATOR_METADATA_UNAVAILABLE')
+
+    def test_all_five_sites_and_periods_preserve_observed_semantics(self):
+        data={'periods':g.windows(dt.date(2026,11,5)),'sites':[
+            {'site':site,'status':'QUERIED',
+             'data_api_metadata':{'operator_registered':True},
+             'periods':{p:{'events':{'status':'OBSERVED_ROWS','rows':[
+                 {'dimensions':['affiliate_click','0'],'count':1}]}}
+                        for p in ('7','28')}} for site in g.SITES]}
+        data['funnel_event_coverage']=g.funnel_event_coverage(data)
+        self.assertEqual(set(data['funnel_event_coverage']),set(g.SITES))
+        self.assertEqual(data['funnel_event_coverage']['sotojitaku']['7']
+                         ['affiliate_click']['count'],1)
+        self.assertEqual(data['funnel_event_coverage']['baby-cost-jp']['28']
+                         ['page_view']['status'],'EVENT_NOT_REPORTED')
+        md=g.markdown(data)
+        self.assertIn('## 5サイトの商品導線イベント',md)
+        self.assertIn('非運営者表示1',md)
+        self.assertIn('楽天確定成果は未接続',md)
+
+    def test_existing_monday_read_only_runner_is_sole_automation(self):
+        src=(Path(__file__).resolve().parents[1]
+             /'.github/workflows/gsc-six-sites-diagnostics.yml').read_text()
+        self.assertIn("github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch'",src)
+        self.assertIn('inputs.include_five_site_ga4',src)
+        self.assertIn('steps.ga4_evidence.outcome',src)
+        self.assertIn('continue-on-error: true',src)
+        self.assertEqual(src.count("cron: '45 0 * * 1'"),1)
+        self.assertNotIn('analytics.write',src)
+
+
 if __name__=='__main__':unittest.main()
