@@ -15,6 +15,7 @@ from urllib.parse import quote, urlsplit
 from html.parser import HTMLParser
 
 from scripts import gsc_six_sites as base
+from scripts.gsc_six_sites_scorecard import scorecard_markdown
 
 INDEX_ENDPOINT = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
 OUTPUT = Path("audit-results")
@@ -303,6 +304,7 @@ def markdown(report):
         "- 直近28日：" + "〜".join(report["date_windows"]["last_28"]),
         "- 直近7日：" + "〜".join(report["date_windows"]["last_7"]), "",
     ]
+    lines.extend([scorecard_markdown(report), ""])
     for site in report["sites"]:
         lines.extend(["## " + site["name"], "", "- 診断：" + site["status"]])
         if "sitemaps" in site:
