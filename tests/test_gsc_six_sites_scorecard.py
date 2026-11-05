@@ -20,6 +20,20 @@ def fixture():
                 "queries_28d": {"status": "OBSERVED_ROWS", "rows": [
                     {"key": x, "clicks": 0, "impressions": 1} for x in query
                 ]} if query else {"status": "NO_ROWS", "rows": []},
+                "query_pages_28d": {"status": "OBSERVED_ROWS", "rows": [
+                    {"key": q, "path": path,
+                     "page": root[name] + path.lstrip("/"),
+                     "clicks": 0, "impressions": impressions,
+                     "position": position}
+                    for q, path, impressions, position in (
+                        [("洗濯洗剤 安い 店 ランキング", "/categories/laundry/", 26, 7.65),
+                         ("site:github.io", "/", 3, 3.0)]
+                        if name == "日用品" else
+                        [("ボード ゲーム 二 人 用", "/scenes/two-player/", 3, 72.67)]
+                        if name == "ボードゲーム" else []
+                    )
+                ]} if name in ("日用品", "ボードゲーム")
+                else {"status": "NO_ROWS", "rows": []},
             },
             "inspection": inspection,
         }
@@ -127,6 +141,62 @@ class GscSixSitesScorecardTests(unittest.TestCase):
         self.assertIn("検索語と表示ページの意図を照合", rendered)
         self.assertIn("Google未認識1件", rendered)
         self.assertIn("111", rendered)
+
+
+    def test_real_query_page_pair_examples_are_bounded_and_non_additive(self):
+        board = scorecard(fixture())
+        rows = {row["name"]: row for row in board["sites"]}
+        d = rows["日用品"]["query_page_samples"]
+        self.assertEqual(len(d), 1, "site: query must not become demand")
+        self.assertEqual(d[0]["query"], "洗濯洗剤 安い 店 ランキング")
+        self.assertEqual(d[0]["path"], "/categories/laundry/")
+        self.assertEqual(d[0]["impressions"], 26)
+        self.assertEqual(d[0]["position"], 7.65)
+        self.assertEqual(rows["日用品"]["daily"]["impressions"], 111)
+        self.assertEqual(rows["ボードゲーム"]["query_page_samples"][0]["position"], 72.67)
+        summary = scorecard_markdown(fixture())
+        self.assertIn("洗濯洗剤 安い 店 ランキング", summary)
+        self.assertIn("/scenes/two-player/", summary)
+        self.assertNotIn("site:github.io", summary)
+        self.assertIn("/tools/laundry-cost-per-wash/", summary)
+
+    def test_malicious_and_inapplicable_query_pairs_never_show_as_evidence(self):
+        report = fixture()
+        rows = report["sites"][0]["analytics"]["query_pages_28d"]["rows"]
+        original = rows[0].copy()
+        root = dict(SITES)
+        rows.extend([
+            {**original, "key": "連絡 test@example.com"},
+            {**original, "key": "電話 090-1234-5678"},
+            {**original, "key": "洗剤 site:example.jp"},
+            {**original, "key": "価格 -site:example.jp"},
+            {**original, "key": "<script>bad</script>"},
+            {**original, "key": "他サイト", "page": root["食品"]},
+            {**original, "key": "パス異常", "path": "//evil/"},
+            {**original, "key": "重複", "impressions": -1},
+            original.copy(),
+        ])
+        out = next(row for row in scorecard(report)["sites"] if row["name"] == "日用品")
+        self.assertEqual(out["query_page_samples"],
+                         [{"query": "洗濯洗剤 安い 店 ランキング",
+                           "path": "/categories/laundry/", "impressions": 26,
+                           "clicks": 0, "position": 7.65},
+                          {"query": "<script>bad</script>",
+                           "path": "/categories/laundry/", "impressions": 26,
+                           "clicks": 0, "position": 7.65}])
+        rendered = scorecard_markdown(report)
+        self.assertNotIn("test@example.com", rendered)
+        self.assertNotIn("090-1234-5678", rendered)
+        self.assertNotIn("site:example.jp", rendered)
+        self.assertNotIn("<script>", rendered)
+        self.assertIn("&lt;script&gt;bad&lt;/script&gt;", rendered)
+
+    def test_missing_query_pairs_are_unknown_not_empty_search_demand(self):
+        report = fixture()
+        report["sites"][0]["analytics"]["query_pages_28d"] = {"status": "UNAVAILABLE"}
+        out = next(row for row in scorecard(report)["sites"] if row["name"] == "日用品")
+        self.assertIsNone(out["query_page_samples"])
+        self.assertIn("取得不明", scorecard_markdown(report))
 
     def test_partial_site_snapshot_stays_unknown(self):
         report = fixture()
