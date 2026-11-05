@@ -267,3 +267,22 @@ class PublicHtmlEvidenceTests(unittest.TestCase):
             result = g.public_state(site)
         self.assertIsNone(result["title"])
         self.assertEqual(result["h1"], [])
+
+
+    def test_markdown_shows_observed_html_evidence_without_inference(self):
+        report = g.make_report(dt.date(2026, 10, 18), auth_problem="MISSING")
+        report["sites"][0]["inspection"] = [
+            {"path": "/categories/laundry/", "status": "OBSERVED_SNAPSHOT",
+             "public": {"status": "PUBLIC_HTML", "title": "洗剤 | 比較",
+                        "h1": ["洗濯洗剤の比較"],
+                        "internal_link_paths": ["/daily-cost-jp/categories/tissue/"]}},
+            {"path": "/categories/tissue/", "status": "UNAVAILABLE",
+             "public": {"status": "PUBLIC_CHECK_UNAVAILABLE"}},
+        ]
+        rendered = g.markdown(report)
+        self.assertIn("公開HTMLの検索意図照合用証拠", rendered)
+        self.assertIn("洗剤 \\| 比較", rendered)
+        self.assertIn("洗濯洗剤の比較", rendered)
+        self.assertIn("1件（上限あり）", rendered)
+        self.assertIn("取得不可", rendered)
+        self.assertIn("検索順位・適合性の証明ではありません", rendered)
