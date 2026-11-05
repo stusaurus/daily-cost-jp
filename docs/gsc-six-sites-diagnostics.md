@@ -106,3 +106,16 @@ diagnostic artifact; there is no new scheduler, issue writer, or publication.
 URL Inspectionが「URL is unknown to Google」と保存した対象のパスも一覧化する。ただし各URLがHTTP 200か、Google登録が可能かは**別の証拠**であり、一覧化だけでURL登録申請やSEO改修を実行しない。
 
 **現在の観測対象**：日用品`/categories/laundry/`への通常検索語、きょうボド`/scenes/two-player/`への2人用検索語、8つの未認識ページ。2026-11-03の公式原本は改修後のデータを含まないため、11/09の暫定観測と11/16以降の初期反応確認を区別する。
+
+## 2026-11-06｜5サイトGA4を既存の週次GSC診断へ併走（変更概要）
+
+これまでGA4の5サイト横断集計は `workflow_dispatch.include_five_site_ga4=true` の**手動実行時限定**で、週次GSCだけでは継続的な比較・楽天クリックの観測はできなかった。今回は同じ `GSC Six-Site Discovery Diagnostics` の**月曜09:45 JSTの既存schedule**で、既存の `ga4_page_diagnostics.py --five-sites` を実行する。日用品は別の既存 `GA4 Three-Day Read-Only Analysis` が取得するため、両者を分けて扱い、重複・新規ワークフローは作らない。手動実行時は引き続き明示オプトインが必要。新しい認証・監視サービスは追加しない。
+
+- 対象はベビー／ペット／食品／きょうボド／SOTOJITAKUの5サイトに厳密固定。公開済みGoogle測定IDを読み、既存OIDC・同じGA4読み取り専用権限を使用する。管理画面の設定・サイトコード・価格・SKU・インデックスは一切変更しない。
+- 既存のAPI制限（property探索20件上限、Google API429なら直ちに停止、retryなし、7/28日のJST確定日窓、データ品質閾値・タイムゾーン・URLプレフィックス確認）を保持。1回の正常取得時に5サイト×2期間×4レポート＝**最大40件のGA4 Data API runReport**に加えて、既存のAdmin/Metadata参照が発生する。GSCには追加のAPI呼び出しを行わない。
+- `ga4-five-sites.json` に `funnel_event_coverage`（`page_view`、`product_view`、`product_select`、`affiliate_click` 各7/28日）を追加。各イベントは運営者判定`1`、非運営者表示`0`（**本当の顧客とは未証明**）、区分不明を別集計。メタデータ未登録・未返却行・権限不足・レポート品質制限は**取得できない状態のまま保持**し、0と補完しない。
+- `ga4-five-sites.md` は5サイトの28日のイベント取得状態を一覧化する。ただし**サイトごとに商品表示イベントの意味が異なる**。例えばCAMPの`product_view`はカテゴリ単位。他サイトのSKU単位と直接比較したり、個別のGSC検索者とGA4のセッションを紐付けたりしない。結果は**独立したイベント回数**であり、順序付きの流入→選択→楽天クリックファネルや離脱率ではない。楽天成果報酬の証明でもない。
+- GA4取得エラーの場合は明示的に失敗／未取得と表示し、**公式GSCの正常な診断結果を巻き添えで失敗扱いにしない**。週次ジョブのGA4ステップを `continue-on-error` にし、別のSummaryで欠落を明示する。データ欠損を補う推測値は入れない。
+- 週次実行の初回はmainに取り込まれた後、既存の月曜scheduleで行う。現在の公式GSC 10/03〜10/30の28日実績、日用品GA4 10/30〜11/01の34セッション・楽天クリック1イベントは**異なる集計窓・母集団**なので「検索から楽天への転換率」を計算しない。
+
+レビュー用テストは `tests/test_ga4_five_sites_readonly.py` で、未知の運営者フラグ、欠測・品質制限、同一行重複、週次scheduleと手動オプトインの排他条件を確認する。公開データを書き換えず、CIで回帰確認する。
