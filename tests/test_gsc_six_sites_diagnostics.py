@@ -247,6 +247,7 @@ class PublicHtmlEvidenceTests(unittest.TestCase):
                 '<body><h1>洗濯洗剤を比較</h1>'
                 '<a href="/daily-cost-jp/categories/tissue/">紙製品</a>'
                 '<a href="https://external.example/other">外部</a>'
+                '<a href="/baby-cost-jp/">別サイト</a>'
                 '<a href="mailto:test@example.com">メール</a></body></html>')
         with patch.object(g, "urlopen", return_value=Page(body.encode("utf-8"))):
             result = g.public_state(site + "categories/laundry/")
@@ -254,6 +255,7 @@ class PublicHtmlEvidenceTests(unittest.TestCase):
         self.assertEqual(result["h1"], ["洗濯洗剤を比較"])
         self.assertEqual(result["internal_link_paths"], ["/daily-cost-jp/categories/tissue/"])
         self.assertNotIn("external.example", str(result))
+        self.assertNotIn("/baby-cost-jp/", result["internal_link_paths"])
 
     def test_missing_title_and_h1_remain_missing_not_empty_claim(self):
         site = g.base.SITES[0][1]
