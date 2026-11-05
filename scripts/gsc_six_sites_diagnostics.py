@@ -392,6 +392,27 @@ def markdown(report):
             vals = [item["path"], item["status"], item.get("verdict") or "不明",
                     item.get("coverage_state") or "不明", item.get("last_crawl_time") or "不明"]
             lines.append("| " + " | ".join(html.escape(v, quote=False).replace("|", "\\|") for v in vals) + " |")
+        lines.extend(["", "### 公開HTMLの検索意図照合用証拠（自動判定なし）", "",
+                      "title・H1・内部リンクは公開ページから取得した観測値です。検索順位・適合性の証明ではありません。",
+                      "| ページ | title | H1（最大3件） | 内部リンク数（最大30件） |",
+                      "|---|---|---|---:|"])
+        for item in site["inspection"]:
+            public = item.get("public") or {}
+            if not isinstance(public, dict) or public.get("status") != "PUBLIC_HTML":
+                values = [item.get("path", "不明"), "取得不可", "取得不可", "不明"]
+            else:
+                title = public.get("title")
+                headings = public.get("h1")
+                links = public.get("internal_link_paths")
+                values = [
+                    item.get("path", "不明"),
+                    title if isinstance(title, str) and title else "未検出",
+                    "／".join(x for x in headings[:3] if isinstance(x, str)) if isinstance(headings, list) and headings else "未検出",
+                    str(len(links)) + "件（上限あり）" if isinstance(links, list) else "未取得",
+                ]
+            lines.append("| " + " | ".join(
+                html.escape(str(v), quote=False).replace("|", "\\|").replace("\\n", " ")
+                for v in values) + " |")
         for item in site["inspection"]:
             lines.extend(["", "対象：" + html.escape(item["path"], quote=False)])
             detail = {"公開HTTP": item.get("public", {}).get("status", "UNAVAILABLE"),
