@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from urllib.request import urlopen
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote, urlsplit, urljoin
 from html.parser import HTMLParser
 
 from scripts import gsc_six_sites as base
@@ -145,10 +145,17 @@ def analytics_rows(payload, dimension, *, property_url=None):
 
 
 class PublicPage(HTMLParser):
-    def __init__(self):
+    """Bounded, non-executing HTML evidence; never infer search intent from text alone."""
+    def __init__(self, page_url=None):
         super().__init__()
+        self.page_url = page_url
         self.canonicals = []
         self.robots = []
+        self.title = None
+        self.h1 = []
+        self.internal_links = []
+        self._tag = None
+        self._parts = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -156,6 +163,37 @@ class PublicPage(HTMLParser):
             self.canonicals.append(cleaned(attrs.get("href"), 350))
         if tag == "meta" and attrs.get("name", "").lower() == "robots":
             self.robots.append(cleaned(attrs.get("content")))
+        if tag in ("title", "h1"):
+            self._tag, self._parts = tag, []
+        if tag == "a" and self.page_url and isinstance(attrs.get("href"), str):
+            href = attrs["href"]
+            if href.startswith(("#", "mailto:", "tel:", "javascript:", "data:")):
+                return
+            dest = urlsplit(urljoin(self.page_url, href))
+            source = urlsplit(self.page_url)
+            configured_prefix = next(
+                (urlsplit(root).path for _, root in base.SITES
+                 if self.page_url.startswith(root)), None)
+            if (configured_prefix is not None and dest.scheme == "https"
+                    and dest.netloc == source.netloc
+                    and dest.path.startswith(configured_prefix)
+                    and dest.path not in self.internal_links
+                    and len(self.internal_links) < 30):
+                self.internal_links.append(dest.path)
+
+    def handle_data(self, data):
+        if self._tag and sum(map(len, self._parts)) < 500:
+            self._parts.append(data[:500])
+
+    def handle_endtag(self, tag):
+        if tag != self._tag:
+            return
+        value = cleaned("".join(self._parts), 180)
+        if tag == "title" and self.title is None:
+            self.title = value
+        if tag == "h1" and len(self.h1) < 3 and value:
+            self.h1.append(value)
+        self._tag, self._parts = None, []
 
 
 def public_state(url):
@@ -172,10 +210,12 @@ def public_state(url):
             if status != 200 or final != url or "text/html" not in content_type or len(raw) > 2_000_000:
                 return {"status": "INVALID_PUBLIC_TARGET", "http_status": status,
                         "final_url": cleaned(final, 350)}
-            parser = PublicPage()
-            parser.feed(raw.decode("utf-8"))
+            parser = PublicPage(url)
+            parser.feed(raw.decode("utf-8", errors="replace"))
             return {"status": "PUBLIC_HTML", "http_status": status,
                     "canonical": parser.canonicals, "robots": parser.robots,
+                    "title": parser.title, "h1": parser.h1,
+                    "internal_link_paths": parser.internal_links,
                     "x_robots_tag": cleaned(response.headers.get("X-Robots-Tag"))}
     except Exception as error:
         status = getattr(error, "code", None)
@@ -352,6 +392,27 @@ def markdown(report):
             vals = [item["path"], item["status"], item.get("verdict") or "不明",
                     item.get("coverage_state") or "不明", item.get("last_crawl_time") or "不明"]
             lines.append("| " + " | ".join(html.escape(v, quote=False).replace("|", "\\|") for v in vals) + " |")
+        lines.extend(["", "### 公開HTMLの検索意図照合用証拠（自動判定なし）", "",
+                      "title・H1・内部リンクは公開ページから取得した観測値です。検索順位・適合性の証明ではありません。",
+                      "| ページ | title | H1（最大3件） | 内部リンク数（最大30件） |",
+                      "|---|---|---|---:|"])
+        for item in site["inspection"]:
+            public = item.get("public") or {}
+            if not isinstance(public, dict) or public.get("status") != "PUBLIC_HTML":
+                values = [item.get("path", "不明"), "取得不可", "取得不可", "不明"]
+            else:
+                title = public.get("title")
+                headings = public.get("h1")
+                links = public.get("internal_link_paths")
+                values = [
+                    item.get("path", "不明"),
+                    title if isinstance(title, str) and title else "未検出",
+                    "／".join(x for x in headings[:3] if isinstance(x, str)) if isinstance(headings, list) and headings else "未検出",
+                    str(len(links)) + "件（上限あり）" if isinstance(links, list) else "未取得",
+                ]
+            lines.append("| " + " | ".join(
+                html.escape(str(v), quote=False).replace("|", "\\|").replace("\\n", " ")
+                for v in values) + " |")
         for item in site["inspection"]:
             lines.extend(["", "対象：" + html.escape(item["path"], quote=False)])
             detail = {"公開HTTP": item.get("public", {}).get("status", "UNAVAILABLE"),
