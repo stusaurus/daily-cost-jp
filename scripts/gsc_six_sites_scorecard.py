@@ -12,6 +12,11 @@ from scripts.gsc_six_sites import SITES
 
 VALID_STATES = ("OBSERVED_ROWS", "TOP_ROWS_LIMIT_POSSIBLE")
 GSC_SOURCE = "Google Search Console Search Analytics + URL Inspection APIs (read-only)"
+# Never treat search operators, URLs, contact details, or long digit strings as
+# commercial search demand or quote them in a public GitHub workflow summary.
+SITE_OPERATOR = re.compile(r"(?<![a-zA-Z0-9])-?site\s*:", re.IGNORECASE)
+PRIVATE_QUERY = re.compile(r"@|https?://|(?:\d[\s-]?){7,}", re.IGNORECASE)
+SAFE_PATH = re.compile(r"^/(?:[a-zA-Z0-9_./%-]+)?$")
 
 
 def _checked_daily(part, period):
@@ -66,10 +71,51 @@ def _natural_queries(part):
             return "UNKNOWN", None
         # site: queries are verification searches, never evidence of a
         # commercial natural-language search intent.
-        if not re.search(r"(?:^|\s)site\s*:", key, re.IGNORECASE):
+        if not SITE_OPERATOR.search(key):
             count += 1
     return ("NATURAL_ROWS" if count else "ONLY_OPERATOR_ROWS"), count
 
+
+def _query_page_evidence(part, property_url):
+    """Up to 3 independently returned query × landing rows, never a total."""
+    if not isinstance(part, dict):
+        return None
+    status = part.get("status")
+    if status == "NO_ROWS":
+        return []
+    if status not in VALID_STATES or not isinstance(part.get("rows"), list):
+        return None
+    candidates = []
+    seen = set()
+    for row in part["rows"][:1000]:
+        if not isinstance(row, dict):
+            return None
+        query, path, page = row.get("key"), row.get("path"), row.get("page")
+        if (not isinstance(query, str) or not query.strip() or len(query) > 120
+                or SITE_OPERATOR.search(query) or PRIVATE_QUERY.search(query)):
+            continue
+        if (not isinstance(path, str) or not SAFE_PATH.fullmatch(path)
+                or path.startswith("//") or ".." in path.split("/")
+                or page != property_url + path.lstrip("/")):
+            continue
+        impressions, clicks, position = (
+            row.get("impressions"), row.get("clicks"), row.get("position"))
+        if (type(impressions) is not int or type(clicks) is not int
+                or impressions <= 0 or not 0 <= clicks <= impressions
+                or not isinstance(position, (float, int))
+                or isinstance(position, bool) or not 1 <= position <= 1000):
+            continue
+        identity = (query, path)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        candidates.append({"query": query.strip(), "path": path,
+                           "impressions": impressions, "clicks": clicks,
+                           "position": round(position, 2)})
+    # The returned query-page rows are a non-exhaustive Search Analytics
+    # selection. We display only those rows, not inferred popular queries.
+    candidates.sort(key=lambda x: (-x["impressions"], -x["clicks"], x["query"]))
+    return candidates[:3]
 
 def _index_snapshot(site):
     inspected = site.get("inspection", [])
@@ -78,6 +124,7 @@ def _index_snapshot(site):
                 "uncertain": 0, "http_and_canonical_ok": 0}
     counted = set()
     indexed = unknown = uncertain = public_ok = 0
+    unknown_paths = []
     root = site["property"]
     for row in inspected:
         if not isinstance(row, dict):
@@ -96,6 +143,7 @@ def _index_snapshot(site):
             indexed += 1
         elif row.get("coverage_state") == "URL is unknown to Google":
             unknown += 1
+            unknown_paths.append(path)
         else:
             uncertain += 1
         url = root + path.lstrip("/")
@@ -109,7 +157,8 @@ def _index_snapshot(site):
             public_ok += 1
     return {"checked": len(counted), "indexed": indexed,
             "unknown_to_google": unknown, "uncertain": uncertain,
-            "http_and_canonical_ok": public_ok}
+            "http_and_canonical_ok": public_ok,
+            "unknown_paths": unknown_paths[:8]}
 
 
 def scorecard(report):
@@ -129,6 +178,7 @@ def scorecard(report):
             rows.append({"name": name, "status": "UNAVAILABLE_OR_MISMATCH",
                          "daily": None, "query_status": "UNKNOWN",
                          "natural_query_rows": None, "index": None,
+                         "query_page_samples": None,
                          "priority": "DATA_CHECK"})
             continue
         analytics = site.get("analytics")
@@ -136,6 +186,7 @@ def scorecard(report):
         daily = _checked_daily(analytics.get("daily_28d"), period)
         query_status, count = _natural_queries(analytics.get("queries_28d"))
         idx = _index_snapshot(site)
+        samples = _query_page_evidence(analytics.get("query_pages_28d"), property_url)
         if daily is None:
             focus = "DATA_CHECK"
         elif daily["impressions"] >= 20 and count:
@@ -147,6 +198,7 @@ def scorecard(report):
         rows.append({"name": name, "status": site.get("status", "UNKNOWN"),
                      "daily": daily, "query_status": query_status,
                      "natural_query_rows": count, "index": idx,
+                     "query_page_samples": samples,
                      "priority": focus})
     rows.sort(key=lambda row: (
         row["daily"] is None,
@@ -185,6 +237,31 @@ def scorecard_markdown(report):
                   qlabel, found, labels[row["priority"]]]
         lines.append("| " + " | ".join(
             html.escape(v, quote=False).replace("|", "\\|") for v in values) + " |")
+    lines.extend(["", "### 実際に返された検索語と表示ページ（各サイト最大3件）", "",
+                  "Search Analyticsの返却行の一部です。\`site:\`等の確認検索、個人情報らしい語句は除外し、全検索需要に換算しません。", "",
+                  "| サイト | 検索語 | 表示ページ | 表示 | クリック | 平均順位 |",
+                  "|---|---|---|---:|---:|---:|"])
+    for row in board["sites"]:
+        samples = row.get("query_page_samples")
+        if samples is None or len(samples) == 0:
+            state = "取得不明" if samples is None else "通常語×ページの返却行なし"
+            lines.append("| " + html.escape(row["name"]) + " | " + state + " | — | — | — | — |")
+            continue
+        for sample in samples:
+            parts = [row["name"], sample["query"], sample["path"],
+                     str(sample["impressions"]), str(sample["clicks"]),
+                     str(sample["position"])]
+            lines.append("| " + " | ".join(
+                html.escape(value, quote=False).replace("|", "\\\\|")
+                for value in parts) + " |")
+    lines.extend(["", "### Google保存済みスナップショットで未認識のURL", "",
+                  "公開可否・今後の登録可否を意味するものではなく、次回公式診断の照合対象です。"])
+    for row in board["sites"]:
+        paths = row.get("index", {}).get("unknown_paths", []) if row.get("index") else []
+        if paths:
+            escaped = "、".join(html.escape(p, quote=False).replace("|", "\\\\|") for p in paths)
+            lines.append("- " + html.escape(row["name"]) + "：" + escaped)
+    lines.append("")
     lines.extend(["", "※Google未認識は保存済みURL Inspectionの状態で、公開失敗やインデックス不可の証明ではありません。",
                   "※ページ別表示回数の合計は、日別の合計と一致するとは限りません。サイト全体に換算しません。",
                   "※運営用の調査区分であり、CTR改善・検索順位上昇・購入成果を保証せず、SEOを自動編集しません。", ""])
