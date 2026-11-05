@@ -261,7 +261,7 @@ def event_evidence(report, name, operator_registered):
     rows = report.get('rows')
     if not isinstance(rows, list):
         return {'status': 'INVALID_ROWS'}
-    if operator_registered not in (True, False):
+    if type(operator_registered) is not bool:
         return {'status': 'OPERATOR_METADATA_UNAVAILABLE'}
     totals = {'marked_operator': 0, 'marked_non_operator_unverified': 0,
               'unclassified': 0}
