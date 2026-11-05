@@ -252,14 +252,14 @@ def scorecard_markdown(report):
                      str(sample["impressions"]), str(sample["clicks"]),
                      str(sample["position"])]
             lines.append("| " + " | ".join(
-                html.escape(value, quote=False).replace("|", "\\\\|")
+                html.escape(value, quote=False).replace("|", "\\|")
                 for value in parts) + " |")
     lines.extend(["", "### Google保存済みスナップショットで未認識のURL", "",
                   "公開可否・今後の登録可否を意味するものではなく、次回公式診断の照合対象です。"])
     for row in board["sites"]:
         paths = row.get("index", {}).get("unknown_paths", []) if row.get("index") else []
         if paths:
-            escaped = "、".join(html.escape(p, quote=False).replace("|", "\\\\|") for p in paths)
+            escaped = "、".join(html.escape(p, quote=False).replace("|", "\\|") for p in paths)
             lines.append("- " + html.escape(row["name"]) + "：" + escaped)
     lines.append("")
     lines.extend(["", "※Google未認識は保存済みURL Inspectionの状態で、公開失敗やインデックス不可の証明ではありません。",
