@@ -233,3 +233,35 @@ class FailureDistinctionTests(unittest.TestCase):
         self.assertEqual(result["inspection"][0]["status"], "OBSERVED_SNAPSHOT")
         self.assertEqual(result["inspection"][0]["verdict"], "FAIL")
         self.assertEqual(result["status"], "PARTIAL")
+
+
+class PublicHtmlEvidenceTests(unittest.TestCase):
+    def test_extracts_bounded_title_h1_and_same_site_links(self):
+        site = g.base.SITES[0][1]
+        class Page(BytesIO):
+            status = 200
+            url = site + "categories/laundry/"
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+        body = ('<html><head><title>洗剤の比較</title>'
+                '<link rel="canonical" href="' + site + 'categories/laundry/"></head>'
+                '<body><h1>洗濯洗剤を比較</h1>'
+                '<a href="/daily-cost-jp/categories/tissue/">紙製品</a>'
+                '<a href="https://external.example/other">外部</a>'
+                '<a href="mailto:test@example.com">メール</a></body></html>')
+        with patch.object(g, "urlopen", return_value=Page(body.encode("utf-8"))):
+            result = g.public_state(site + "categories/laundry/")
+        self.assertEqual(result["title"], "洗剤の比較")
+        self.assertEqual(result["h1"], ["洗濯洗剤を比較"])
+        self.assertEqual(result["internal_link_paths"], ["/daily-cost-jp/categories/tissue/"])
+        self.assertNotIn("external.example", str(result))
+
+    def test_missing_title_and_h1_remain_missing_not_empty_claim(self):
+        site = g.base.SITES[0][1]
+        class Page(BytesIO):
+            status = 200
+            url = site
+            headers = {"Content-Type": "text/html"}
+        with patch.object(g, "urlopen", return_value=Page(b"<html><body>ok</body></html>")):
+            result = g.public_state(site)
+        self.assertIsNone(result["title"])
+        self.assertEqual(result["h1"], [])
