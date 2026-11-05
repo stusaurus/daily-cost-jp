@@ -171,9 +171,12 @@ class PublicPage(HTMLParser):
                 return
             dest = urlsplit(urljoin(self.page_url, href))
             source = urlsplit(self.page_url)
-            if (dest.scheme == "https" and dest.netloc == source.netloc
-                    and dest.path.startswith(source.path.split("/")[1] and
-                                             "/" + source.path.split("/")[1] + "/" or "/")
+            configured_prefix = next(
+                (urlsplit(root).path for _, root in base.SITES
+                 if self.page_url.startswith(root)), None)
+            if (configured_prefix is not None and dest.scheme == "https"
+                    and dest.netloc == source.netloc
+                    and dest.path.startswith(configured_prefix)
                     and dest.path not in self.internal_links
                     and len(self.internal_links) < 30):
                 self.internal_links.append(dest.path)
