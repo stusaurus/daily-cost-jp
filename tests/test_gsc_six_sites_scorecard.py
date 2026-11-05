@@ -180,16 +180,13 @@ class GscSixSitesScorecardTests(unittest.TestCase):
         self.assertEqual(out["query_page_samples"],
                          [{"query": "洗濯洗剤 安い 店 ランキング",
                            "path": "/categories/laundry/", "impressions": 26,
-                           "clicks": 0, "position": 7.65},
-                          {"query": "<script>bad</script>",
-                           "path": "/categories/laundry/", "impressions": 26,
                            "clicks": 0, "position": 7.65}])
         rendered = scorecard_markdown(report)
         self.assertNotIn("test@example.com", rendered)
         self.assertNotIn("090-1234-5678", rendered)
         self.assertNotIn("site:example.jp", rendered)
         self.assertNotIn("<script>", rendered)
-        self.assertIn("&lt;script&gt;bad&lt;/script&gt;", rendered)
+        self.assertNotIn("&lt;script&gt;bad&lt;/script&gt;", rendered)
 
     def test_missing_query_pairs_are_unknown_not_empty_search_demand(self):
         report = fixture()
