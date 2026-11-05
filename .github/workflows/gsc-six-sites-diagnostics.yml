@@ -26,7 +26,6 @@ on:
       - 'scripts/ga4_page_diagnostics.py'
       - 'scripts/ga4_five_sites_readonly.py'
       - 'tests/test_ga4_five_sites_readonly.py'
-      - 'scripts/ga4_five_sites_readonly.py'
       - 'tests/test_gsc_six_sites_diagnostics.py'
       - '.github/workflows/gsc-six-sites-diagnostics.yml'
       - 'docs/gsc-six-sites-diagnostics.md'
