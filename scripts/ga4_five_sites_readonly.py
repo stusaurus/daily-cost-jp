@@ -245,14 +245,102 @@ def collect(session, today, public_reader=published_measurement):
                 'This manual read does not change Google settings, schedules, pages, products, or credentials.']}
 
 
+
+# These existing GA4 event rows cannot prove an ordered search-to-purchase funnel.
+# CAMP's product_view is category-level, unlike item-level impressions elsewhere.
+FUNNEL_EVENTS = ('page_view', 'product_view', 'product_select', 'affiliate_click')
+
+
+def event_evidence(report, name, operator_registered):
+    """Read-only event rows: absent/withheld data is never silently zero."""
+    if not isinstance(report, dict):
+        return {'status': 'UNAVAILABLE'}
+    status = report.get('status')
+    if status != 'OBSERVED_ROWS':
+        return {'status': status if isinstance(status, str) else 'UNAVAILABLE'}
+    rows = report.get('rows')
+    if not isinstance(rows, list):
+        return {'status': 'INVALID_ROWS'}
+    if operator_registered not in (True, False):
+        return {'status': 'OPERATOR_METADATA_UNAVAILABLE'}
+    totals = {'marked_operator': 0, 'marked_non_operator_unverified': 0,
+              'unclassified': 0}
+    seen, found = set(), False
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get('dimensions'), list):
+            return {'status': 'INVALID_ROWS'}
+        dims = row['dimensions']
+        if (len(dims) != (2 if operator_registered else 1)
+                or not all(isinstance(v, str) for v in dims)
+                or type(row.get('count')) is not int or row['count'] < 0):
+            return {'status': 'INVALID_ROWS'}
+        if tuple(dims) in seen:
+            return {'status': 'DUPLICATE_ROWS'}
+        seen.add(tuple(dims))
+        if dims[0] != name:
+            continue
+        found = True
+        flag = dims[1] if operator_registered else None
+        bucket = ('marked_operator' if flag == '1' else
+                  'marked_non_operator_unverified' if flag == '0' else
+                  'unclassified')
+        totals[bucket] += row['count']
+    if not found:
+        return {'status': 'EVENT_NOT_REPORTED'}
+    return {'status': 'OBSERVED_EVENT_ROWS', 'count': sum(totals.values()),
+            'operator_dimension_registered': operator_registered, **totals}
+
+
+def funnel_event_coverage(report):
+    """Pure five-site view of existing GA4 aggregates; no new API calls."""
+    result = {}
+    for site in report.get('sites', []):
+        name = site.get('site')
+        if name not in SITES:
+            continue
+        registered = site.get('data_api_metadata', {}).get('operator_registered')
+        periods = {}
+        for period in ('7', '28'):
+            raw = (site.get('periods', {}).get(period, {}).get('events',
+                 {'status': 'UNAVAILABLE'}) if site.get('status') == 'QUERIED'
+                 else {'status': 'SITE_UNAVAILABLE'})
+            periods[period] = {name: event_evidence(raw, name, registered)
+                               for name in FUNNEL_EVENTS}
+        result[name] = periods
+    return result
+
+
+def display_event_evidence(value):
+    if value.get('status') != 'OBSERVED_EVENT_ROWS':
+        descriptions = {'NO_REPORTED_ROWS': 'イベント行なし',
+                        'EVENT_NOT_REPORTED': '行未返却',
+                        'WITHHELD_DATA_QUALITY': '品質制限'}
+        return descriptions.get(value.get('status'), '未確認')
+    return (str(value['count'])+'件（運営'+str(value['marked_operator'])
+            +'／非運営者表示'+str(value['marked_non_operator_unverified'])
+            +'／不明'+str(value['unclassified'])+'）')
+
 def markdown(data):
-    lines = ['# 5サイト GA4 手動読み取り', '', '期間: '+json.dumps(data.get('periods'), ensure_ascii=False), '',
+    lines = ['# 5サイト GA4 読み取り（週次／手動）', '', '期間: '+json.dumps(data.get('periods'), ensure_ascii=False), '',
              '運営者区分ごとのセッションは重複し得ます。合算・差引で実人数を計算しません。', '',
              '|サイト|取得状態|7日 / 28日レポート|', '|---|---|---|']
     for site in data.get('sites', []):
         states = [site.get('periods', {}).get(n, {}).get('sessions_all_scopes', {}).get('status', '未取得') for n in ('7','28')]
         lines.append('|'+site['site']+'|'+site['status']+'|'+' / '.join(states)+'|')
-    lines += ['', '数値・権限・ストリーム照合・テスト区分は同じ成果物のJSONで確認。',
+    coverage = data.get('funnel_event_coverage') or funnel_event_coverage(data)
+    lines += ['', '## 5サイトの商品導線イベント（28日の観測行のみ）', '',
+              'GA4のイベント回数はユーザー数・セッション数・購入件数ではありません。',
+              '|サイト|ページ表示イベント|商品表示イベント|楽天クリックイベント|',
+              '|---|---|---|---|']
+    for name in SITES:
+        events = coverage.get(name, {}).get('28', {})
+        values = [display_event_evidence(events.get(event, {'status': 'UNAVAILABLE'}))
+                  for event in ('page_view', 'product_view', 'affiliate_click')]
+        lines.append('|'+name+'|'+'|'.join(values)+'|')
+    lines += ['', '運営者区分0は実利用者の証明ではありません。データが未返却・制限された場合は0件へ置換しません。',
+              'CAMPのproduct_viewは商品カテゴリ単位。他サイトとは意味が異なり単純比較できません。',
+              'これらは独立した集計イベントです。検索→商品閲覧→楽天クリックの順序・離脱率は算出しません。',
+              '個別の7日・28日集計と選択イベントは成果物JSONのfunnel_event_coverageに保存します。',
               '楽天確定成果は未接続。実利用者・成果報酬への換算は行いません。']
     return '\n'.join(lines)
 
@@ -262,6 +350,7 @@ def main():
     from google.auth.transport.requests import AuthorizedSession
     credentials, _ = google.auth.default(scopes=['https://www.googleapis.com/auth/analytics.readonly'])
     data = collect(AuthorizedSession(credentials), dt.datetime.now(ZoneInfo('Asia/Tokyo')).date())
+    data['funnel_event_coverage'] = funnel_event_coverage(data)
     root = Path('audit-results'); root.mkdir(exist_ok=True)
     (root/'ga4-five-sites.json').write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
     (root/'ga4-five-sites.md').write_text(markdown(data), encoding='utf-8')
