@@ -164,8 +164,20 @@ def price_answer(category_id, data):
         'tissue': ('ティッシュはどこが安い？今日の値段比較', '同じ組数なら1箱単価で比較できます。200組と250組など組数が違う場合は「支払総額 ÷ 箱数 ÷ 1箱の組数 × 100」で100組単価を比較してください。400枚（200組）は200組として計算します。'),
     }
     heading, answer = answers[category_id]
+    # Observed GSC query: 「洗濯洗剤 安い 店 ランキング」. The site ranks
+    # comparable products, not stores. Make the distinction visible before CTA.
+    store_comparison = (
+        '<section class="store-comparison-method" aria-labelledby="store-comparison-title">'
+        '<h3 id="store-comparison-title">安い店を選ぶには？ 商品の値段を同じ条件で比べる</h3>'
+        '<ol><li>同じ洗剤の種類（液体・粉末など）と用途をそろえる。</li>'
+        '<li>容量・販売個数をそろえ、店頭では税込価格を確認する。</li>'
+        '<li>通販では送料込みの支払総額を確認し、必要なら1回あたりの使用量でも比較する。</li></ol>'
+        '<p>このページは楽天の取得済み商品を比較しています。実店舗を含む「安い店ランキング」ではなく、'
+        '店頭価格や在庫は取得していません。店舗別の最安順位は表示できません。</p>'
+        '</section>'
+    ) if category_id == 'laundry' else ''
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
-    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
+    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{store_comparison}{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
 <p><strong>どこで買う？</strong>店頭価格は自動収集していません。楽天候補と店頭の税込・送料込み総額を同じ内容量で比べ、必要な数量だけ買える方を選びましょう。</p></details>
 <div class="purchase-links"><a href="#{category_id}">今日の商品・支払総額を見る ↓</a><a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div></section>'''
 
