@@ -36,9 +36,14 @@ def is_candidate(site, attrs):
 
 def inspect_anchor(attrs):
     """Classify URL scheme, host and sponsored-link protections; never open it."""
-    url = attrs.get("href", "")
-    parsed = urlsplit(url.strip())
-    rel = set(attrs.get("rel", "").lower().split())
+    url = attrs.get("href") or ""
+    try:
+        parsed = urlsplit(str(url).strip())
+        host = (parsed.hostname or "").lower()
+    except ValueError:
+        parsed = urlsplit("")
+        host = ""
+    rel = set(str(attrs.get("rel") or "").lower().split())
     problems = []
     if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
         problems.append("INVALID_OR_NON_HTTPS_URL")
@@ -46,7 +51,6 @@ def inspect_anchor(attrs):
         problems.append("MISSING_SPONSORED_REL")
     if attrs.get("target") == "_blank" and "noopener" not in rel:
         problems.append("MISSING_NOOPENER")
-    host = (parsed.hostname or "").lower()
     known_rakuten = host == "r10.to" or host == "rakuten.co.jp" or host.endswith(".rakuten.co.jp")
     return {"problems": problems, "host": host if host else "(none)",
             "externalHostNeedsReview": bool(host and not known_rakuten)}
