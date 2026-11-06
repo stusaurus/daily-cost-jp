@@ -16,7 +16,8 @@ class SixSiteAffiliateContractTests(unittest.TestCase):
         self.assertFalse(link["externalHostNeedsReview"])
 
     def test_disallowed_url_schemes_missing_sponsored_and_opener(self):
-        for url in ("javascript:alert(1)", "http://item.rakuten.co.jp/test/",
+        for url in (None, "https://[bad-host",
+                    "javascript:alert(1)", "http://item.rakuten.co.jp/test/",
                     "//item.rakuten.co.jp/test/", "https://someone@example.com/"):
             with self.subTest(url=url):
                 errors = inspect_anchor({
