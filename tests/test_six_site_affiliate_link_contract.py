@@ -63,7 +63,8 @@ class SixSiteAffiliateContractTests(unittest.TestCase):
     def test_source_only_camp_check_cannot_claim_browser_verified(self):
         s = ('data-affiliate="sample" 楽天で価格・在庫を確認 '
              'これを楽天で買う rel="sponsored nofollow noopener" '
-             'affiliateClickSource(route)')
+             'affiliateClickSource(route) '
+             'purchaseSelectionContext(t.dataset.category,plan(state,data))')
         result = audit_camp_source(s)
         self.assertEqual(result["status"], "SOURCE_CONTRACT_PRESENT")
         self.assertEqual(result["inspection"], "LIVE_JS_SOURCE_ONLY")
