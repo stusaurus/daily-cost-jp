@@ -4,9 +4,10 @@ const {JSDOM} = require('jsdom');
 const fs = require('node:fs');
 const {execFileSync} = require('node:child_process');
 
-function calculator() {
+function calculator(picks='') {
   const html = execFileSync('python', ['-c',
-    'from scripts.build_laundry_cost_page import PAGE; print(PAGE)'], {encoding:'utf8'});
+    'from scripts.build_laundry_cost_page import PAGE; print(PAGE)'], {encoding:'utf8'})
+    .replace('<!-- verified laundry presets -->', picks);
   const dom = new JSDOM(html, {runScripts:'outside-only'});
   dom.window.eval(fs.readFileSync('scripts/assets/laundry-per-wash.js','utf8'));
   return dom;
@@ -37,5 +38,67 @@ test('Changing unit invalidates the old comparison and clears old errors', () =>
     unit.value='個'; unit.dispatchEvent(new dom.window.Event('change'));
     assert.equal(d.getElementById('wash-result').hidden,true);
     assert.equal(d.getElementById('wash-error').textContent,'');
+  } finally {dom.window.close();}
+});
+
+test('Purchase result shows both cash outlay and leftovers; edits invalidate it', () => {
+  const dom = calculator(), d = dom.window.document;
+  try {
+    d.getElementById('wash-sample').click();
+    assert.equal(d.getElementById('wash-result').hidden, false);
+    assert.equal(d.getElementById('wash-purchase-count').textContent, '3か月・60回分');
+    assert.match(d.getElementById('wash-a-payment').textContent, /円/);
+    assert.match(d.getElementById('wash-b-unused').textContent, /mL/);
+    assert.match(d.getElementById('wash-purchase-tradeoff').textContent, /逆転/);
+    const period=d.getElementById('wash-period');
+    period.value='12'; period.dispatchEvent(new dom.window.Event('input'));
+    assert.equal(d.getElementById('wash-result').hidden,true);
+    d.getElementById('wash-calc').requestSubmit();
+    assert.equal(d.getElementById('wash-purchase-count').textContent, '12か月・240回分');
+  } finally {dom.window.close();}
+});
+
+test('Analytics emits only completion flags and product-navigation intent', () => {
+  const dom = calculator(), d = dom.window.document;
+  try {
+    const events = [];
+    dom.window.gtag = (command, name, params) => events.push({command, name, params});
+    d.getElementById('wash-sample').click();
+    assert.equal(events.filter(x => x.name === 'laundry_purchase_plan_complete').length,1);
+    const last = events[events.length-1];
+    assert.equal(last.params.example_mode, '1');
+    assert.equal(last.params.purchase_winner_reversed, '1');
+    assert.deepEqual(Object.keys(last.params).sort(),
+      ['category_id','example_mode','purchase_winner_reversed','tool_id'].sort());
+    d.querySelector('.purchase-horizon a[href="/daily-cost-jp/categories/laundry/"]')
+      .dispatchEvent(new dom.window.Event('click'));
+    assert.equal(events.at(-1).name, 'laundry_purchase_plan_to_products');
+    assert.deepEqual(Object.keys(events.at(-1).params).sort(), ['category_id','tool_id']);
+  } finally {dom.window.close();}
+});
+
+test('One-tap offer prefill copies only verified listed price and quantity, not dosage', () => {
+  const picks = '<section id="wash-verified-picks">' +
+    '<button data-pick-target="a" data-pick-price="850" data-pick-total="850" ' +
+    'data-pick-unit="g" data-pick-name="アタック850g">Aに入力</button></section>';
+  const dom = calculator(picks), d = dom.window.document;
+  try {
+    const events=[];
+    dom.window.gtag = (command,name,params) => events.push({command,name,params});
+    d.getElementById('wash-sample').click();
+    d.querySelector('#wash-verified-picks button').click();
+    assert.equal(d.getElementById('wash-a-price').value, '850');
+    assert.equal(d.getElementById('wash-a-content').value, '850');
+    assert.equal(d.getElementById('wash-a-packs').value, '1');
+    assert.equal(d.getElementById('wash-a-shipping').value, '0');
+    assert.equal(d.getElementById('wash-a-unit').value, 'g');
+    assert.equal(d.getElementById('wash-a-dose').value, '');
+    assert.equal(d.getElementById('wash-result').hidden, true);
+    assert.equal(d.getElementById('wash-example-note').hidden, true);
+    assert.match(d.getElementById('wash-picked-note').textContent, /製品ラベル/);
+    assert.deepEqual(JSON.parse(JSON.stringify(events.at(-1))), {
+      command:'event', name:'laundry_verified_offer_prefill',
+      params:{category_id:'laundry',tool_id:'laundry_per_wash',slot:'A'}
+    });
   } finally {dom.window.close();}
 });
