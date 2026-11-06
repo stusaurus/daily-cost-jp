@@ -99,6 +99,7 @@ def audit_camp_source(source):
         "shoppingList": "これを楽天で買う" in source and "data-affiliate=" in source,
         "linkProtection": 'rel="sponsored nofollow noopener"' in source,
         "sourceAttribution": "affiliateClickSource(route)" in source,
+        "purchasePlanGate": "purchaseSelectionContext(t.dataset.category,plan(state,data))" in source,
     }
     return {"site": "sotojitaku", "inspection": "LIVE_JS_SOURCE_ONLY",
             "sourceContract": checks, "status": (
