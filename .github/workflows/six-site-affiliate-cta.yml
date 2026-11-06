@@ -1,0 +1,31 @@
+name: Six-site affiliate CTA contract (read-only)
+on:
+  pull_request:
+    paths:
+      - 'scripts/six_site_affiliate_link_contract.py'
+      - 'tests/test_six_site_affiliate_link_contract.py'
+      - '.github/workflows/six-site-affiliate-cta.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-cta-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check link security and evidence classifications offline
+        run: python -m unittest discover -s tests -p 'test_six_site_affiliate_link_contract.py' -v
+      - name: Read public CTA markup without opening merchant destinations
+        run: python scripts/six_site_affiliate_link_contract.py
+      - name: Store classified non-identifying evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: six-site-affiliate-cta-contract
+          path: audit-results/six-site-affiliate-link-contract.json
+          retention-days: 14
+          if-no-files-found: warn
