@@ -53,6 +53,18 @@ class LiveReleaseContractTests(unittest.TestCase):
         spec = CHECKS[4]
         self.assertEqual(assess(spec, "function calculateWithStock(){}")["status"], "PASS")
 
+    def test_kyo_two_player_progressive_filter_has_independent_live_proof(self):
+        page = next(x for x in CHECKS if x["site"] == "kyo-bodo"
+                    and x["marker"] == "data-two-player-quick-filter")
+        script = next(x for x in CHECKS if x["site"] == "kyo-bodo"
+                      and x["path"].endswith("two-player-quick-filter.js"))
+        self.assertTrue(page["required"])
+        self.assertTrue(script["required"])
+        self.assertEqual(assess(page, self.html(page, page["marker"]))["status"], "PASS")
+        self.assertEqual(assess(page, self.html(page))["status"], "FEATURE_MISSING")
+        self.assertEqual(assess(script, "const code = 'data-two-quick-count';")["status"], "PASS")
+        self.assertEqual(assess(script, "no interactive filtering here")["status"], "FEATURE_MISSING")
+
     def test_report_keeps_missing_critical_and_conditional_distinct(self):
         report = make_report([
             {"site": "daily", "status": "PASS"},
