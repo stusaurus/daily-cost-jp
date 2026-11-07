@@ -65,6 +65,25 @@ class LiveReleaseContractTests(unittest.TestCase):
         self.assertEqual(assess(script, "const code = 'data-two-quick-count';")["status"], "PASS")
         self.assertEqual(assess(script, "no interactive filtering here")["status"], "FEATURE_MISSING")
 
+    def test_food_and_pet_shortcuts_have_public_evidence_with_proper_conditionality(self):
+        food_js = next(x for x in CHECKS if x["site"] == "food"
+                       and x["marker"] == "data-rice-meal-choice")
+        food_guide = next(x for x in CHECKS if x["site"] == "food"
+                          and x["marker"] == 'data-rice-meal-choice="2"')
+        pet_page = next(x for x in CHECKS if x["site"] == "pet"
+                        and x["marker"] == 'data-usage-preset="3"')
+        self.assertTrue(food_js["required"])
+        self.assertFalse(food_guide["required"])
+        self.assertTrue(food_guide["allow_noindex"])
+        self.assertTrue(pet_page["required"])
+        self.assertEqual(assess(food_js, "const selector = 'data-rice-meal-choice';")["status"], "PASS")
+        self.assertEqual(assess(food_js, "old purchase script")["status"], "FEATURE_MISSING")
+        self.assertEqual(assess(food_guide, self.html(food_guide))["status"],
+                         "CONDITIONAL_FEATURE_NOT_SHOWN")
+        self.assertEqual(assess(pet_page, self.html(pet_page))["status"], "FEATURE_MISSING")
+        self.assertEqual(assess(pet_page, self.html(pet_page, pet_page["marker"]))["status"],
+                         "PASS")
+
     def test_report_keeps_missing_critical_and_conditional_distinct(self):
         report = make_report([
             {"site": "daily", "status": "PASS"},
