@@ -25,6 +25,9 @@ CHECKS = [
     {"site": "baby", "path": "/baby-cost-jp/diapers/pants/m/",
      "kind": "html", "marker": 'id="purchase-planner"',
      "required": False, "allow_noindex": True},
+    {"site": "baby", "path": "/baby-cost-jp/diapers/pants/m/",
+     "kind": "html", "marker": 'data-purchase-size-choice="7"',
+     "required": True, "allow_noindex": True},
     {"site": "food", "path": "/food-cost-jp/categories/pack-rice/",
      "kind": "html", "marker": "必要な食数から購入箱数",
      "required": False, "allow_noindex": True},
@@ -35,6 +38,13 @@ CHECKS = [
     {"site": "food", "path": "/food-cost-jp/guides/pack-rice-24-servings-cost/",
      "kind": "html", "marker": 'data-rice-meal-choice="2"',
      "required": False, "allow_noindex": True},
+    {"site": "food", "path": "/food-cost-jp/guides/pack-rice-24-servings-cost/",
+     "kind": "html", "marker": 'data-rice-quantity-only',
+     "alternateMarkers": ['data-rice-planner'],
+     "required": True, "allow_noindex": True},
+    {"site": "food", "path": "/food-cost-jp/assets/pack-rice-quantity-only.js",
+     "kind": "javascript", "marker": 'function countOnly(daily,days,stock)',
+     "required": True},
     {"site": "kyo-bodo", "path": "/kyo-bodo-jp/scenes/two-player/",
      "kind": "html", "marker": "2人専用／複数人数対応", "required": True},
     {"site": "kyo-bodo", "path": "/kyo-bodo-jp/scenes/two-player/",
@@ -77,10 +87,15 @@ class Headings(HTMLParser):
 def assess(spec, body, status_code=200, final_url=None):
     """Evaluate only verified HTML/JS evidence, never current product claims."""
     expected = ORIGIN + spec["path"]
+    # A verified food offer swaps the count-only fallback for a priced planner.
+    # Either is valid evidence of a usable page. Never require both simultaneously.
+    accepted = [spec["marker"], *spec.get("alternateMarkers", [])]
+    matched = next((marker for marker in accepted if marker in body), None)
     result = {"site": spec["site"], "url": expected,
               "httpStatus": status_code, "marker": spec["marker"],
               "requiredMarker": spec["required"],
-              "markerPresent": spec["marker"] in body}
+              "markerPresent": matched is not None,
+              "matchedMarker": matched}
     if status_code != 200:
         result["status"] = "HTTP_ERROR"
         return result
