@@ -50,7 +50,9 @@ class LiveReleaseContractTests(unittest.TestCase):
                          "REDIRECTED")
 
     def test_javascript_does_not_require_html_canonical(self):
-        spec = CHECKS[4]
+        spec = next(item for item in CHECKS
+                    if item["path"].endswith("/pack-rice-planner.js")
+                    and item["marker"] == "calculateWithStock")
         self.assertEqual(assess(spec, "function calculateWithStock(){}")["status"], "PASS")
 
     def test_kyo_two_player_progressive_filter_has_independent_live_proof(self):
