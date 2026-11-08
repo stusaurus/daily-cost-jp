@@ -119,7 +119,7 @@ footer a{color:#fff}
 <div class="offer-grid">
 <fieldset class="offer"><legend><h3>洗剤A</h3></legend><div class="fields">
 <div class="field"><label for="wash-a-price">セットの税込価格（円）</label><input id="wash-a-price" type="number" min="0.01" max="1000000000" step="any" inputmode="decimal" required placeholder="例：598"></div>
-<div class="field"><label for="wash-a-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-a-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-a-shipping">1セット購入時の追加送料（円）</label><input id="wash-a-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
+<div class="field"><label for="wash-a-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-a-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-a-shipping">1セット購入時の追加送料（円）</label><input id="wash-a-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="確認した送料（無料なら0）"><small>送料未確認なら計算できません。送料無料と確認した場合だけ0を入力してください。</small></div>
 <div class="field"><label for="wash-a-content">1個の内容量</label><input id="wash-a-content" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="例：1000"></div>
 <div class="field"><label for="wash-a-packs">セット入り数</label><input id="wash-a-packs" type="number" min="1" max="100000" step="1" value="1" required></div>
 <div class="field"><label for="wash-a-unit">使用量の単位</label><select id="wash-a-unit"><option value="mL">mL</option><option value="g">g</option><option value="個">個</option></select></div>
@@ -127,7 +127,7 @@ footer a{color:#fff}
 </div></fieldset>
 <fieldset class="offer"><legend><h3>洗剤B</h3></legend><div class="fields">
 <div class="field"><label for="wash-b-price">セットの税込価格（円）</label><input id="wash-b-price" type="number" min="0.01" max="1000000000" step="any" inputmode="decimal" required placeholder="例：1880"></div>
-<div class="field"><label for="wash-b-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-b-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-b-shipping">1セット購入時の追加送料（円）</label><input id="wash-b-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
+<div class="field"><label for="wash-b-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-b-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-b-shipping">1セット購入時の追加送料（円）</label><input id="wash-b-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="確認した送料（無料なら0）"><small>送料未確認なら計算できません。送料無料と確認した場合だけ0を入力してください。</small></div>
 <div class="field"><label for="wash-b-content">1個の内容量</label><input id="wash-b-content" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="例：900"></div>
 <div class="field"><label for="wash-b-packs">セット入り数</label><input id="wash-b-packs" type="number" min="1" max="100000" step="1" value="1" required></div>
 <div class="field"><label for="wash-b-unit">使用量の単位</label><select id="wash-b-unit"><option value="mL">mL</option><option value="g">g</option><option value="個">個</option></select></div>
