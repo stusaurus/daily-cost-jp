@@ -28,7 +28,7 @@ test('Editing a sample keeps fictional provenance visible until reset', () => {
   } finally {dom.window.close();}
 });
 
-test('Changing unit invalidates the old comparison and clears old errors', () => {
+test('Changing unit invalidates the old comparison and requests shipping reconfirmation', () => {
   const dom = calculator(), d = dom.window.document;
   try {
     d.getElementById('wash-sample').click();
@@ -37,7 +37,8 @@ test('Changing unit invalidates the old comparison and clears old errors', () =>
     const unit = d.getElementById('wash-a-unit');
     unit.value='個'; unit.dispatchEvent(new dom.window.Event('change'));
     assert.equal(d.getElementById('wash-result').hidden,true);
-    assert.equal(d.getElementById('wash-error').textContent,'');
+    assert.equal(d.getElementById('wash-a-order-shipping').value,'');
+    assert.match(d.getElementById('wash-error').textContent,/送料合計を再確認/);
   } finally {dom.window.close();}
 });
 
@@ -121,6 +122,9 @@ test('Real product prefill does not inherit fictional comparisons or unconfirmed
     assert.equal(d.getElementById('wash-b-dose').value,'');
     assert.equal(d.getElementById('wash-example-note').hidden,true);
     assert.equal(d.getElementById('wash-result').hidden,true);
+    // The selected product intentionally has no inferred dosage.
+    // Confirm a dosage before asserting that the fictional B input is unavailable.
+    d.getElementById('wash-a-dose').value='20';
     d.getElementById('wash-calc').requestSubmit();
     assert.match(d.getElementById('wash-error').textContent,/洗剤B/);
   } finally { dom.window.close(); }
