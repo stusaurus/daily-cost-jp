@@ -32,10 +32,22 @@ if(require.main===module)(async()=>{
   const fallbackSmall=step5SmallTissue(catalog.categories.tissue);
   for(const width of [1440,390,320])for(const cid of ['laundry','tissue','toilet-paper']){
    const page=await browser.newPage({viewport:{width,height:1000}});
-   await page.route(/googletagmanager|google-analytics/,route=>route.abort());
+   await page.route(/googletagmanager|google-analytics|googleadservices|doubleclick|hb\.afl\.rakuten\.co\.jp/,route=>route.abort());
    const errors=[];page.on('pageerror',error=>errors.push(error.message));
    await page.goto(`http://127.0.0.1:${server.address().port}/daily-cost-jp/categories/${cid}/?test=1`,{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('h1').count(),1);
+   if(cid==='laundry'){
+     const nav=page.getByRole('navigation',{name:'洗剤の比較方法を選ぶ'});
+     assert.equal(await nav.locator('a').count(),3);
+     assert.equal(await nav.locator('a').nth(1).getAttribute('href'),'../../products/');
+     await nav.scrollIntoViewIfNeeded();
+     await page.screenshot({path:`qa-search/laundry-intent-entry-${width}.png`,fullPage:false});
+     await nav.locator('a[href="#laundry"]').click();
+     assert.equal(new URL(page.url()).hash,'#laundry');
+     await nav.locator('a[href="../../tools/laundry-cost-per-wash/"]').click();
+     assert(new URL(page.url()).pathname.endsWith('/tools/laundry-cost-per-wash/'));
+     await page.goBack({waitUntil:'domcontentloaded'});
+   }
    const decisions=page.locator('#buying-decisions');
    assert.equal(await decisions.count(),1);
    assert(await decisions.locator('tbody tr').count()>=2);

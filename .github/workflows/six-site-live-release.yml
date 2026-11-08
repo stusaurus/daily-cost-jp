@@ -1,0 +1,31 @@
+name: Six-site public release proof (read-only)
+on:
+  pull_request:
+    paths:
+      - 'scripts/six_site_live_release.py'
+      - 'tests/test_six_site_live_release.py'
+      - '.github/workflows/six-site-live-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-live-releases:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove live check never confuses conditional inventory and missing deployment
+        run: python -m unittest discover -s tests -p 'test_six_site_live_release.py' -v
+      - name: Inspect six sites and eleven exact public HTML/JS endpoints
+        run: python scripts/six_site_live_release.py
+      - name: Preserve factual public-release evidence even if checks fail
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: six-site-public-release-evidence
+          path: audit-results/six-site-live-release.json
+          if-no-files-found: warn
+          retention-days: 14

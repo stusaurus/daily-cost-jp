@@ -233,3 +233,56 @@ class FailureDistinctionTests(unittest.TestCase):
         self.assertEqual(result["inspection"][0]["status"], "OBSERVED_SNAPSHOT")
         self.assertEqual(result["inspection"][0]["verdict"], "FAIL")
         self.assertEqual(result["status"], "PARTIAL")
+
+
+class PublicHtmlEvidenceTests(unittest.TestCase):
+    def test_extracts_bounded_title_h1_and_same_site_links(self):
+        site = g.base.SITES[0][1]
+        class Page(BytesIO):
+            status = 200
+            url = site + "categories/laundry/"
+            headers = {"Content-Type": "text/html; charset=utf-8"}
+        body = ('<html><head><title>洗剤の比較</title>'
+                '<link rel="canonical" href="' + site + 'categories/laundry/"></head>'
+                '<body><h1>洗濯洗剤を比較</h1>'
+                '<a href="/daily-cost-jp/categories/tissue/">紙製品</a>'
+                '<a href="https://external.example/other">外部</a>'
+                '<a href="/baby-cost-jp/">別サイト</a>'
+                '<a href="mailto:test@example.com">メール</a></body></html>')
+        with patch.object(g, "urlopen", return_value=Page(body.encode("utf-8"))):
+            result = g.public_state(site + "categories/laundry/")
+        self.assertEqual(result["title"], "洗剤の比較")
+        self.assertEqual(result["h1"], ["洗濯洗剤を比較"])
+        self.assertEqual(result["internal_link_paths"], ["/daily-cost-jp/categories/tissue/"])
+        self.assertNotIn("external.example", str(result))
+        self.assertNotIn("/baby-cost-jp/", result["internal_link_paths"])
+
+    def test_missing_title_and_h1_remain_missing_not_empty_claim(self):
+        site = g.base.SITES[0][1]
+        class Page(BytesIO):
+            status = 200
+            url = site
+            headers = {"Content-Type": "text/html"}
+        with patch.object(g, "urlopen", return_value=Page(b"<html><body>ok</body></html>")):
+            result = g.public_state(site)
+        self.assertIsNone(result["title"])
+        self.assertEqual(result["h1"], [])
+
+
+    def test_markdown_shows_observed_html_evidence_without_inference(self):
+        report = g.make_report(dt.date(2026, 10, 18), auth_problem="MISSING")
+        report["sites"][0]["inspection"] = [
+            {"path": "/categories/laundry/", "status": "OBSERVED_SNAPSHOT",
+             "public": {"status": "PUBLIC_HTML", "title": "洗剤 | 比較",
+                        "h1": ["洗濯洗剤の比較"],
+                        "internal_link_paths": ["/daily-cost-jp/categories/tissue/"]}},
+            {"path": "/categories/tissue/", "status": "UNAVAILABLE",
+             "public": {"status": "PUBLIC_CHECK_UNAVAILABLE"}},
+        ]
+        rendered = g.markdown(report)
+        self.assertIn("公開HTMLの検索意図照合用証拠", rendered)
+        self.assertIn("洗剤 \\| 比較", rendered)
+        self.assertIn("洗濯洗剤の比較", rendered)
+        self.assertIn("1件（上限あり）", rendered)
+        self.assertIn("取得不可", rendered)
+        self.assertIn("検索順位・適合性の証明ではありません", rendered)

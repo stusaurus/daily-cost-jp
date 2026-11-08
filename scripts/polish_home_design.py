@@ -27,6 +27,10 @@ STYLE = r'''
   #home-start .home-start-primary small{color:rgba(255,255,255,.82)}
   #home-start .home-start-arrow{position:absolute;right:13px;bottom:11px;font-size:15px;font-weight:900;opacity:.72}
 
+  .home-fast-picks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:13px}
+  .home-fast-picks span{font-size:12px;font-weight:800;color:#61534d}
+  #home-start .home-fast-picks a{display:inline-flex;flex-direction:row;align-items:center;min-height:44px;padding:9px 14px;border-radius:999px;border:1px solid #d9c9bd;background:#fffaf6;box-shadow:none;font-size:13px;font-weight:800;color:#83362c}
+  #home-start .home-fast-picks a:focus-visible{outline:3px solid #176a77;outline-offset:2px}
   main.container{padding-top:2px}
   #buy-judge{border-radius:20px!important;box-shadow:0 8px 24px rgba(66,47,35,.06)!important}
   #buy-judge .decision-kicker{display:inline-flex;align-items:center;min-height:25px;padding:3px 8px;border-radius:999px;background:#fff0ec}
@@ -73,6 +77,12 @@ START = r'''
       <span class="home-start-arrow">→</span>
     </a>
   </div>
+  <nav class="home-fast-picks" aria-label="買う商品が決まっている方の近道">
+    <span>すぐ比較するなら</span>
+    <a href="categories/laundry/">洗濯洗剤 →</a>
+    <a href="categories/tissue/">ティッシュ →</a>
+    <a href="categories/toilet-paper/">トイレットペーパー →</a>
+  </nav>
 </section>
 '''
 
