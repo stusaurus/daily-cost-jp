@@ -177,9 +177,20 @@ def price_answer(category_id, data):
         '</section>'
     ) if category_id == 'laundry' else ''
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
-    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{store_comparison}{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
+    quick_links = (
+        '<nav class="purchase-links" aria-label="洗剤の比較方法を選ぶ">'
+        '<a href="#laundry">商品・ショップ名・支払総額を見る ↓</a>'
+        '<a href="../../products/">同じ商品の販売店を探す</a>'
+        '<a href="../../tools/laundry-cost-per-wash/">1回の費用・必要購入量を計算する</a>'
+        '</nav>'
+    ) if category_id == 'laundry' else ''
+    bottom_links = (f'<div class="purchase-links"><a href="#{category_id}">今日の商品・支払総額を見る ↓</a>'
+                    f'<a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div>')
+    if category_id == 'laundry':
+        bottom_links = f'<div class="purchase-links"><a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div>'
+    return f'''<section class="purchase-answer" id="buying-answer"><h2>{heading}</h2>{quick_links}{store_comparison}{overview}<details><summary>比較方法・店頭価格との比べ方</summary><p>{answer}</p>
 <p><strong>どこで買う？</strong>店頭価格は自動収集していません。楽天候補と店頭の税込・送料込み総額を同じ内容量で比べ、必要な数量だけ買える方を選びましょう。</p></details>
-<div class="purchase-links"><a href="#{category_id}">今日の商品・支払総額を見る ↓</a><a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div></section>'''
+{bottom_links}</section>'''
 
 
 def enhance_priority(payload):

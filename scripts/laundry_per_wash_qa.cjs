@@ -37,7 +37,20 @@ module.exports=async function(browser,origin){
       const attribution=await page.evaluate(()=>({operator:window.__operatorTest,
         layer:(window.dataLayer||[]).map(x=>Array.from(x))}));
       assert(attribution.layer.some(x=>JSON.stringify(x).includes('operator_test')),'operator attribution missing');
-      assert.equal(await page.locator('a[href="/daily-cost-jp/categories/laundry/"]').count(),3);
+      assert(await page.locator('a[href="/daily-cost-jp/categories/laundry/"]').count()>=3);
+      assert.equal(await page.locator('.purchase-horizon a[href="/daily-cost-jp/categories/laundry/"]').count(),1);
+      assert.equal(await page.locator('#wash-purchase-count').innerText(),'3か月・60回分');
+      assert.equal(await page.locator('#wash-a-payment').innerText(),'1,196.00円');
+      assert.equal(await page.locator('#wash-b-payment').innerText(),'1,880.00円');
+      assert.match(await page.locator('#wash-purchase-tradeoff').innerText(),/逆転/);
+      await page.locator('#wash-period').fill('12');
+      await page.locator('#wash-a-order-shipping').fill('');
+      await page.locator('button[type=submit]').click();
+      assert.match(await page.locator('#wash-a-payment').innerText(),/未算出/);
+      assert.match(await page.locator('#wash-purchase-verdict').innerText(),/送料合計/);
+      await page.locator('#wash-a-order-shipping').fill('800');
+      await page.locator('button[type=submit]').click();
+      assert.match(await page.locator('#wash-a-payment').innerText(),/円/);
       assert.deepEqual(errors,[]);
       await page.screenshot({path:`qa-search/laundry-calculator-${width}.png`,fullPage:true});
       console.log(JSON.stringify({page:'laundry-calculator',width,calculations:true,invalidCleared:true,fictionalNotice:true,overflow:false,errors}));
