@@ -102,3 +102,20 @@ test('One-tap offer prefill copies only verified listed price and quantity, not 
     });
   } finally {dom.window.close();}
 });
+
+test('Unknown order shipping hides price and winner until explicit confirmation',()=>{
+ const dom=calculator(),d=dom.window.document;
+ try{
+  d.getElementById('wash-sample').click();
+  const shipping=d.getElementById('wash-a-order-shipping');
+  d.getElementById('wash-period').value='12';
+  shipping.value='';shipping.dispatchEvent(new dom.window.Event('input'));
+  assert.equal(d.getElementById('wash-result').hidden,true);
+  d.getElementById('wash-calc').requestSubmit();
+  assert.match(d.getElementById('wash-a-payment').textContent,/未算出/);
+  assert.match(d.getElementById('wash-purchase-verdict').textContent,/送料合計/);
+  assert.equal(d.getElementById('wash-purchase-tradeoff').textContent,'');
+  shipping.value='800';d.getElementById('wash-calc').requestSubmit();
+  assert.match(d.getElementById('wash-a-payment').textContent,/円/);
+ }finally{dom.window.close();}
+});

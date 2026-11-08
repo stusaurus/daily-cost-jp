@@ -40,6 +40,7 @@
       throw new Error(label + 'の支払総額を確認してください。');
     }
     return {
+      orderShipping: raw.orderShipping === undefined || raw.orderShipping === '' ? null : nonnegative(raw.orderShipping, label + 'の今回の注文全体の送料'),
       price: price,
       shipping: shipping,
       total: total,
@@ -49,13 +50,14 @@
       perWash: total * dose / quantity
     };
   }
-  // Shipping is added once per combined order. The vendor must verify the actual fee.
+  // Multiple-set checkout needs the user-confirmed shipping for that entire order.
   function purchaseForPeriod(item, washCount) {
     const required = washCount * item.dose;
     const packsToBuy = Math.ceil(required / item.totalContent);
-    const payment = packsToBuy * item.price + item.shipping;
+    const shipping = packsToBuy === 1 ? item.shipping : item.orderShipping;
+    const payment = shipping === null || shipping === undefined ? null : packsToBuy * item.price + shipping;
     const left = Math.max(0, packsToBuy * item.totalContent - required);
-    if (!Number.isSafeInteger(packsToBuy) || !Number.isFinite(payment) ||
+    if (packsToBuy * item.price > 1000000000 || !Number.isSafeInteger(packsToBuy) || (payment !== null && !Number.isFinite(payment)) ||
         payment > 1000000000 || !Number.isFinite(left)) {
       throw new Error('購入見積の金額または数量が大きすぎます。期間・入力値を確認してください。');
     }
@@ -73,13 +75,13 @@
     const washesNeeded = times * period;
     const purchaseA = purchaseForPeriod(a, washesNeeded);
     const purchaseB = purchaseForPeriod(b, washesNeeded);
-    const purchaseWinner = purchaseA.payment === purchaseB.payment ? 'same' :
+    const purchaseWinner = purchaseA.payment === null || purchaseB.payment === null ? null : purchaseA.payment === purchaseB.payment ? 'same' :
       purchaseA.payment < purchaseB.payment ? 'A' : 'B';
     return {
       a: a, b: b, monthly: times, months: period, washesNeeded: washesNeeded,
       winner: winner,
       purchaseA: purchaseA, purchaseB: purchaseB, purchaseWinner: purchaseWinner,
-      purchaseDifference: Math.abs(purchaseA.payment - purchaseB.payment),
+      purchaseDifference: purchaseWinner === null ? null : Math.abs(purchaseA.payment - purchaseB.payment),
       monthlyDifference: Math.abs(delta) * times,
       annualDifference: Math.abs(delta) * times * 12
     };
@@ -103,6 +105,7 @@
     const read = key => ({
       price: byId(key + '-price').value,
       shipping: byId(key + '-shipping').value,
+      orderShipping: byId(key + '-order-shipping').value,
       content: byId(key + '-content').value,
       packs: byId(key + '-packs').value,
       dose: byId(key + '-dose').value
@@ -126,7 +129,7 @@
         byId('wash-purchase-count').textContent =
           r.months + 'か月・' + r.washesNeeded + '回分';
         for (const [key, purchase] of [['a', r.purchaseA], ['b', r.purchaseB]]) {
-          byId('wash-' + key + '-payment').textContent = money(purchase.payment) + '円';
+          byId('wash-' + key + '-payment').textContent = purchase.payment === null ? '送料未確認のため未算出' : money(purchase.payment) + '円';
           byId('wash-' + key + '-sets').textContent =
             purchase.sets + 'セット購入（' +
             (purchase.sets * Number(byId('wash-' + key + '-packs').value)) + '個）';
@@ -136,12 +139,13 @@
             byId('wash-' + key + '-unit').value;
         }
         byId('wash-purchase-verdict').textContent =
+          r.purchaseWinner === null ? '複数セットを注文するときの送料合計を販売店で確認し、入力すると支払額を比較できます。' :
           r.purchaseWinner === 'same' ?
             'この期間に必要な分の購入見積は同額です。' :
             'この期間の購入見積では洗剤' + r.purchaseWinner +
             'が' + money(r.purchaseDifference) + '円少ない支払額です。';
         byId('wash-purchase-tradeoff').textContent =
-          r.purchaseWinner !== 'same' && r.winner !== 'same' &&
+          r.purchaseWinner !== null && r.purchaseWinner !== 'same' && r.winner !== 'same' &&
           r.purchaseWinner !== r.winner ?
             '注意：1回あたりの安さと、この期間の購入支払額は逆転しています。' +
             '余った分を後で使うか、今の支払いを抑えるかで選び方が変わります。' : '';
@@ -193,7 +197,7 @@
         'wash-a-packs': 1, 'wash-a-dose': 30,
         'wash-b-price': 1880, 'wash-b-shipping': 0, 'wash-b-content': 900,
         'wash-b-packs': 2, 'wash-b-dose': 15,
-        'wash-monthly': 20, 'wash-period': 3
+        'wash-monthly': 20, 'wash-period': 3, 'wash-a-order-shipping': 0, 'wash-b-order-shipping': 0
       };
       for (const [id, value] of Object.entries(sample)) byId(id).value = value;
       byId('wash-example-note').hidden = false;

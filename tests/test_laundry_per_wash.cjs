@@ -41,8 +41,8 @@ test('Missing/negative/zero or impossible inputs never emit a comparison', () =>
 });
 
 test('A low per-wash cost can require higher cash outlay over three months', () => {
-  const a = {price:2000, shipping:0, content:4000, packs:1, dose:20};
-  const b = {price:350, shipping:0, content:400, packs:1, dose:20};
+  const a = {price:2000, shipping:0, orderShipping:0, content:4000, packs:1, dose:20};
+  const b = {price:350, shipping:0, orderShipping:0, content:400, packs:1, dose:20};
   const short = compare(a, b, 20, 3);
   assert.equal(short.winner, 'A');
   assert.equal(short.washesNeeded, 60);
@@ -55,7 +55,7 @@ test('A low per-wash cost can require higher cash outlay over three months', () 
   assert.equal(year.purchaseB.payment, 4200);
 });
 test('Shipping is counted once per combined order, while packs are rounded up', () => {
-  const a = {price:600, shipping:550, content:1000, packs:1, dose:20};
+  const a = {price:600, shipping:550, orderShipping:550, content:1000, packs:1, dose:20};
   const b = {price:1000, shipping:0, content:1500, packs:1, dose:20};
   const result = compare(a, b, 30, 3);
   assert.equal(result.purchaseA.sets, 2);
@@ -70,4 +70,15 @@ test('Purchase horizon rejects invalid months, overflow and impossible purchases
   }
   const impossible = {price:1000000000, shipping:0, content:1, packs:1, dose:1};
   assert.throws(() => compare(impossible, impossible, 1000, 12));
+});
+
+test('Unverified multi-set shipping never becomes a checkout winner or price', () => {
+ const a={price:600,shipping:0,content:1000,packs:1,dose:20};
+ let r=compare(a,a,30,3);
+ assert.equal(r.purchaseA.sets,2);assert.equal(r.purchaseA.payment,null);
+ assert.equal(r.purchaseWinner,null);assert.equal(r.purchaseDifference,null);
+ r=compare({...a,orderShipping:900},{...a,orderShipping:0},30,3);
+ assert.equal(r.purchaseA.payment,2100);assert.equal(r.purchaseB.payment,1200);
+ assert.equal(r.purchaseWinner,'B');
+ assert.throws(()=>compare({...a,orderShipping:-1},a,30,3));
 });

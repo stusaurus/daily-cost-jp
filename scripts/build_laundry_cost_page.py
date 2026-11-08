@@ -119,7 +119,7 @@ footer a{color:#fff}
 <div class="offer-grid">
 <fieldset class="offer"><legend><h3>洗剤A</h3></legend><div class="fields">
 <div class="field"><label for="wash-a-price">セットの税込価格（円）</label><input id="wash-a-price" type="number" min="0.01" max="1000000000" step="any" inputmode="decimal" required placeholder="例：598"></div>
-<div class="field"><label for="wash-a-shipping">追加送料（円）</label><input id="wash-a-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
+<div class="field"><label for="wash-a-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-a-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-a-shipping">1セット購入時の追加送料（円）</label><input id="wash-a-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
 <div class="field"><label for="wash-a-content">1個の内容量</label><input id="wash-a-content" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="例：1000"></div>
 <div class="field"><label for="wash-a-packs">セット入り数</label><input id="wash-a-packs" type="number" min="1" max="100000" step="1" value="1" required></div>
 <div class="field"><label for="wash-a-unit">使用量の単位</label><select id="wash-a-unit"><option value="mL">mL</option><option value="g">g</option><option value="個">個</option></select></div>
@@ -127,7 +127,7 @@ footer a{color:#fff}
 </div></fieldset>
 <fieldset class="offer"><legend><h3>洗剤B</h3></legend><div class="fields">
 <div class="field"><label for="wash-b-price">セットの税込価格（円）</label><input id="wash-b-price" type="number" min="0.01" max="1000000000" step="any" inputmode="decimal" required placeholder="例：1880"></div>
-<div class="field"><label for="wash-b-shipping">追加送料（円）</label><input id="wash-b-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
+<div class="field"><label for="wash-b-order-shipping">複数セット注文の送料合計（確認できた場合）</label><input id="wash-b-order-shipping" type="number" min="0" step="1" placeholder="未確認なら空欄"><small>今回の必要セット数・配送先での注文全体の追加送料。送料無料を確認した場合は0。</small></div><div class="field"><label for="wash-b-shipping">1セット購入時の追加送料（円）</label><input id="wash-b-shipping" type="number" min="0" step="any" inputmode="decimal" placeholder="0なら空欄"></div>
 <div class="field"><label for="wash-b-content">1個の内容量</label><input id="wash-b-content" type="number" min="0.01" step="any" inputmode="decimal" required placeholder="例：900"></div>
 <div class="field"><label for="wash-b-packs">セット入り数</label><input id="wash-b-packs" type="number" min="1" max="100000" step="1" value="1" required></div>
 <div class="field"><label for="wash-b-unit">使用量の単位</label><select id="wash-b-unit"><option value="mL">mL</option><option value="g">g</option><option value="個">個</option></select></div>
@@ -148,9 +148,9 @@ footer a{color:#fff}
 <p>同じ洗濯回数で使うと、差額は<strong id="wash-month-diff"></strong>／月、<strong id="wash-year-diff"></strong>／年（概算）です。</p>
 <p class="editor-note">※1回単価と月・年の差は、購入した洗剤を使い切る前提の理論値です。洗浄力・香り・使い勝手は別途確認してください。</p>
 <div class="purchase-horizon"><h3>指定期間に必要な分だけ買った場合</h3><p>比較条件：<strong id="wash-purchase-count"></strong>。洗剤を使い切れるまでの単価と、今必要な分を買う支払額は別です。</p>
-<div class="result-grid"><div class="result-item"><small>洗剤A／購入見積（送料一定の場合）</small><strong id="wash-a-payment"></strong><span id="wash-a-sets"></span><span id="wash-a-unused"></span></div><div class="result-item"><small>洗剤B／購入見積（送料一定の場合）</small><strong id="wash-b-payment"></strong><span id="wash-b-sets"></span><span id="wash-b-unused"></span></div></div>
+<div class="result-grid"><div class="result-item"><small>洗剤A／購入見積（注文送料の確認後）</small><strong id="wash-a-payment"></strong><span id="wash-a-sets"></span><span id="wash-a-unused"></span></div><div class="result-item"><small>洗剤B／購入見積（注文送料の確認後）</small><strong id="wash-b-payment"></strong><span id="wash-b-sets"></span><span id="wash-b-unused"></span></div></div>
 <p class="verdict" id="wash-purchase-verdict"></p><p id="wash-purchase-tradeoff" class="hint"></p>
-<p class="purchase-note">計算方法：必要量＝月の洗濯回数×月数×1回使用量。購入セット数は必要量÷セット総内容量を切り上げ、支払見積＝税込セット価格×必要セット数＋追加送料（同一注文で1回だけ加算）。余りは購入総内容量から必要量を引いています。gとmLは換算しません。価格・送料は購入数・配送先・クーポン・在庫によって変わる場合があるため、最終額は販売店で確認してください。</p>
+<p class="purchase-note">計算方法：必要量＝月の洗濯回数×月数×1回使用量。購入セット数は必要量÷セット総内容量を切り上げ、支払見積＝税込セット価格×必要セット数＋今回の注文全体の確認済み追加送料。複数セットの注文送料が未確認の場合、必要セット数と余りだけ表示し、支払額と安い方は判定しません。余りは購入総内容量から必要量を引いています。gとmLは換算しません。価格・送料は購入数・配送先・クーポン・在庫によって変わる場合があるため、最終額は販売店で確認してください。</p>
 <p><a href="/daily-cost-jp/categories/laundry/" data-conversion-source="product_guide">洗濯洗剤の現在の購入候補を見る →</a></p></div>
 </section>
 <section class="panel" aria-labelledby="math-title">
