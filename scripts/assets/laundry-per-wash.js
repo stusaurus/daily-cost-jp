@@ -144,16 +144,16 @@
             'この期間に必要な分の購入見積は同額です。' :
             'この期間の購入見積では洗剤' + r.purchaseWinner +
             'が' + money(r.purchaseDifference) + '円少ない支払額です。';
+        const purchaseReversed = r.purchaseWinner !== null && r.purchaseWinner !== 'same' &&
+          r.winner !== 'same' && r.purchaseWinner !== r.winner;
         byId('wash-purchase-tradeoff').textContent =
-          r.purchaseWinner !== null && r.purchaseWinner !== 'same' && r.winner !== 'same' &&
-          r.purchaseWinner !== r.winner ?
+          purchaseReversed ?
             '注意：1回あたりの安さと、この期間の購入支払額は逆転しています。' +
             '余った分を後で使うか、今の支払いを抑えるかで選び方が変わります。' : '';
         result.hidden = false;
         mark('laundry_purchase_plan_complete', {
           example_mode: byId('wash-example-note').hidden ? '0' : '1',
-          purchase_winner_reversed: (r.purchaseWinner !== 'same' &&
-            r.winner !== 'same' && r.purchaseWinner !== r.winner) ? '1' : '0'
+          purchase_winner_reversed: purchaseReversed ? '1' : '0'
         });
       } catch (e) {
         error.textContent = e.message;
