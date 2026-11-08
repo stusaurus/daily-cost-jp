@@ -103,9 +103,13 @@ test('One-tap offer prefill copies only verified listed price and quantity, not 
   } finally {dom.window.close();}
 });
 
-test('Unknown order shipping hides price and winner until explicit confirmation',()=>{
+test('Unknown order shipping hides price, winner and reversal analytics until confirmation',()=>{
  const dom=calculator(),d=dom.window.document;
  try{
+  const completionEvents=[];
+  dom.window.gtag=(command,name,params)=>{
+   if(command==='event'&&name==='laundry_purchase_plan_complete')completionEvents.push(params);
+  };
   d.getElementById('wash-sample').click();
   const shipping=d.getElementById('wash-a-order-shipping');
   d.getElementById('wash-period').value='12';
@@ -115,6 +119,8 @@ test('Unknown order shipping hides price and winner until explicit confirmation'
   assert.match(d.getElementById('wash-a-payment').textContent,/未算出/);
   assert.match(d.getElementById('wash-purchase-verdict').textContent,/送料合計/);
   assert.equal(d.getElementById('wash-purchase-tradeoff').textContent,'');
+  assert.equal(completionEvents.at(-1).purchase_winner_reversed,'0',
+   'Unknown shipping must not be counted as a reversed checkout winner');
   shipping.value='800';d.getElementById('wash-calc').requestSubmit();
   assert.match(d.getElementById('wash-a-payment').textContent,/円/);
  }finally{dom.window.close();}
