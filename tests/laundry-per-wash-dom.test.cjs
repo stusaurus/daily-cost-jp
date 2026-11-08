@@ -126,6 +126,28 @@ test('Real product prefill does not inherit fictional comparisons or unconfirmed
   } finally { dom.window.close(); }
 });
 
+test('Changing order size or product terms clears stale combined-order shipping', () => {
+  const dom=calculator(),d=dom.window.document;
+  try {
+    d.getElementById('wash-sample').click();
+    const aOrder=d.getElementById('wash-a-order-shipping');
+    const bOrder=d.getElementById('wash-b-order-shipping');
+    assert.equal(aOrder.value,'0');
+    assert.equal(bOrder.value,'0');
+    const period=d.getElementById('wash-period');
+    period.value='6';period.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+    assert.equal(aOrder.value,'');
+    assert.equal(bOrder.value,'');
+    assert.match(d.getElementById('wash-error').textContent,/送料合計を再確認/);
+    assert.equal(d.getElementById('wash-result').hidden,true);
+    aOrder.value='500';bOrder.value='0';
+    const dose=d.getElementById('wash-a-dose');
+    dose.value='35';dose.dispatchEvent(new dom.window.Event('input',{bubbles:true}));
+    assert.equal(aOrder.value,'');
+    assert.equal(bOrder.value,'0');
+  } finally { dom.window.close(); }
+});
+
 test('Unknown order shipping hides price, winner and reversal analytics until confirmation',()=>{
  const dom=calculator(),d=dom.window.document;
  try{
