@@ -227,6 +227,20 @@
       const invalidate = function () {
         result.hidden = true;
         error.textContent = '';
+        const orderSizeChanged = input.id === 'wash-monthly' || input.id === 'wash-period';
+        for (const key of ['a', 'b']) {
+          const productTermsChanged = input.id.startsWith('wash-' + key + '-') &&
+            ['price', 'shipping', 'content', 'packs', 'dose', 'unit'].includes(
+              input.id.slice(('wash-' + key + '-').length));
+          if (orderSizeChanged || productTermsChanged) {
+            const confirmedShipping = byId('wash-' + key + '-order-shipping');
+            if (confirmedShipping.value !== '') {
+              confirmedShipping.value = '';
+              error.textContent =
+                '購入条件が変わったため、複数セット注文の送料合計を再確認してください。';
+            }
+          }
+        }
         if (/^wash-[ab]-(price|shipping|content|packs|unit)$/.test(input.id) &&
             byId('wash-picked-note').textContent) {
           byId('wash-picked-note').textContent =
