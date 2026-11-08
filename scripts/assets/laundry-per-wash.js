@@ -27,6 +27,9 @@
   }
   function offer(raw, label) {
     const price = positive(raw.price, label + 'の税込セット価格');
+    if (raw.shipping === undefined || raw.shipping === null || raw.shipping === '') {
+      throw new Error(label + 'の1セット送料を確認してください。送料無料なら0を入力してください。');
+    }
     const shipping = nonnegative(raw.shipping, label + 'の送料');
     const content = positive(raw.content, label + 'の1個あたり内容量');
     const packs = positive(raw.packs, label + 'の入り数', true);
@@ -168,9 +171,19 @@
         const unit = button.dataset.pickUnit;
         if (!['a', 'b'].includes(key) || !(price > 0) || !(total > 0) ||
             !['g', 'mL'].includes(unit)) return;
+        // A fictional sample must not silently remain as the other product.
+        if (!byId('wash-example-note').hidden) {
+          const other = key === 'a' ? 'b' : 'a';
+          for (const field of ['price', 'shipping', 'order-shipping', 'content', 'dose']) {
+            byId('wash-' + other + '-' + field).value = '';
+          }
+          byId('wash-' + other + '-packs').value = '1';
+        }
         // One verified sale bundle is one calculator item; never invent bag counts.
         byId('wash-' + key + '-price').value = String(price);
         byId('wash-' + key + '-shipping').value = '0';
+        // A new offer invalidates any shipping previously entered for multiple sets.
+        byId('wash-' + key + '-order-shipping').value = '';
         byId('wash-' + key + '-content').value = String(total);
         byId('wash-' + key + '-packs').value = '1';
         byId('wash-' + key + '-unit').value = unit;
