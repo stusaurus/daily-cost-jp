@@ -20,7 +20,7 @@ test('Shipping added once to total bundle, not per packet', () => {
   assert.equal(v.perWash, 37.5);
 });
 test('Tie and A winner are distinct', () => {
-  const a = {price:500, shipping:'', content:1000, packs:1, dose:20};
+  const a = {price:500, shipping:0, content:1000, packs:1, dose:20};
   const b = {price:1000, shipping:0, content:2000, packs:1, dose:20};
   assert.equal(compare(a, b, 20).winner, 'same');
   assert.equal(compare({...a, price:450}, b, 20).winner, 'A');
@@ -33,6 +33,8 @@ test('Missing/negative/zero or impossible inputs never emit a comparison', () =>
     assert.throws(() => offer({...normal, [field]:-1}, 'A'));
   }
   assert.throws(() => offer({...normal, shipping:-1}, 'A'));
+  assert.throws(() => offer({...normal, shipping:''}, 'A'), /送料/);
+  assert.throws(() => offer({...normal, shipping:undefined}, 'A'), /送料/);
   assert.throws(() => offer({...normal, dose:1001}, 'A'));
   assert.throws(() => offer({...normal, packs:1.5}, 'A'));
   assert.throws(() => compare(normal, normal, ''));
