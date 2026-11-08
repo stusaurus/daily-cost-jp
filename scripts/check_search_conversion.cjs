@@ -32,7 +32,7 @@ if(require.main===module)(async()=>{
   const fallbackSmall=step5SmallTissue(catalog.categories.tissue);
   for(const width of [1440,390,320])for(const cid of ['laundry','tissue','toilet-paper']){
    const page=await browser.newPage({viewport:{width,height:1000}});
-   await page.route(/googletagmanager|google-analytics|googleadservices|doubleclick|hb\.afl\.rakuten\.co\.jp/,route=>route.abort());
+   await page.route(/googletagmanager|google-analytics|googleadservices|doubleclick|googlesyndication|a8\.net|valuecommerce|hb\.afl\.rakuten\.co\.jp/,route=>route.abort());
    const errors=[];page.on('pageerror',error=>errors.push(error.message));
    await page.goto(`http://127.0.0.1:${server.address().port}/daily-cost-jp/categories/${cid}/?test=1`,{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('h1').count(),1);
