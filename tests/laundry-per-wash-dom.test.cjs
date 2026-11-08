@@ -103,6 +103,29 @@ test('One-tap offer prefill copies only verified listed price and quantity, not 
   } finally {dom.window.close();}
 });
 
+test('Real product prefill does not inherit fictional comparisons or unconfirmed order shipping', () => {
+  const picks = '<section id="wash-verified-picks">' +
+    '<button data-pick-target="a" data-pick-price="850" data-pick-total="850" ' +
+    'data-pick-unit="g" data-pick-name="実在商品">Aに入力</button></section>';
+  const dom=calculator(picks),d=dom.window.document;
+  try {
+    d.getElementById('wash-sample').click();
+    assert.equal(d.getElementById('wash-a-order-shipping').value,'0');
+    assert.equal(d.getElementById('wash-b-price').value,'1880');
+    d.querySelector('#wash-verified-picks button').click();
+    assert.equal(d.getElementById('wash-a-order-shipping').value,'');
+    assert.equal(d.getElementById('wash-a-shipping').value,'0');
+    assert.equal(d.getElementById('wash-b-price').value,'');
+    assert.equal(d.getElementById('wash-b-shipping').value,'');
+    assert.equal(d.getElementById('wash-b-content').value,'');
+    assert.equal(d.getElementById('wash-b-dose').value,'');
+    assert.equal(d.getElementById('wash-example-note').hidden,true);
+    assert.equal(d.getElementById('wash-result').hidden,true);
+    d.getElementById('wash-calc').requestSubmit();
+    assert.match(d.getElementById('wash-error').textContent,/洗剤B/);
+  } finally { dom.window.close(); }
+});
+
 test('Unknown order shipping hides price, winner and reversal analytics until confirmation',()=>{
  const dom=calculator(),d=dom.window.document;
  try{
