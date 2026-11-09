@@ -31,7 +31,7 @@ class Entry(unittest.TestCase):
  def test_store_compare_is_real_existing_homepage_tool_not_a_fabricated_shop_ranking(self):
   from pathlib import Path
   tool=Path('scripts/add_exact_store_compare.py').read_text(encoding='utf-8')
-  self.assertIn('id=\\"exact-store-compare\\"',tool)
+  self.assertIn('id="exact-store-compare"',tool)
   self.assertIn('同じ商品',tool)
   self.assertIn('店頭価格',tool)
   laundry=price_answer('laundry',{'items':[],'metric':'100g'})
