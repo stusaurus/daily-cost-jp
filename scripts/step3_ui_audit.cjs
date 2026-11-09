@@ -162,10 +162,18 @@ function compareManualHeader(before,after,original,candidate){
  const differences=[];
  for(let i=0;i<before.length;i++){
   const a=before[i],b=after[i];
-  if(a.path!==b.path||a.viewport!==b.viewport||a.status!=='PASS'||b.status!=='PASS'||
-     a.css_hash!==sha(original)||b.css_hash!==sha(original)||
-     a.protected_hash!==b.protected_hash||JSON.stringify(a.interactions)!==JSON.stringify(b.interactions))
-   throw Error('Manual CSS changed source, protected content, interactions or screen coverage');
+  const mismatch=[
+   a.path!==b.path?'path':null,
+   a.viewport!==b.viewport?'width':null,
+   a.status!=='PASS'?'baseline-unavailable':null,
+   b.status!=='PASS'?'candidate-unavailable':null,
+   a.css_hash!==sha(original)?'baseline-css-hash':null,
+   b.css_hash!==sha(original)?'candidate-css-hash':null,
+   a.protected_hash!==b.protected_hash?'protected-content':null,
+   JSON.stringify(a.interactions)!==JSON.stringify(b.interactions)?'interactions':null
+  ].filter(Boolean);
+  if(mismatch.length)
+   throw Error('Manual CSS proof mismatch at '+a.path+' '+a.viewport+'px: '+mismatch.join(','));
   if(b.dom.documentWidth>b.viewport+2)throw Error('Manual CSS introduced horizontal overflow');
   const old=new Set(a.issues.map(v=>v.code+':'+v.selector));
   if(b.issues.some(v=>!old.has(v.code+':'+v.selector)))throw Error('Manual CSS introduced a new UI issue');
