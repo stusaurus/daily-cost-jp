@@ -6,7 +6,7 @@ class Entry(unittest.TestCase):
  def test_empty_supply_still_exposes_existing_comparison_routes(self):
   s=price_answer('laundry',{'items':[],'metric':'100g'})
   self.assertLess(s.index('aria-label="洗剤の比較方法を選ぶ"'),s.index('store-comparison-method'))
-  for url in ['#laundry','../../products/','../../tools/laundry-cost-per-wash/']:
+  for url in ['../../#exact-store-compare','#laundry','../../products/','../../tools/laundry-cost-per-wash/']:
    self.assertIn('href="'+url+'"',s)
   self.assertIn('店舗別の最安順位は表示できません',s)
   self.assertIn('同じ条件で比較できる候補がありません',s)
@@ -35,5 +35,9 @@ class Entry(unittest.TestCase):
   self.assertIn('同じ商品',tool)
   self.assertIn('店頭価格',tool)
   laundry=price_answer('laundry',{'items':[],'metric':'100g'})
-  self.assertNotIn('href="../../#exact-store-compare"',laundry)
+  self.assertIn('href="../../#exact-store-compare"',laundry)
+  self.assertIn('店頭で見た洗剤の税込価格',laundry)
+  self.assertIn('同一商品と確認できない場合は比較結果を出しません',laundry)
+  self.assertLess(laundry.index('href="../../#exact-store-compare"'),laundry.index('href="#laundry"'))
+  self.assertEqual(laundry.count('href="../../#exact-store-compare"'),1)
 if __name__=='__main__':unittest.main()
