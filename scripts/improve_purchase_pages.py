@@ -184,6 +184,19 @@ def price_answer(category_id, data):
         '<a href="../../tools/laundry-cost-per-wash/">1回の費用・必要購入量を計算する</a>'
         '</nav>'
     ) if category_id == 'laundry' else ''
+    if category_id in ('tissue', 'toilet-paper'):
+        # An existing homepage tool compares a user-entered real store price
+        # with a strictly matched Rakuten offer. Never imply we scan shops.
+        quick_links = (
+            f'<nav class="purchase-links" aria-label="{esc(name)}の買い先と単価を比較">'
+            '<a href="../../#exact-store-compare">店頭で見た税込価格を入力して、楽天の同一商品と比べる</a>'
+            f'<a href="#{category_id}">掲載商品の送料込み単価と支払総額を見る ↓</a>'
+            '<a href="../../products/">商品名から楽天の販売候補を探す</a>'
+            '</nav>'
+            '<p class="purchase-note">店頭価格はご自身で入力します。'
+            '同一商品と確認できない場合は比較結果を出しません。'
+            '店舗別の最安順位を示す機能ではありません。</p>'
+        )
     bottom_links = (f'<div class="purchase-links"><a href="#{category_id}">今日の商品・支払総額を見る ↓</a>'
                     f'<a data-conversion-source="price_guide" href="../../guides/{guide}/">同じ単位で計算する</a>{extra}</div>')
     if category_id == 'laundry':
