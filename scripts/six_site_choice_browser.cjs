@@ -11,6 +11,7 @@ const ORIGIN='https://stusaurus.github.io';
 const OUT=path.resolve('audit-results/six-site-choice-browser');
 const SPECS=[
  ['daily','/daily-cost-jp/categories/laundry/'],
+ ['daily-calculator','/daily-cost-jp/tools/laundry-cost-per-wash/'],
  ['baby','/baby-cost-jp/diapers/pants/m/'],
  ['food','/food-cost-jp/guides/pack-rice-24-servings-cost/'],
  ['kyo','/kyo-bodo-jp/scenes/two-player/'],
@@ -25,8 +26,67 @@ async function exercise(page,id){
   const links=await section.locator('a[href^="#"]').evaluateAll(ns=>ns.map(n=>n.getAttribute('href')));
   assert(links.length>0,'published price comparisons must lead to real product cards');
   for(const target of links)assert.equal(await page.locator(target).count(),1);
-  await section.scrollIntoViewIfNeeded();
+  const choices=page.locator('nav[aria-label="洗剤の比較方法を選ぶ"] a');
+  assert.equal(await choices.count(),3,'three published purchase decision routes');
+  const targets=await choices.evaluateAll(ns=>ns.map(n=>n.getAttribute('href')));
+  assert.deepEqual(targets,['#laundry','../../products/','../../tools/laundry-cost-per-wash/']);
+  await choices.nth(0).click();
+  assert.equal(await page.locator('#laundry').count(),1);
+  await choices.nth(1).click();
+  assert.equal(new URL(page.url()).pathname,'/daily-cost-jp/products/');
+  await page.goBack({waitUntil:'domcontentloaded'});
+  await page.locator('nav[aria-label="洗剤の比較方法を選ぶ"] a').nth(2).click();
+  assert.equal(new URL(page.url()).pathname,'/daily-cost-jp/tools/laundry-cost-per-wash/');
+  await page.goBack({waitUntil:'domcontentloaded'});
+  await page.locator('#buying-decisions').scrollIntoViewIfNeeded();
   return 'published comparison anchors resolve to product cards';
+ }
+ if(id==='daily-calculator'){
+  await page.locator('#wash-sample').click();
+  assert.equal(await page.locator('#wash-a-sets').innerText(),'2セット購入（2個）');
+  assert.equal(await page.locator('#wash-a-payment').innerText(),'1,196.00円');
+  assert.equal(await page.locator('#wash-a-unused').innerText(),'使用後の余り 約200mL');
+  assert.equal(await page.locator('#wash-b-payment').innerText(),'1,880.00円');
+  assert(await page.locator('#wash-example-note').isVisible());
+  const submit=()=>page.locator('button[type=submit]').click();
+  await page.locator('#wash-a-shipping').fill('');
+  await submit();
+  assert(await page.locator('#wash-result').isHidden());
+  assert.match(await page.locator('#wash-error').innerText(),/送料.*確認/);
+  await page.locator('#wash-sample').click();
+  await page.locator('#wash-period').fill('12');
+  for(const slot of ['a','b'])assert.equal(await page.locator('#wash-'+slot+'-order-shipping').inputValue(),'');
+  await submit();
+  assert.match(await page.locator('#wash-a-payment').innerText(),/未算出/);
+  assert.equal(await page.locator('#wash-purchase-tradeoff').innerText(),'');
+  const event=await page.evaluate(()=>Array.from(window.dataLayer||[]).map(x=>Array.from(x)).filter(x=>x[1]==='laundry_purchase_plan_complete').pop());
+  assert(event,'local event intent present even with external analytics blocked');
+  assert.equal(event[2].purchase_winner_reversed,'0');
+  assert.deepEqual(Object.keys(event[2]).filter(k=>!/^(category_id|tool_id|example_mode|purchase_winner_reversed|operator_test|site_id|page_path|page_location|traffic_environment)$/.test(k)),[],'household inputs must not enter analytics event');
+  await page.locator('#wash-a-order-shipping').fill('800');
+  await page.locator('#wash-b-order-shipping').fill('0');
+  await submit();
+  assert.equal(await page.locator('#wash-a-payment').innerText(),'5,584.00円');
+  await page.locator('#wash-a-dose').fill('20');
+  assert.equal(await page.locator('#wash-a-order-shipping').inputValue(),'');
+  assert(await page.locator('#wash-result').isHidden());
+  await page.locator('#wash-sample').click();
+  const pick=page.locator('[data-pick-target="a"]').first();
+  if(await pick.count()){
+   const expectedPrice=await pick.getAttribute('data-pick-price');
+   await pick.click();
+   assert.equal(await page.locator('#wash-a-price').inputValue(),expectedPrice);
+   assert.equal(await page.locator('#wash-a-dose').inputValue(),'');
+   assert.equal(await page.locator('#wash-a-order-shipping').inputValue(),'');
+   assert.equal(await page.locator('#wash-b-price').inputValue(),'');
+   assert.equal(await page.locator('#wash-b-dose').inputValue(),'');
+   assert(await page.locator('#wash-example-note').isHidden());
+   assert(await page.locator('#wash-result').isHidden());
+  }else{
+   throw new Error('Live catalog has no eligible prefill: sample-to-real boundary could not be verified');
+  }
+  await page.locator('#wash-calc').scrollIntoViewIfNeeded();
+  return 'set/payment/remainder correct; blank shipping blocked; stale order shipping and fictional opponent cleared; local analytics flags only';
  }
  if(id==='baby'){
   const root=page.locator('[data-purchase-planner]');
@@ -92,14 +152,14 @@ async function exercise(page,id){
 }
 async function main(){
  fs.mkdirSync(OUT,{recursive:true});
- const report={observedAt:new Date().toISOString(),analyticsBlocked:true,affiliateClicks:false,physicalDevice:false,checks:[]};
+ const report={observedAt:new Date().toISOString(),analyticsBlocked:true,affiliateClicks:false,physicalDevice:false,externalRequestsBlocked:true,checks:[]};
  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
  try{
   for(const width of [320,390,1440])for(const [id,pathname] of SPECS){
    const context=await browser.newContext({viewport:{width,height:900},locale:'ja-JP',isMobile:width<400,hasTouch:width<400,reducedMotion:'reduce'});
    await context.route('**/*',route=>{
     const u=new URL(route.request().url());
-    return BLOCK.test(u.hostname)?route.fulfill({status:200,body:''}):route.continue();
+    return u.origin!==ORIGIN||BLOCK.test(u.hostname)?route.fulfill({status:200,body:''}):route.continue();
    });
    const page=await context.newPage(),errors=[];
    page.setDefaultTimeout(15000);
