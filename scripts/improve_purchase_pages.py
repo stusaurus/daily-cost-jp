@@ -179,10 +179,14 @@ def price_answer(category_id, data):
     extra = '<a data-conversion-source="product_guide" href="../../guides/attack-zero-price/">アタックZEROはどこが安い？</a>' if category_id == 'laundry' else ''
     quick_links = (
         '<nav class="purchase-links" aria-label="洗剤の比較方法を選ぶ">'
+        '<a href="../../#exact-store-compare">店頭で見た洗剤の税込価格と楽天の同一商品を比較する</a>'
         '<a href="#laundry">商品・ショップ名・支払総額を見る ↓</a>'
         '<a href="../../products/">同じ商品の販売店を探す</a>'
         '<a href="../../tools/laundry-cost-per-wash/">1回の費用・必要購入量を計算する</a>'
         '</nav>'
+        '<p class="purchase-note">店頭価格はご自身で入力します。'
+        '同一商品と確認できない場合は比較結果を出しません。'
+        '実店舗の最安順位を示す機能ではありません。</p>'
     ) if category_id == 'laundry' else ''
     if category_id in ('tissue', 'toilet-paper'):
         # An existing homepage tool compares a user-entered real store price

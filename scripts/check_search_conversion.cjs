@@ -18,7 +18,7 @@ if(require.main===module)(async()=>{
  const root=path.resolve('site');
  const server=http.createServer((req,res)=>{
   let rel=decodeURIComponent(new URL(req.url,'http://localhost').pathname).replace(/^\/daily-cost-jp\//,'');
-  if(rel.endsWith('/'))rel+='index.html';
+  if(!rel||rel.endsWith('/'))rel+='index.html';
   const file=path.resolve(root,rel);
   if(!file.startsWith(root+path.sep)||!fs.existsSync(file)){res.writeHead(404);res.end();return;}
   res.setHeader('Content-Type',file.endsWith('.css')?'text/css':file.endsWith('.js')?'text/javascript':file.endsWith('.json')?'application/json':file.endsWith('.webp')?'image/webp':'text/html');res.end(fs.readFileSync(file));
@@ -49,10 +49,15 @@ if(require.main===module)(async()=>{
    await page.screenshot({path:`qa-search/${cid}-header-${width}.png`});
    if(cid==='laundry'){
      const nav=page.getByRole('navigation',{name:'洗剤の比較方法を選ぶ'});
-     assert.equal(await nav.locator('a').count(),3);
-     assert.equal(await nav.locator('a').nth(1).getAttribute('href'),'../../products/');
+     assert.equal(await nav.locator('a').count(),4);
+     assert.equal(await nav.locator('a').first().getAttribute('href'),'../../#exact-store-compare');
+     assert.equal(await nav.locator('a').nth(2).getAttribute('href'),'../../products/');
      await nav.scrollIntoViewIfNeeded();
      await page.screenshot({path:`qa-search/laundry-intent-entry-${width}.png`,fullPage:false});
+     await nav.locator('a[href="../../#exact-store-compare"]').click();
+     assert.equal(new URL(page.url()).hash,'#exact-store-compare');
+     assert.equal(await page.locator('#exact-store-compare').count(),1);
+     await page.goBack({waitUntil:'domcontentloaded'});
      await nav.locator('a[href="#laundry"]').click();
      assert.equal(new URL(page.url()).hash,'#laundry');
      await nav.locator('a[href="../../tools/laundry-cost-per-wash/"]').click();
