@@ -61,7 +61,7 @@ test('manual category header comparison requires exactly 18 protected screens an
  reject(a=>a[0].interactions=['different']);
  reject(a=>a[0].issues.push({code:'TEXT_OVERLAP_REVIEW',selector:'h1'}));
  reject(a=>a[0].dom.documentWidth=1600);
- reject(a=>a[4].dom.header.titleRight=1200);
+ reject(a=>a[3].dom.header.titleRight=1200);
  reject(a=>a[4].status='UNAVAILABLE');
  reject(a=>a[5].dom.header.visualVisible=true);
  assert.throws(()=>s.compareManualHeader(before.slice(1),after,original,candidate));
