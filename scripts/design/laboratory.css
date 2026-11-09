@@ -171,7 +171,10 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 .art-closing{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding-top:48px;padding-bottom:64px;border-top:1px solid var(--line)}
 .art-closing>.art-picture{aspect-ratio:1.5}.art-closing h2{font:36px/1.6 var(--serif);margin:20px 0 28px}
 .art-disclosure{font-size:12px;line-height:1.8;max-width:390px;color:var(--muted);margin-top:22px}
-.art-page-header{position:relative;padding-right:max(260px,calc((100vw - 1180px)/2 + 240px))}
+.art-page-header{position:relative}
+/* Reserve image space inside the centered text container; header padding is
+   overridden by the category hero rule and leaves long headings underneath art. */
+.art-page-header>.container{padding-right:240px}
 .art-page-visual{position:absolute;right:max(30px,calc((100vw - 1180px)/2));top:30px;bottom:30px;width:180px;margin:0;overflow:hidden}
 .art-page-visual .art-picture{height:100%}
 /* Defer layout/paint work for editorial sections outside the viewport. */
@@ -194,7 +197,7 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
  .lab-method{grid-template-columns:1fr;gap:20px}.art-method{display:block}.art-method .art-picture{aspect-ratio:2;max-height:180px}
  .art-closing{grid-template-columns:1fr;gap:22px;padding-top:32px;padding-bottom:35px}.art-closing h2{font-size:28px;margin:14px 0 22px}
  .art-closing>.art-picture{aspect-ratio:2}.art-disclosure{font-size:11px}
- .art-page-header{padding-right:0}.art-page-visual{display:none}
+ .art-page-header>.container{padding-right:0}.art-page-visual{display:none}
 }
 @media(prefers-reduced-motion:reduce){.lab-life-photo img,.lab-showroom-photo img{transition:none;transform:none!important}}
 

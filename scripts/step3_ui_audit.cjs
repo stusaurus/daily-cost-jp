@@ -15,6 +15,18 @@ function repair(css){
  if(!css.includes('.lab-masthead')||!css.includes('.lab-section-head'))return null;
  return css+BLOCK;
 }
+
+/* Independent manual-review allowlist. This recipe only accepts the already
+   reviewed header spacing change; arbitrary CSS can never enter this path. */
+const MANUAL_HEADER_RECIPE='category-heading-art-spacing-v1';
+function manualHeaderRepair(css){
+ const beforeDesktop='.art-page-header{position:relative;padding-right:max(260px,calc((100vw - 1180px)/2 + 240px))}';
+ const afterDesktop='.art-page-header{position:relative}\n/* Reserve image space inside the centered text container; header padding is\n   overridden by the category hero rule and leaves long headings underneath art. */\n.art-page-header>.container{padding-right:240px}';
+ const beforeMobile='.art-page-header{padding-right:0}.art-page-visual{display:none}';
+ const afterMobile='.art-page-header>.container{padding-right:0}.art-page-visual{display:none}';
+ if(typeof css!=='string'||css.length>200000||css.split(beforeDesktop).length!==2||css.split(beforeMobile).length!==2)return null;
+ return css.replace(beforeDesktop,afterDesktop).replace(beforeMobile,afterMobile);
+}
 function requestPolicy(value,type){
  const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password)return 'block';
  if(u.hostname==='thumbnail.image.rakuten.co.jp'&&type==='image')return 'image';
@@ -54,8 +66,16 @@ function measure(){
  for(const e of [...document.querySelectorAll('h1,h2,h3,button')].filter(visible).slice(0,120)){const r=e.getBoundingClientRect();if(r.top<100||r.bottom>innerHeight)continue;const n=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);if(n&&!e.contains(n)&&!n.contains(e))overlaps.push({selector:selector(e),occluder:selector(n)});}
  const target=document.querySelector('#home-ranking-hero .home-rank-all');
  const targetInfo=target?{count:document.querySelectorAll('#home-ranking-hero .home-rank-all').length,href:target.getAttribute('href'),tag:target.tagName,rect:{width:target.getBoundingClientRect().width,height:target.getBoundingClientRect().height},display:getComputedStyle(target).display,minHeight:getComputedStyle(target).minHeight,color:getComputedStyle(target).color,font:getComputedStyle(target).font}:null;
+
+ const header=document.querySelector('.art-page-header');
+ const title=header?.querySelector('h1'),art=header?.querySelector('.art-page-visual');
+ const headerProof=title&&art?(()=>{
+  const a=title.getBoundingClientRect(),b=art.getBoundingClientRect(),style=getComputedStyle(art);
+  return {titleLeft:a.left,titleRight:a.right,visualLeft:b.left,
+   visualVisible:b.width>0&&b.height>0&&style.display!=='none'&&style.visibility!=='hidden'};
+ })():null;
  const protectedState={title:document.title,meta:[...document.querySelectorAll('meta,link[rel=canonical]')].map(n=>n.outerHTML),links:[...document.querySelectorAll('a')].map(n=>[n.getAttribute('href'),[...n.attributes].filter(a=>a.name.startsWith('data-')||a.name==='rel').map(a=>[a.name,a.value])]),scripts:[...document.scripts].map(n=>[n.getAttribute('src'),n.textContent]),text:document.body.textContent};
- return {width:innerWidth,documentWidth:document.documentElement.scrollWidth,h1Count:document.querySelectorAll('h1').length,controls,overflow,text,overlaps,target:targetInfo,protectedState};
+ return {width:innerWidth,documentWidth:document.documentElement.scrollWidth,h1Count:document.querySelectorAll('h1').length,controls,overflow,text,overlaps,target:targetInfo,header:headerProof,protectedState};
 }
 async function interactions(page,pathname){
  const results=[];
@@ -105,7 +125,7 @@ async function observe(browser,pathname,width,outDir,override=null,snapshot=fals
   if(!snapshot)await page.waitForFunction(()=>[...document.images].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0&&r.top<innerHeight&&r.bottom>0&&e.currentSrc;}).every(e=>e.complete&&e.naturalWidth>0),{},{timeout:10000});
   const dom=await page.evaluate(measure);dom.text.forEach(e=>{e.contrast=e.fg&&e.bg?contrast(e.fg,e.bg):null;delete e.fg;delete e.bg;});
   record.http_status=response?.status();record.css_hash=cssHash;record.html_hash=htmlHash;record.protected_hash=sha(JSON.stringify(dom.protectedState));delete dom.protectedState;
-  record.dom={width:dom.width,documentWidth:dom.documentWidth,h1Count:dom.h1Count,overflow:dom.overflow,controls_examined:dom.controls.length,text_nodes_examined:dom.text.length};record.issues=assess(dom);record.target=dom.target;record.keyboard=[];
+  record.dom={width:dom.width,documentWidth:dom.documentWidth,h1Count:dom.h1Count,overflow:dom.overflow,controls_examined:dom.controls.length,text_nodes_examined:dom.text.length,header:dom.header};record.issues=assess(dom);record.target=dom.target;record.keyboard=[];
   for(let i=0;i<3;i++){await page.keyboard.press('Tab');record.keyboard.push(await page.evaluate(()=>{const e=document.activeElement,c=getComputedStyle(e);return {tag:e.tagName,id:e.id,outlineWidth:c.outlineWidth,outlineStyle:c.outlineStyle,boxShadow:c.boxShadow};}));}
   if(record.keyboard.some(e=>e.tag!=='BODY'&&e.outlineStyle==='none'&&e.boxShadow==='none'))record.issues.push({code:'KEYBOARD_FOCUS_REVIEW',selector:'body',evidence:record.keyboard});
   const name=(pathname==='/'?'home':pathname.replace(/[^a-z0-9-]/g,'-'))+'-'+width+'.png';
@@ -132,6 +152,56 @@ function compare(before,after,original,candidate){
  }
  return differences;
 }
+
+/* A manual CSS review is not an automated STEP3 repair. It requires the exact
+   two-rule header patch, the complete protected-state matrix and non-overlap. */
+function compareManualHeader(before,after,original,candidate){
+ if(before.length!==18||after.length!==18||manualHeaderRepair(original)!==candidate)
+  throw Error('Unknown manual header CSS or incomplete screen matrix');
+ let categoryScreens=0,baselineOverlaps=0;
+ const differences=[];
+ for(let i=0;i<before.length;i++){
+  const a=before[i],b=after[i];
+  const mismatch=[
+   a.path!==b.path?'path':null,
+   a.viewport!==b.viewport?'width':null,
+   a.status!=='PASS'?'baseline-unavailable':null,
+   b.status!=='PASS'?'candidate-unavailable':null,
+   a.css_hash!==sha(original)?'baseline-css-hash':null,
+   b.css_hash!==sha(original)?'candidate-css-hash':null,
+   a.protected_hash!==b.protected_hash?'protected-content':null,
+   JSON.stringify(a.interactions)!==JSON.stringify(b.interactions)?'interactions':null
+  ].filter(Boolean);
+  if(mismatch.length)
+   throw Error('Manual CSS proof mismatch at '+a.path+' '+a.viewport+'px: '+mismatch.join(','));
+  if(b.dom.documentWidth>b.viewport+2)throw Error('Manual CSS introduced horizontal overflow');
+  const old=new Set(a.issues.map(v=>v.code+':'+v.selector));
+  if(b.issues.some(v=>!old.has(v.code+':'+v.selector)))throw Error('Manual CSS introduced a new UI issue');
+  const titlePage=['/categories/laundry/','/categories/tissue/','/categories/toilet-paper/'].includes(b.path);
+  if(titlePage){
+   categoryScreens++;
+   const beforeHeader=a.dom.header,afterHeader=b.dom.header;
+   if(!beforeHeader||!afterHeader||
+      ![beforeHeader.titleLeft,beforeHeader.titleRight,beforeHeader.visualLeft,
+        afterHeader.titleLeft,afterHeader.titleRight,afterHeader.visualLeft].every(Number.isFinite))
+    throw Error('Missing header/illustration geometry');
+   if(b.viewport>600){
+    if(!afterHeader.visualVisible)throw Error('Desktop category image unexpectedly hidden');
+    if(beforeHeader.visualVisible&&beforeHeader.titleRight>beforeHeader.visualLeft+0.5)baselineOverlaps++;
+    if(afterHeader.titleRight>afterHeader.visualLeft+0.5||afterHeader.titleRight>b.viewport+0.5)
+     throw Error('Category heading still covered by illustration');
+   }else if(afterHeader.visualVisible){
+    throw Error('Category illustration unexpectedly shown over mobile heading');
+   }
+  }
+  differences.push({path:b.path,viewport:b.viewport,before:a.screenshot_hash,
+    after:b.screenshot_hash,protected_hash:b.protected_hash,
+    heading_before:a.dom.header,heading_after:b.dom.header});
+ }
+ if(categoryScreens!==9||baselineOverlaps<1)
+  throw Error('Missing 3-category/3-width review or no observed baseline overlap');
+ return differences;
+}
 async function main(){
  const {chromium}=require('playwright');const mode=process.argv[2]||'audit',snapshot=process.argv.includes('--snapshot');
  if(!['audit','verify','mock'].includes(mode))throw Error('Unknown audit mode');
@@ -153,14 +223,16 @@ async function main(){
    else{const ref=process.env.STEP3_BASE_SHA;if(!ref||!/^[a-f0-9]{40}$/.test(ref))throw Error('Missing fixed PR base SHA');original=execFileSync('git',['show',ref+':'+CSS],{encoding:'utf8'});}
    const candidate=fs.readFileSync(CSS,'utf8'),after=[];
    for(const pathname of PAGES)for(const width of WIDTHS)after.push(await observe(browser,pathname,width,'audit-results/step3-ui/after',candidate,snapshot));
-   const differences=compare(before,after,original,candidate);
+   const manual=manualHeaderRepair(original)===candidate;
+   const differences=manual?compareManualHeader(before,after,original,candidate):
+     compare(before,after,original,candidate);
    fs.writeFileSync('audit-results/step3-ui/after.json',JSON.stringify(after,null,2));
    fs.writeFileSync('audit-results/step3-ui/differences.json',JSON.stringify(differences,null,2));
    fs.writeFileSync('audit-results/step3-ui/comparison.html','<!doctype html><meta charset="utf-8"><title>STEP3 fixed CSS before / after</title><style>body{font:16px sans-serif}section{display:flex;gap:30px;padding:20px;border-bottom:1px solid #ccc}img{max-width:100%}</style><h1>Fixed tap-area verification — no publication</h1>'+WIDTHS.map(w=>'<h2>'+w+'px</h2><section><div>Before<br><img src="before/target-'+w+'.png"></div><div>After<br><img src="after/target-'+w+'.png"></div></section>').join('')+'<p>Complete viewport screenshots and protected-state / geometry hashes: differences.json</p>');
-   fs.writeFileSync('audit-results/step3-ui/verification.json',JSON.stringify({status:'PASS',base_sha:base,candidate_hash:sha(candidate),report_hash:sha(fs.readFileSync('audit-results/step3-ui/report.json')),differences_hash:sha(fs.readFileSync('audit-results/step3-ui/differences.json')),screens:18,mode:report.mode}));
-   console.log('STEP3 exact CSS, protected state, interaction and 18-screen before/after verification PASS');
+   fs.writeFileSync('audit-results/step3-ui/verification.json',JSON.stringify({status:'PASS',base_sha:base,candidate_hash:sha(candidate),report_hash:sha(fs.readFileSync('audit-results/step3-ui/report.json')),differences_hash:sha(fs.readFileSync('audit-results/step3-ui/differences.json')),screens:18,mode:report.mode,review_type:manual?MANUAL_HEADER_RECIPE:'home-ranking-link-tap-v1'}));
+   console.log('STEP3 '+(manual?MANUAL_HEADER_RECIPE:'home-ranking-link-tap-v1')+' exact CSS, protected state, interaction and 18-screen before/after verification PASS');
   }else if(report.status!=='PASS')throw Error('UI data unavailable; never considered healthy');
  }finally{await browser.close();}
 }
-module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,sha,repair,requestPolicy,contrast,assess,compare,interactions};
+module.exports={SITE,PAGES,WIDTHS,TARGET,CSS,BLOCK,MANUAL_HEADER_RECIPE,sha,repair,manualHeaderRepair,requestPolicy,contrast,assess,compare,compareManualHeader,interactions};
 if(require.main===module)main().catch(e=>{console.error('STEP3 audit stopped: '+e.message);process.exitCode=1});

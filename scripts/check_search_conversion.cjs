@@ -36,6 +36,17 @@ if(require.main===module)(async()=>{
    const errors=[];page.on('pageerror',error=>errors.push(error.message));
    await page.goto(`http://127.0.0.1:${server.address().port}/daily-cost-jp/categories/${cid}/?test=1`,{waitUntil:'domcontentloaded'});
    assert.equal(await page.locator('h1').count(),1);
+   const headerGeometry=await page.locator('.art-page-header').evaluate(header=>{
+     const title=header.querySelector('h1').getBoundingClientRect();
+     const art=header.querySelector('.art-page-visual');
+     const visual=art.getBoundingClientRect();
+     return {titleRight:title.right,artLeft:visual.left,
+       artVisible:getComputedStyle(art).display!=='none',viewport:innerWidth};
+   });
+   assert(headerGeometry.titleRight<=headerGeometry.viewport,'heading leaves viewport');
+   if(headerGeometry.artVisible)assert(headerGeometry.titleRight<=headerGeometry.artLeft,
+     'category heading is covered by editorial art: '+cid+' '+width);
+   await page.screenshot({path:`qa-search/${cid}-header-${width}.png`});
    if(cid==='laundry'){
      const nav=page.getByRole('navigation',{name:'洗剤の比較方法を選ぶ'});
      assert.equal(await nav.locator('a').count(),3);
