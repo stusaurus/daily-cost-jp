@@ -8,6 +8,8 @@ on:
     paths:
       - 'scripts/gsc_category_query_delta.py'
       - 'tests/test_gsc_category_query_delta.py'
+      - 'scripts/gsc_laundry_release_effect.py'
+      - 'tests/test_gsc_laundry_release_effect.py'
   schedule:
     # Monday 09:00 JST (GitHub schedules may run later)
     - cron: '0 0 * * 1'
@@ -17,6 +19,8 @@ on:
       - 'tests/test_gsc_six_sites.py'
       - 'scripts/gsc_category_query_delta.py'
       - 'tests/test_gsc_category_query_delta.py'
+      - 'scripts/gsc_laundry_release_effect.py'
+      - 'tests/test_gsc_laundry_release_effect.py'
       - '.github/workflows/gsc-six-sites.yml'
       - 'docs/gsc-six-sites-setup.md'
 
@@ -40,6 +44,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_gsc_six_sites.py'
           python3 -m unittest discover -s tests -p 'test_gsc_category_query_delta.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_laundry_release_effect.py'
 
   read-only-report:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -63,6 +68,7 @@ jobs:
         run: |
           python3 -m unittest discover -s tests -p 'test_gsc_six_sites.py'
           python3 -m unittest discover -s tests -p 'test_gsc_category_query_delta.py'
+          python3 -m unittest discover -s tests -p 'test_gsc_laundry_release_effect.py'
       - name: Authenticate using existing Google OIDC (no JSON keys)
         uses: google-github-actions/auth@v2
         with:
@@ -75,6 +81,9 @@ jobs:
       - name: Compare tissue and toilet paper query changes (optional)
         continue-on-error: true
         run: python -m scripts.gsc_category_query_delta
+      - name: Compare six full before/after days for November 9 laundry release (optional)
+        continue-on-error: true
+        run: python -m scripts.gsc_laundry_release_effect
       - name: Display verified metrics or explicit missing-data statuses
         if: always()
         run: |
@@ -82,6 +91,9 @@ jobs:
             cat audit-results/gsc-six-sites.md >> "$GITHUB_STEP_SUMMARY"
             if [ -f audit-results/gsc-category-query-delta.md ]; then
               cat audit-results/gsc-category-query-delta.md >> "$GITHUB_STEP_SUMMARY"
+            fi
+            if [ -f audit-results/gsc-laundry-release-effect.md ]; then
+              cat audit-results/gsc-laundry-release-effect.md >> "$GITHUB_STEP_SUMMARY"
             fi
           else
             echo 'GSC report unavailable: no metrics were verified.' >> "$GITHUB_STEP_SUMMARY"
@@ -96,6 +108,8 @@ jobs:
             audit-results/gsc-six-sites.md
             audit-results/gsc-category-query-delta.json
             audit-results/gsc-category-query-delta.md
+            audit-results/gsc-laundry-release-effect.json
+            audit-results/gsc-laundry-release-effect.md
           if-no-files-found: warn
           retention-days: 30
       - name: Record failed read-only collection explicitly
