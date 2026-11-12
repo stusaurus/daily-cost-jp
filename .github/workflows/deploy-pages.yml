@@ -165,17 +165,25 @@ jobs:
   published_design_audit:
     name: Verify published desktop and mobile design
     needs: deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 6
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
     continue-on-error: true
     permissions:
       contents: read
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - name: Install Japanese fonts for faithful visual checks
         run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
+      - name: Verify live checkout choices in Chromium and WebKit
+        run: |
+          npm ci --ignore-scripts
+          npx playwright install --with-deps chromium webkit
+          BUYING_DECISION_BASE_URL=https://stusaurus.github.io/daily-cost-jp/ BUYING_DECISION_QA_DIR=published-design-reports/buying-decisions node scripts/check_buying_decisions.cjs
       - name: Audit the actual public pages
         run: |
           mkdir -p published-design-reports

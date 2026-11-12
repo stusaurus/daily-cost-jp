@@ -45,6 +45,14 @@ jobs:
         run: |
           npx playwright install --with-deps chromium
           node scripts/check_search_conversion.cjs
+      - name: Verify published checkout choices in Chromium and WebKit
+        run: |
+          npx playwright install --with-deps chromium webkit
+          node scripts/check_buying_decisions.cjs
+      - name: Exercise approved active display on an unpublished real-data copy
+        run: |
+          python scripts/prepare_buying_decision_qa.py site audit-results/buying-decisions-active
+          BUYING_DECISION_SITE_DIR=audit-results/buying-decisions-active BUYING_DECISION_QA_DIR=qa-buying-decisions-active BUYING_DECISION_EXPECT_ACTIVE=true node scripts/check_buying_decisions.cjs
       - name: Audit generated mobile and desktop layouts with Lighthouse
         continue-on-error: true
         timeout-minutes: 4
@@ -69,6 +77,9 @@ jobs:
             quality-report.json
             lighthouse-reports/
             qa-search/
+            qa-buying-decisions/
+            qa-buying-decisions-active/
+            audit-results/buying-decisions-active/buying-decision-qa-mode.json
             site/
             audit-results/step5-product-link-integration.json
             audit-results/step6-*.json

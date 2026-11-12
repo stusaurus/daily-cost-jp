@@ -179,7 +179,7 @@ def block(cid, result, name):
                        f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)}{normalized}</p>'
                        f'<p class="step4-reason">{esc(label)}：' + ('この数量区分の確認済み候補から同じ比較単位の単価を重視。保管場所もご確認ください。' if purpose=='bulk' else 'この数量区分の確認済み候補から支払総額を重視。用途・ブランドもご確認ください。') + '</p>'
                        f'<a class="buy-button" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener" data-conversion-source="category" data-category-id="{cid}" data-id="{esc(r["spec_ref"])}" data-purchase-purpose="{purpose}" data-shipping-price="{p["price"]}">楽天でこの商品を確認する ↗</a>')
-        parts.append(f'<article class="step4-purpose" data-purpose="{purpose}"><h3>{label}</h3>{content}</article>')
+        parts.append(f'<article class="step4-purpose" id="{cid}-purpose-{purpose}" data-purpose="{purpose}"><h3>{label}</h3>{content}</article>')
     return (f'<section class="step4-recommendations" data-step4-category="{cid}" aria-label="{esc(name)}の購入目的別候補"><h2>{esc(name)}：買う量から選ぶ</h2>'
             '<p>単価ランキングとは別の選び方です。数量区分は家庭での扱いやすさの目安です。</p><div class="step4-grid">' + ''.join(parts) + '</div>'
             f'<p><a href="{search}" data-conversion-source="product_search">いつもの商品を探す →</a> ブランド・商品名・容量を入力して確認できます。</p>'
