@@ -36,6 +36,7 @@ function observedChoices(cid){
 
 async function main(){
   const output=process.env.BUYING_DECISION_QA_DIR||'qa-buying-decisions';
+  const expectActive=process.env.BUYING_DECISION_EXPECT_ACTIVE==='true';
   fs.mkdirSync(output,{recursive:true});
   let server;
   let base=process.env.BUYING_DECISION_BASE_URL;
@@ -70,6 +71,9 @@ async function main(){
           assert.equal(await page.locator('h1').count(),1);
           const summary=page.locator('#buying-decisions');assert.equal(await summary.count(),1);
           const choices=await page.evaluate(observedChoices,cid);
+          const purposeChoices=choices.filter(c=>c.id.startsWith(cid+'-purpose-'));
+          if(expectActive)assert(purposeChoices.some(c=>c.id===cid+'-purpose-small'),
+            'active-mode QA must exercise a real published small-pack offer: '+cid);
           const raw=catalog.categories[cid];
           const offers=[...raw.items,...(raw.purpose_candidates||[]),...(raw.small_pack_offer?[raw.small_pack_offer]:[])];
           const rows=summary.locator('tbody tr');assert(await rows.count()>=2);
@@ -116,14 +120,14 @@ async function main(){
           assert.deepEqual(errors,[],'JavaScript errors');
           await summary.scrollIntoViewIfNeeded();
           await page.screenshot({path:path.join(output,`${type.name()}-${cid}-${width}.png`)});
-          results.push({browser:type.name(),width,category:cid,status:'PASS',selected,operator_test:event.operator_test});
+          results.push({browser:type.name(),width,category:cid,status:'PASS',purpose_choices:purposeChoices.length,selected,operator_test:event.operator_test});
           await page.close();
         }
       }finally{await browser.close();}
     }
   }finally{
     if(server)await new Promise(resolve=>server.close(resolve));
-    fs.writeFileSync(path.join(output,'report.json'),JSON.stringify({base,results},null,2));
+    fs.writeFileSync(path.join(output,'report.json'),JSON.stringify({base,expectActive,results},null,2));
   }
   console.log('BUYING_DECISIONS_QA '+JSON.stringify({checked:results.length,failed:0}));
 }
