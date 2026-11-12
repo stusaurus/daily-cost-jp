@@ -15,6 +15,8 @@ function observedChoices(cid){
     const link=card.querySelector('a.buy-button');
     const value=card.querySelector('.lab-price-value');
     const unit=card.querySelector('.lab-price-unit');
+    if(cid==='tissue'&&unit?.textContent.trim()!=='／100組')continue;
+    if(cid==='toilet-paper'&&!['／シングル10m','／ダブル10m'].includes(unit?.textContent.trim()))continue;
     if(link&&value&&unit)choices.push({id:card.id,url:link.href,
       price:Number(link.dataset.shippingPrice),unit:unit.textContent.trim(),
       value:Number(value.textContent.replace(/[^0-9.]/g,''))});

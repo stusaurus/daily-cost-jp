@@ -10,7 +10,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from bs4 import BeautifulSoup
 from payment_insights import payment_insight
-from comparison_units import quantity_label
+from comparison_units import comparison_unit, quantity_label
 from product_display import clean_display_name
 from step4_recommendations import select_category
 
@@ -65,6 +65,12 @@ def render(markup, category, cid):
         if not all([link,price,unit,quantity]):continue
         offer=offers.get(link.get('href'))
         if not offer or offer.get('postage')!='送料込み':continue
+        # A box without its sheet count, or a roll without its length/ply,
+        # cannot answer the normalized price question at this entry point.
+        # Keep those offers in the source ranking; do not rank them here.
+        if cid in ('tissue','toilet-paper'):
+            normalized=comparison_unit(cid,offer)
+            if not normalized or unit.get_text(' ',strip=True)!='／'+normalized[0]:continue
         try:
             total=Decimal(link['data-shipping-price']);value=Decimal(re.sub(r'[^0-9.]','',price.get_text()))
             if total!=Decimal(str(offer['price'])) or total<=0 or not total.is_finite() or value<=0 or not value.is_finite():continue

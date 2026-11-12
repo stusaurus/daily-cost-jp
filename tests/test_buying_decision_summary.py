@@ -96,3 +96,22 @@ class SummaryTests(unittest.TestCase):
   d=BeautifulSoup(render(raw,c,'laundry'),'html.parser')
   self.assertEqual(len(d.select('tbody tr')),2)
   self.assertEqual({r['data-decision-target']for r in d.select('tbody tr')},{'laundry-rank-1'})
+
+ def test_unknown_sheet_count_or_roll_length_is_not_a_comparable_group(self):
+  for cid,metric,name,unit in [('tissue','box','ボックスティッシュ 60箱','1箱'),
+                              ('toilet-paper','roll','トイレットペーパー シングル 48ロール','1ロール')]:
+   c=self.category_with_purpose(cid)
+   unknown=offer(cid,60 if cid=='tissue' else 48,metric,unit_price=100,suffix='unknown',title=name)
+   c['items'].append(unknown)
+   raw=self.ranking_markup(cid,c)+(f'<article class="product-card" id="{cid}-rank-2">'
+       f'<span class="lab-price-value">¥100</span><span class="lab-price-unit">／{unit}</span>'
+       f'<p class="purchase-summary">数量確認</p><a class="buy-button" href="{unknown["url"]}" '
+       f'data-shipping-price="{unknown["price"]}"></a></article>')
+   d=BeautifulSoup(render(raw,c,cid),'html.parser')
+   self.assertEqual(len(d.select('tbody tr')),2)
+   self.assertNotIn(cid+'-rank-2',str(d))
+
+ def test_display_unit_must_agree_with_source_specification(self):
+  c=self.category_with_purpose('toilet-paper')
+  raw=self.ranking_markup('toilet-paper',c).replace('シングル10m','ダブル10m')
+  self.assertEqual(render(raw,c,'toilet-paper'),'')
