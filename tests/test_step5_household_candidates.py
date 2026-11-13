@@ -32,6 +32,20 @@ class HouseholdTests(unittest.TestCase):
         self.assertEqual([slots[p]['quantity'] for p in slots],[5,15,60])
         self.assertTrue(all(c['_household'] and c['_supplementary'] for c in calls))
 
+    def test_mixed_double_display_keeps_verified_single_household_supply(self):
+        single_bulk = offer('toilet-paper', 48, 'roll',
+            title='トイレットペーパー シングル 50m 48ロール', suffix='bulk')
+        double_bulk = offer('toilet-paper', 48, 'roll',
+            title='トイレットペーパー ダブル 30m 48ロール', suffix='double')
+        single_small = offer('toilet-paper', 12, 'roll',
+            title='トイレットペーパー シングル 50m 12ロール', suffix='small')
+        pool, report, calls = self.acquire([single_small], [single_bulk, double_bulk],
+                                          cid='toilet-paper')
+        self.assertEqual(report['status'], 'VERIFIED_CANDIDATES')
+        self.assertEqual(len(pool), 1)
+        self.assertEqual(pool[0]['url'], single_small['url'])
+        self.assertTrue(calls)
+
     def test_shipping_quantity_identity_and_invalid_urls_remain_rejected(self):
         for edit in ({'postage':'送料不明'},{'name':'ボックスティッシュ 5箱〜60箱から選べる'},
                      {'item_code':''},{'url':'https://evil.example/item'}, {'metric':'pack'}):

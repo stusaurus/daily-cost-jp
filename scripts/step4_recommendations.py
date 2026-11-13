@@ -127,6 +127,15 @@ def select_category(cid, category):
         groups[band].append({'offer': dict(row), 'quantity': quantity['quantity'], 'unit': list(unit), 'spec_ref': spec})
     # Choose one metric family only. No mass/volume or ply comparisons across families.
     families = sorted({r['unit'][0] for group in groups.values() for r in group})
+    if cid == 'toilet-paper' and 'シングル10m' in families and len(families) > 1:
+        # The household-purpose widget has always used single-ply searches.
+        # Keep single-ply purchase purposes independent from the new verified
+        # double-ply category panel. Never compare the two unit families.
+        for purpose in PURPOSES:
+            groups[purpose] = [
+                row for row in groups[purpose] if row['unit'][0] == 'シングル10m'
+            ]
+        families = ['シングル10m']
     if len(families) > 1:
         result['reasons'].append('MULTIPLE_COMPARISON_FAMILIES_USE_CATEGORY_RANKING')
         return result

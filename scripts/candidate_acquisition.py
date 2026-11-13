@@ -7,7 +7,7 @@ from product_quality import filter_items
 # Concrete consumable searches, never arbitrary trends. These only add input;
 # they do not grant category eligibility or waive quantity/shipping checks.
 SUPPLEMENTAL_QUERIES = {
-    'toilet-paper': ('トイレットペーパー シングル 48ロール', 'トイレットペーパー ダブル 96ロール', 'エリエール トイレットペーパー'),
+    'toilet-paper': ('トイレットペーパー ダブル 12ロール', 'トイレットペーパー ダブル 48ロール', 'トイレットペーパー シングル 48ロール'),
     'tissue': ('ボックスティッシュ 5箱', 'スコッティ ティッシュペーパー', 'エリエール ティッシュペーパー'),
     'laundry': ('アタックZERO 詰め替え', 'さらさ 洗濯洗剤', 'アリエール 液体洗剤'),
     'dish': ('キュキュット 詰め替え', 'ジョイ 食器用洗剤', 'チャーミー 食器用洗剤'),
@@ -102,6 +102,20 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
         from tissue_buying_quantity import choose_small_tissue_offer
         if choose_small_tissue_offer(items) is None:
             append_page(SUPPLEMENTAL_QUERIES['tissue'][0], 1, supplementary=True)
+
+    # A category-wide target of five can be met by single-ply alone.
+    # Always probe bounded double-ply searches until one *verified* offer
+    # exists, even if the first page already filled the ordinary ranking.
+    if category['id'] == 'toilet-paper':
+        from comparison_units import comparison_unit
+        for query in SUPPLEMENTAL_QUERIES['toilet-paper'][:2]:
+            safe = filter_items('toilet-paper', items)
+            if any((unit := comparison_unit('toilet-paper', row)) and
+                   unit[0] == 'ダブル10m' for row in safe):
+                break
+            if len(requests) >= MAX_REQUESTS:
+                break
+            append_page(query, 1, supplementary=True)
 
     for query in SUPPLEMENTAL_QUERIES.get(category['id'], ()):
         if ranked_count() >= TARGET or len(requests) >= MAX_REQUESTS:

@@ -54,6 +54,23 @@ class CandidateAcquisitionTests(unittest.TestCase):
         self.assertEqual(pause.call_count,4)
         self.assertEqual(report['requests'][1]['error'],'TimeoutError')
 
+    def test_double_is_searched_even_after_five_verified_singles(self):
+        def paper(idx, ply):
+            price = 1200 + idx
+            return dict(item_code=f'shop:paper{idx}', name=f'トイレットペーパー {ply} 50m 12ロール 商品{idx}',
+                        price=price, unit_price=price/12, confidence=.99,
+                        metric='roll', postage='送料込み',
+                        url=f'https://item.rakuten.co.jp/shop/paper{idx}/')
+        singles = [paper(i, 'シングル') for i in range(5)]
+        double = paper(6, 'ダブル')
+        fetch = Mock(side_effect=[singles, [double]])
+        rows, report = acquire({'id': 'toilet-paper', 'keyword': 'トイレットペーパー'},
+                               fetch, lambda x, c: x, rank, Mock())
+        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(report['baseline']['ranked'], 5)
+        self.assertEqual(report['requests'][1]['query'], 'トイレットペーパー ダブル 12ロール')
+        self.assertIn(double, rows)
+
     def test_first_page_failure_remains_a_failure(self):
         with self.assertRaises(TimeoutError):
             acquire(self.category,Mock(side_effect=TimeoutError()),lambda x,c:x,rank,Mock())

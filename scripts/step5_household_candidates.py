@@ -31,10 +31,17 @@ def acquire_household(category, ranked, fetch_page, normalize_item, sleep):
     if cid not in QUERIES:
         return [], report
     families = {u[0] for r in filter_items(cid, ranked) if (u := comparison_unit(cid, r))}
-    if len(families) != 1:
+    if cid == 'toilet-paper' and 'シングル10m' in families:
+        # STEP5's pre-existing household searches target single-ply only.
+        # New double-ply comparison is a separate direct-buy panel; do not
+        # disable legacy single-ply small packs merely because both are now
+        # present in the main category data.
+        family = 'シングル10m'
+    elif len(families) == 1:
+        family = next(iter(families))
+    else:
         report['status'] = 'RANKING_COMPARISON_FAMILY_UNCONFIRMED'
         return [], report
-    family = next(iter(families))
     pool, seen, reasons = [], set(), Counter()
     for purpose, queries in QUERIES[cid].items():
         for query_index, query in enumerate(queries):

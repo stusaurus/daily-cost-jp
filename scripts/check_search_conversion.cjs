@@ -56,6 +56,9 @@ if(require.main===module)(async()=>{
      await page.screenshot({path:`qa-search/laundry-intent-entry-${width}.png`,fullPage:false});
      await nav.locator('a[href="../../#exact-store-compare"]').click();
      assert.equal(new URL(page.url()).hash,'#exact-store-compare');
+     // Hash navigation can update location before the new document is parsed.
+     // Still require the real anchor; just wait for the destination DOM.
+     await page.locator('#exact-store-compare').waitFor({state:'attached',timeout:10000});
      assert.equal(await page.locator('#exact-store-compare').count(),1);
      await page.goBack({waitUntil:'domcontentloaded'});
      await nav.locator('a[href="#laundry"]').click();
