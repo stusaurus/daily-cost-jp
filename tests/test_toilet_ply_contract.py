@@ -1,9 +1,11 @@
 import sys
 import unittest
+from hashlib import sha256
+from tempfile import TemporaryDirectory
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from toilet_ply_contract import audit_page
+from toilet_ply_contract import audit_page, audit_published_styles
 from improve_category_seo import toilet_ply_compare_panel
 
 
@@ -52,6 +54,24 @@ class ToiletPlyContractTests(unittest.TestCase):
         changed = self.page.replace('href="#toilet-single-offers"', 'href="#toilet-paper"')
         self.assertTrue(any("navigation missing" in e for e in
                             audit_page(self.category, changed)))
+
+    def test_final_page_requires_versioned_scoped_css_asset(self):
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "assets").mkdir()
+            css = b".toilet-ply-compare{}.toilet-ply-card{}.toilet-ply-amount{}" \
+                  b".toilet-ply-unit{}.toilet-ply-buy{}@media(max-width:580px){}"
+            (root / "assets/toilet-paper.css").write_bytes(css)
+            hash_part = sha256(css).hexdigest()[:12]
+            html = ('<head><link data-laboratory-design="v1">'
+                    '<link data-toilet-ply-design="v1" rel="stylesheet" '
+                    f'href="/daily-cost-jp/assets/toilet-paper.css?v={hash_part}"></head>')
+            self.assertEqual(audit_published_styles(root, html), [])
+            self.assertTrue(audit_published_styles(root, html.replace(hash_part, "stale")))
+            self.assertTrue(audit_published_styles(root, html.replace(
+                'data-toilet-ply-design="v1"', 'data-toilet-ply-design="old"')))
+            (root / "assets/toilet-paper.css").unlink()
+            self.assertTrue(audit_published_styles(root, html))
 
     def test_empty_double_has_search_and_no_fake_purchase(self):
         self.category["toilet_ply_groups"]["double"] = []
