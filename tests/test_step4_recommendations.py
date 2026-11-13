@@ -67,6 +67,15 @@ class RecommendationsTests(unittest.TestCase):
         self.assertEqual(r.select_category('toilet-paper',{'items':[p]})['status'],'NO_VERIFIED_CANDIDATES')
         rows=[offer('laundry',5,'100ml',suffix='a'),offer('laundry',20,'100g',suffix='b',title='洗濯洗剤 2000g')]
         self.assertIn('MULTIPLE_COMPARISON_FAMILIES_USE_CATEGORY_RANKING',r.select_category('laundry',{'items':rows})['reasons'])
+    def test_new_double_catalog_preserves_single_ply_small_purchase_slot(self):
+        single = offer('toilet-paper', 12, 'roll', title='トイレットペーパー シングル 50m 12ロール', suffix='s')
+        double = offer('toilet-paper', 48, 'roll', title='トイレットペーパー ダブル 30m 48ロール', suffix='d')
+        selected = r.select_category('toilet-paper', {'items': [single, double]})
+        self.assertEqual(selected['status'], 'SELECTED')
+        self.assertEqual(selected['slots']['small']['offer']['url'], single['url'])
+        self.assertTrue(all(choice is None or choice['unit'][0] == 'シングル10m'
+                            for choice in selected['slots'].values()))
+
     def test_untrusted_empty_api_failure_fail_closed(self):
         self.assertEqual(r.select(None, NOW)['categories'],{})
         self.assertEqual(r.select_category('tissue',{'items':[]})['status'],'NO_VERIFIED_CANDIDATES')
