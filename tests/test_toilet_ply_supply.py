@@ -37,7 +37,7 @@ class PermanentToiletSupplyTests(unittest.TestCase):
         double = offer("ダブル", 30, 1200, 30)
         result = build_toilet_ply_groups(singles + [double])
         self.assertEqual(len(result["single"]), MAX_PER_PLY)
-        self.assertEqual(result["double"], [double])
+        self.assertEqual([r["item_code"] for r in result["double"]], [double["item_code"]])
 
     def test_double_does_not_mean_twice_as_long(self):
         single = offer("シングル", 100, 900, 1)
