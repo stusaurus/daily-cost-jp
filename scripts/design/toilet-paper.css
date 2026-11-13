@@ -37,4 +37,20 @@
 .category-ply-availability a{display:inline-block;min-height:44px;padding:8px 0;font-weight:700;color:var(--accent)}
 @media(min-width:920px){.toilet-ply-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.toilet-ply-group{padding:20px}}
 @media(max-width:580px){.toilet-ply-compare{padding:15px;margin:17px 0}.toilet-ply-group{padding:11px}.toilet-ply-compare h2{font-size:22px}.toilet-ply-card{grid-template-columns:68px minmax(0,1fr);gap:10px;padding:10px}.toilet-ply-photo{width:68px;height:68px}.toilet-ply-card .toilet-ply-amount{font-size:23px}.toilet-ply-card .toilet-ply-unit{font-size:13px}.toilet-ply-links{gap:7px}.toilet-ply-links a{font-size:12px;padding:10px 5px}}
-@media(max-width:350px){.toilet-ply-card{grid-template-columns:56px minmax(0,1fr);gap:9px}.toilet-ply-photo{width:56px;height:56px}}
+/* On narrow phones the 10m price and CTA must use the entire card width.
+   Floated product art keeps the title beside the photo without squeezing price,
+   totals, or the buying action into a 100px side column. */
+@media(max-width:580px){
+ .toilet-ply-card{display:block}
+ .toilet-ply-card::after{content:"";display:block;clear:both}
+ .toilet-ply-photo{float:left;margin:0 12px 8px 0}
+ .toilet-ply-card h4{min-height:68px}
+ .toilet-ply-card .toilet-ply-price{clear:both;display:flex;flex-wrap:wrap;width:100%;margin-top:13px}
+ .toilet-ply-card .toilet-ply-total,
+ .toilet-ply-card .toilet-ply-facts,
+ .toilet-ply-card a.toilet-ply-buy{clear:both}
+}
+@media(max-width:350px){
+ .toilet-ply-photo{width:56px;height:56px}
+ .toilet-ply-card h4{min-height:56px}
+}
