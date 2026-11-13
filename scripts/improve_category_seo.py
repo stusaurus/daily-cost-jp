@@ -167,7 +167,10 @@ def toilet_ply_compare_panel(payload: dict) -> str:
             f'<div class="toilet-ply-photo">{photo}</div>'
             '<div class="toilet-ply-card-body">'
             f'<h4>{name}</h4>'
-            f'<strong class="toilet-ply-price">¥{unit[1]:.2f}／{label}10m</strong>'
+            '<strong class="toilet-ply-price">'
+            f'<span class="toilet-ply-amount">¥{unit[1]:.2f}</span>'
+            f'<span class="toilet-ply-unit">／{label}10m</span>'
+            '</strong>'
             f'<p class="toilet-ply-facts">{quantity} ・ {length_label}</p>'
             f'<p class="toilet-ply-total">支払総額 ¥{price:,}（送料込み）</p>'
             f'<p class="toilet-ply-shop">{shop}</p>'
@@ -372,7 +375,9 @@ CSS = """
 .toilet-ply-photo span{font-size:29px}
 .toilet-ply-card-body{min-width:0;overflow-wrap:anywhere}
 .toilet-ply-card h4{font-size:12px;line-height:1.65;margin:0 0 8px;font-weight:700;color:var(--ink)}
-.toilet-ply-card .toilet-ply-price{display:block;color:var(--accent);font:26px/1.3 var(--serif);margin:6px 0;font-variant-numeric:tabular-nums}
+.toilet-ply-card .toilet-ply-price{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 5px;color:var(--accent);margin:6px 0;font-variant-numeric:tabular-nums}
+.toilet-ply-card .toilet-ply-amount{font:26px/1.3 var(--serif);white-space:nowrap}
+.toilet-ply-card .toilet-ply-unit{font:15px/1.4 var(--serif);white-space:nowrap}
 .toilet-ply-card p{font-size:12px;line-height:1.65;margin:6px 0}
 .toilet-ply-card .toilet-ply-shop{color:var(--muted);font-size:11px}
 .toilet-ply-card a.toilet-ply-buy{width:100%;display:flex;min-height:48px;align-items:center;justify-content:center;text-align:center;border:1px solid var(--ink);border-radius:3px;background:var(--ink);color:var(--white);text-decoration:none;padding:11px 9px;font-size:12px;font-weight:700;margin-top:12px;line-height:1.5}
@@ -386,7 +391,7 @@ CSS = """
 .category-ply-availability{margin:12px 0;padding:13px 15px;border-left:2px solid var(--accent);background:var(--wash);font-size:12px;line-height:1.8;color:var(--ink)}
 .category-ply-availability a{display:inline-block;min-height:44px;padding:8px 0;font-weight:700;color:var(--accent)}
 @media(min-width:920px){.toilet-ply-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.toilet-ply-group{padding:20px}}
-@media(max-width:580px){.toilet-ply-compare{padding:15px;margin:17px 0}.toilet-ply-group{padding:11px}.toilet-ply-compare h2{font-size:22px}.toilet-ply-card{grid-template-columns:68px minmax(0,1fr);gap:10px;padding:10px}.toilet-ply-photo{width:68px;height:68px}.toilet-ply-card .toilet-ply-price{font-size:23px}.toilet-ply-links{gap:7px}.toilet-ply-links a{font-size:12px;padding:10px 5px}}
+@media(max-width:580px){.toilet-ply-compare{padding:15px;margin:17px 0}.toilet-ply-group{padding:11px}.toilet-ply-compare h2{font-size:22px}.toilet-ply-card{grid-template-columns:68px minmax(0,1fr);gap:10px;padding:10px}.toilet-ply-photo{width:68px;height:68px}.toilet-ply-card .toilet-ply-amount{font-size:23px}.toilet-ply-card .toilet-ply-unit{font-size:13px}.toilet-ply-links{gap:7px}.toilet-ply-links a{font-size:12px;padding:10px 5px}}
 @media(max-width:350px){.toilet-ply-card{grid-template-columns:56px minmax(0,1fr);gap:9px}.toilet-ply-photo{width:56px;height:56px}}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
