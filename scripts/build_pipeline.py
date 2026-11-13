@@ -78,6 +78,11 @@ def write_build_info(root=ROOT):
             'requests': len(report[cid].get('acquisition', {}).get('requests', [])),
             'supplemental_requests': sum(bool(r.get('supplementary')) for r in report[cid].get('acquisition', {}).get('requests', [])),
         } for cid, data in catalog['categories'].items()},
+        'toilet_ply_supply': catalog.get('categories', {}).get('toilet-paper', {}).get('toilet_ply_supply', {}),
+        'toilet_ply_counts': {
+            family: len(rows) for family, rows in
+            catalog.get('categories', {}).get('toilet-paper', {}).get('toilet_ply_groups', {}).items()
+        },
         'files': {path: hashlib.sha256((site / path).read_bytes()).hexdigest() for path in (
             'data.json', 'today/data.json', 'social/latest.json',
             'index.html', 'today/index.html', 'categories/tissue/index.html')},
