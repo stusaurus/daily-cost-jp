@@ -42,7 +42,10 @@ def audit_page(category, html_text):
                 cta.get("data-shipping-price") != str(offer["price"]) or
                 cta.get("data-unit-price-label") != f"¥{unit[1]:.2f}／{label}"):
                 errors.append(f"{family}/{n}: purchase data mismatches trusted offer")
-            if (f"¥{unit[1]:.2f}／{label}" not in card.get_text(" ", strip=True) or
+            amount = card.select_one(".toilet-ply-amount")
+            unit_label = card.select_one(".toilet-ply-unit")
+            if (not amount or amount.get_text(strip=True) != f"¥{unit[1]:.2f}" or
+                not unit_label or unit_label.get_text(strip=True) != f"／{label}" or
                 f"¥{offer['price']:,}" not in card.get_text(" ", strip=True)):
                 errors.append(f"{family}/{n}: displayed price mismatches trusted offer")
         if not expected:
