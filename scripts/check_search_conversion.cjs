@@ -67,6 +67,30 @@ if(require.main===module)(async()=>{
      assert(new URL(page.url()).pathname.endsWith('/tools/laundry-cost-per-wash/'));
      await page.goBack({waitUntil:'domcontentloaded'});
    }
+   if(cid==='toilet-paper'){
+     const groups=catalog.categories['toilet-paper'].toilet_ply_groups;
+     assert(groups&&Array.isArray(groups.single)&&Array.isArray(groups.double),
+       'both toilet-paper ply groups must exist in generated catalog');
+     assert.equal(await page.locator('.toilet-ply-compare').count(),1);
+     for(const family of ['single','double']){
+       const section=page.locator('#toilet-'+family+'-offers');
+       assert.equal(await section.count(),1,'missing '+family+' comparison at '+width);
+       const cards=section.locator('.toilet-ply-card');
+       assert.equal(await cards.count(),groups[family].length,
+         'source-validated '+family+' count differs from rendered cards at '+width);
+       const link=page.locator('.toilet-ply-links a[href="#toilet-'+family+'-offers"]');
+       assert.equal(await link.count(),1);
+       await link.click();
+       assert.equal(new URL(page.url()).hash,'#toilet-'+family+'-offers');
+       if(!groups[family].length)
+         assert.equal(await section.locator('a.toilet-ply-buy').count(),0);
+       else
+         assert.equal(await section.locator('a.toilet-ply-buy').count(),groups[family].length);
+       assert.equal(await section.locator('a.toilet-ply-search').count(),1);
+     }
+     await page.locator('.toilet-ply-compare').scrollIntoViewIfNeeded();
+     await page.screenshot({path:`qa-search/toilet-ply-choice-${width}.png`});
+   }
    const decisions=page.locator('#buying-decisions');
    assert.equal(await decisions.count(),1);
    assert(await decisions.locator('tbody tr').count()>=2);
