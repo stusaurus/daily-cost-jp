@@ -3,6 +3,8 @@
 The page must contain both comparison choices, including a truthful search-only
 empty state. This checks generated HTML independently of the presentation code.
 """
+from hashlib import sha256
+from pathlib import Path
 from bs4 import BeautifulSoup
 from comparison_units import comparison_unit
 
@@ -54,3 +56,29 @@ def audit_page(category, html_text):
             if not section.select_one("a.toilet-ply-search"):
                 errors.append(f"{family}: empty-state search unavailable")
     return errors
+
+
+def audit_published_styles(root: Path, html_text: str):
+    """Check that the *final* redesigned page loads its scoped CSS asset.
+
+    The global redesign deliberately strips temporary <style> tags. Without
+    this contract, a preview can look correct while the published page loses
+    all responsive toilet-paper styles.
+    """
+    soup = BeautifulSoup(html_text, "html.parser")
+    if not soup.select_one("link[data-laboratory-design]"):
+        return []  # partial generator fixtures have not reached final design
+    styles = root / "assets/toilet-paper.css"
+    if not styles.is_file():
+        return ["toilet-paper: dedicated CSS asset missing from final build"]
+    css = styles.read_text(encoding="utf-8")
+    required = (".toilet-ply-compare", ".toilet-ply-card",
+                ".toilet-ply-amount", ".toilet-ply-unit",
+                ".toilet-ply-buy", "@media(max-width:580px)")
+    if not all(x in css for x in required):
+        return ["toilet-paper: incomplete responsive CSS asset"]
+    expected = "/daily-cost-jp/assets/toilet-paper.css?v=" + sha256(styles.read_bytes()).hexdigest()[:12]
+    links = soup.select('link[data-toilet-ply-design="v1"]')
+    if len(links) != 1 or links[0].get("href") != expected:
+        return ["toilet-paper: final page does not load versioned dedicated CSS"]
+    return []
