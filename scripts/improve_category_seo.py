@@ -355,44 +355,6 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
-/* Component-scoped editorial styling. STEP3 shared-CSS protected recipe is unchanged. */
-/* Single/double toilet-paper buying paths: permanent editorial layout */
-.toilet-ply-compare{margin:24px 0 30px;padding:24px;border:1px solid var(--line);border-radius:4px;background:var(--white);min-width:0}
-.toilet-ply-compare h2{font:26px/1.45 var(--serif);font-weight:500;margin:0 0 12px;color:var(--ink)}
-.toilet-ply-compare .toilet-ply-intro,.toilet-ply-caution{font-size:13px;line-height:1.9;color:var(--muted);margin:0 0 20px}
-.toilet-ply-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:22px}
-.toilet-ply-links a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:54px;border-radius:3px;border:1px solid var(--ink);background:var(--ink);color:var(--white);text-decoration:none;font-size:13px;font-weight:700;padding:12px 9px;line-height:1.5}
-.toilet-ply-links a:first-child{background:var(--white);color:var(--ink)}
-.toilet-ply-links a:hover{background:var(--accent);color:var(--white)}
-.toilet-ply-groups{display:grid;grid-template-columns:1fr;gap:18px}
-.toilet-ply-group{min-width:0;padding:18px;border:1px solid var(--line);background:var(--paper);border-radius:3px;scroll-margin-top:108px}
-.toilet-ply-group h3{font:22px/1.5 var(--serif);font-weight:500;margin:0 0 7px;color:var(--ink)}
-.toilet-ply-group .toilet-ply-desc{font-size:12px;line-height:1.8;margin:0 0 15px;color:var(--muted)}
-.toilet-ply-card-list{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-.toilet-ply-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;background:var(--white);border:1px solid var(--line);border-radius:3px;padding:14px;min-width:0}
-.toilet-ply-photo{width:82px;height:82px;background:var(--white);display:flex;align-items:center;justify-content:center;overflow:hidden}
-.toilet-ply-photo img{width:100%;height:100%;object-fit:contain}
-.toilet-ply-photo span{font-size:29px}
-.toilet-ply-card-body{min-width:0;overflow-wrap:anywhere}
-.toilet-ply-card h4{font-size:12px;line-height:1.65;margin:0 0 8px;font-weight:700;color:var(--ink)}
-.toilet-ply-card .toilet-ply-price{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 5px;color:var(--accent);margin:6px 0;font-variant-numeric:tabular-nums}
-.toilet-ply-card .toilet-ply-amount{font:26px/1.3 var(--serif);white-space:nowrap}
-.toilet-ply-card .toilet-ply-unit{font:15px/1.4 var(--serif);white-space:nowrap}
-.toilet-ply-card p{font-size:12px;line-height:1.65;margin:6px 0}
-.toilet-ply-card .toilet-ply-shop{color:var(--muted);font-size:11px}
-.toilet-ply-card a.toilet-ply-buy{width:100%;display:flex;min-height:48px;align-items:center;justify-content:center;text-align:center;border:1px solid var(--ink);border-radius:3px;background:var(--ink);color:var(--white);text-decoration:none;padding:11px 9px;font-size:12px;font-weight:700;margin-top:12px;line-height:1.5}
-.toilet-ply-card a.toilet-ply-buy:hover{background:var(--accent);color:var(--white)}
-.toilet-ply-more{margin-top:14px}
-.toilet-ply-more summary{cursor:pointer;min-height:46px;display:flex;align-items:center;font-size:13px;font-weight:700;color:var(--ink);padding:10px 0;border-top:1px solid var(--line)}
-.toilet-ply-more .toilet-ply-card-list{margin-top:9px}
-.toilet-ply-search{display:inline-flex;align-items:center;min-height:48px;font-size:12px;font-weight:700;text-decoration:underline;color:var(--ink);padding:10px 0;margin-top:7px}
-.toilet-ply-empty{font-size:13px;line-height:1.75;color:var(--muted);padding:14px;background:var(--white);border:1px solid var(--line);border-radius:3px}
-.toilet-ply-caution{margin:17px 0 0;font-size:11px}
-.category-ply-availability{margin:12px 0;padding:13px 15px;border-left:2px solid var(--accent);background:var(--wash);font-size:12px;line-height:1.8;color:var(--ink)}
-.category-ply-availability a{display:inline-block;min-height:44px;padding:8px 0;font-weight:700;color:var(--accent)}
-@media(min-width:920px){.toilet-ply-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.toilet-ply-group{padding:20px}}
-@media(max-width:580px){.toilet-ply-compare{padding:15px;margin:17px 0}.toilet-ply-group{padding:11px}.toilet-ply-compare h2{font-size:22px}.toilet-ply-card{grid-template-columns:68px minmax(0,1fr);gap:10px;padding:10px}.toilet-ply-photo{width:68px;height:68px}.toilet-ply-card .toilet-ply-amount{font-size:23px}.toilet-ply-card .toilet-ply-unit{font-size:13px}.toilet-ply-links{gap:7px}.toilet-ply-links a{font-size:12px;padding:10px 5px}}
-@media(max-width:350px){.toilet-ply-card{grid-template-columns:56px minmax(0,1fr);gap:9px}.toilet-ply-photo{width:56px;height:56px}}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
