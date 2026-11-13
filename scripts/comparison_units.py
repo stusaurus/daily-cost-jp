@@ -6,6 +6,18 @@ from sale_quantity import normalize, ambiguous_quantity
 LABELS = {'box':'1箱','roll':'1ロール','pack':'1パック','sheet':'1枚','piece':'1本','100g':'100g','100ml':'100ml','1L':'1L'}
 
 
+def toilet_ply_length(item):
+    """Parse exact single/double ply and one roll's printed length in metres."""
+    name = normalize(str(item.get('name', '')))
+    lengths = {float(n) for n in re.findall(
+        r'(?<![\d.])(\d+(?:\.\d+)?)\s*m(?![a-z])', name, re.I
+    )}
+    ply = [p for p in ('シングル', 'ダブル') if p in name]
+    if len(lengths) != 1 or min(lengths) <= 0 or len(ply) != 1:
+        return None
+    return ply[0], next(iter(lengths))
+
+
 def comparison_unit(category_id, item):
     name = normalize(item.get('name', ''))
     try:
@@ -21,11 +33,11 @@ def comparison_unit(category_id, item):
             return None
         return '100組', value / min(groups) * 100
     if category_id == 'toilet-paper':
-        lengths = {float(n) for n in re.findall(r'(?<![\d.])(\d+(?:\.\d+)?)\s*m(?![a-z])', name, re.I)}
-        ply = [p for p in ('シングル', 'ダブル') if p in name]
-        if metric != 'roll' or len(lengths) != 1 or min(lengths) <= 0 or len(ply) != 1:
+        details = toilet_ply_length(item)
+        if metric != 'roll' or not details:
             return None
-        return ply[0] + '10m', value / min(lengths) * 10
+        ply, roll_length_m = details
+        return ply + '10m', value / roll_length_m * 10
     return (LABELS[metric], value) if metric in LABELS else None
 
 
