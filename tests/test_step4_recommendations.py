@@ -76,6 +76,28 @@ class RecommendationsTests(unittest.TestCase):
         self.assertTrue(all(choice is None or choice['unit'][0] == 'シングル10m'
                             for choice in selected['slots'].values()))
 
+    def test_mixed_double_ranked_offers_keep_single_ply_step5_small_candidate(self):
+        single_bulk = offer('toilet-paper', 48, 'roll',
+            title='トイレットペーパー シングル 100m 48ロール', suffix='sb')
+        double_bulk = offer('toilet-paper', 48, 'roll',
+            title='トイレットペーパー ダブル 30m 48ロール', suffix='db')
+        single_small = offer('toilet-paper', 12, 'roll',
+            title='トイレットペーパー シングル 50m 12ロール', suffix='ss')
+        double_small = offer('toilet-paper', 12, 'roll',
+            title='トイレットペーパー ダブル 30m 12ロール', suffix='ds')
+        pool = r.verified_purpose_candidates('toilet-paper', {
+            'items': [single_bulk, double_bulk],
+            'purpose_candidates': [single_small, double_small],
+        })
+        self.assertEqual([x['item_code'] for x in pool], [single_small['item_code']])
+        selected = r.select_category('toilet-paper', {
+            'items': [single_bulk, double_bulk],
+            'purpose_candidates': [single_small, double_small],
+        })
+        self.assertEqual(selected['slots']['small']['offer']['item_code'],
+                         single_small['item_code'])
+        self.assertEqual(selected['slots']['small']['unit'][0], 'シングル10m')
+
     def test_untrusted_empty_api_failure_fail_closed(self):
         self.assertEqual(r.select(None, NOW)['categories'],{})
         self.assertEqual(r.select_category('tissue',{'items':[]})['status'],'NO_VERIFIED_CANDIDATES')
