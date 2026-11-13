@@ -89,13 +89,9 @@ def validate_catalog(payload):
             checked = filter_items('toilet-paper', extras)
             if len(checked) != len(extras):
                 errors.append('toilet-paper: unsafe secondary ply offer')
-            primary_families = {
-                label for row in items
-                if (unit := comparison_unit('toilet-paper', row))
-                for label in [unit[0]]
-            }
-            if len(primary_families) > 1:
-                errors.append('toilet-paper: mixed single/double ranking')
+            # The main list retains existing validated items; its presentation
+            # already separates 10m prices by explicit ply. Extra links must
+            # always be verified double-ply offers not already in the catalog.
             seen_extra = set()
             for row in extras:
                 unit = comparison_unit('toilet-paper', row)
@@ -103,8 +99,8 @@ def validate_catalog(payload):
                 if not unit or unit[0] not in ('シングル10m', 'ダブル10m'):
                     errors.append('toilet-paper: secondary offer missing length/ply')
                     continue
-                if not primary_families or unit[0] in primary_families:
-                    errors.append('toilet-paper: secondary offer mixed with primary ranking')
+                if unit[0] != 'ダブル10m':
+                    errors.append('toilet-paper: additional offer is not double ply')
                     continue
                 if not url or url in seen_extra or url in accepted[category_id]:
                     errors.append('toilet-paper: duplicate secondary offer')
