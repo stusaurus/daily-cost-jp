@@ -85,7 +85,12 @@ class PermanentToiletSupplyTests(unittest.TestCase):
         self.assertIn('id="toilet-single-offers"', page)
         self.assertIn('id="toilet-double-offers"', page)
         self.assertIn("ダブルの比較候補（1件）", page)
-        self.assertIn("¥15.28／ダブル10m", page)
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(page, "html.parser")
+        self.assertEqual(
+            soup.select_one("#toilet-double-offers .toilet-ply-price").get_text(""),
+            "¥15.28／ダブル10m",
+        )
         self.assertIn("シングルの比較を見る", page)
         self.assertIn("支払総額 ¥1,100", page)
         self.assertIn("60m／ロール", page)
