@@ -81,6 +81,38 @@ def validate_catalog(payload):
             if item.get('metric') != category.get('metric'):
                 errors.append(f'{category_id}: mixed ranking units')
         accepted[category_id] = {p['url']: p for p in safe}
+        if category_id == 'toilet-paper':
+            extras = category.get('toilet_ply_offers', [])
+            if not isinstance(extras, list) or len(extras) > 6:
+                errors.append('toilet-paper: malformed/unbounded secondary ply offers')
+                extras = []
+            checked = filter_items('toilet-paper', extras)
+            if len(checked) != len(extras):
+                errors.append('toilet-paper: unsafe secondary ply offer')
+            primary_families = {
+                label for row in items
+                if (unit := comparison_unit('toilet-paper', row))
+                for label in [unit[0]]
+            }
+            if len(primary_families) > 1:
+                errors.append('toilet-paper: mixed single/double ranking')
+            seen_extra = set()
+            for row in extras:
+                unit = comparison_unit('toilet-paper', row)
+                url = row.get('url')
+                if not unit or unit[0] not in ('シングル10m', 'ダブル10m'):
+                    errors.append('toilet-paper: secondary offer missing length/ply')
+                    continue
+                if not primary_families or unit[0] in primary_families:
+                    errors.append('toilet-paper: secondary offer mixed with primary ranking')
+                    continue
+                if not url or url in seen_extra or url in accepted[category_id]:
+                    errors.append('toilet-paper: duplicate secondary offer')
+                    continue
+                if row not in checked:
+                    continue
+                seen_extra.add(url)
+                accepted[category_id][url] = row
         if category_id == 'tissue' and category.get('small_pack_offer') is not None:
             # The extra direct-buy offer must pass the same production safety
             # gate. It may be absent from the bulk top-12, but is not an
