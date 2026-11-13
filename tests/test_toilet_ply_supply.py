@@ -1,86 +1,110 @@
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
-from toilet_ply_supply import group_toilet_offers, select_toilet_rankings
-from comparison_units import comparison_unit
+from comparison_units import comparison_unit, toilet_ply_length
+from toilet_ply_supply import (
+    MAX_PER_PLY, build_toilet_ply_groups, group_toilet_offers, supply_diagnostics,
+)
+from improve_category_seo import toilet_ply_compare_panel
 
 
-def item(ply, length, price, index):
+def offer(ply, length, price, index, rolls=12):
     return dict(
-        name=f"トイレットペーパー {ply} {length}m 12ロール 品番{index}",
-        price=price, unit_price=price / 12, metric="roll", confidence=.99,
+        name=f"トイレットペーパー {ply} {length}m {rolls}ロール 商品{index}",
+        price=price, unit_price=price / rolls, metric="roll", confidence=.99,
         postage="送料込み", url=f"https://item.rakuten.co.jp/shop/{index}/",
-        item_code=f"shop:{index}", shop="店舗",
+        item_code=f"shop:{index}", image="", shop="店舗",
     )
 
 
-def rank(rows):
-    return ("roll", sorted(rows, key=lambda r: r["unit_price"])[:12])
+class PermanentToiletSupplyTests(unittest.TestCase):
+    def test_both_types_have_independent_10m_price_ranking(self):
+        rows = [
+            offer("シングル", 100, 1200, 1),
+            offer("ダブル", 30, 1200, 2),
+            offer("シングル", 100, 1000, 3),
+            offer("ダブル", 60, 1200, 4),
+        ]
+        result = build_toilet_ply_groups(rows)
+        self.assertEqual([x["item_code"] for x in result["single"]], ["shop:3", "shop:1"])
+        self.assertEqual([x["item_code"] for x in result["double"]], ["shop:4", "shop:2"])
+        self.assertAlmostEqual(comparison_unit("toilet-paper", result["double"][0])[1], 16.6666667)
 
+    def test_full_pool_is_used_not_only_first_twelve(self):
+        singles = [offer("シングル", 100, 1000 + i, i) for i in range(12)]
+        double = offer("ダブル", 30, 1200, 30)
+        result = build_toilet_ply_groups(singles + [double])
+        self.assertEqual(len(result["single"]), MAX_PER_PLY)
+        self.assertEqual(result["double"], [double])
 
-class ToiletPlySupplyTests(unittest.TestCase):
-    def test_double_supply_does_not_shrink_the_12_product_ranking(self):
-        singles = [item("シングル", 100, 600 + n, n) for n in range(12)]
-        doubles = [item("ダブル", 30, 900, 20), item("ダブル", 60, 1100, 21)]
-        metric, primary, alternate, family = select_toilet_rankings(
-            singles + doubles, rank, lambda cid, rows: rows
-        )
-        self.assertEqual(metric, "roll")
-        self.assertEqual(family, "シングル10m")
-        self.assertEqual(len(primary), 12)
-        self.assertEqual([r["item_code"] for r in primary], [r["item_code"] for r in singles])
-        self.assertEqual([r["item_code"] for r in alternate], ["shop:21", "shop:20"])
-        self.assertTrue(all(comparison_unit("toilet-paper", r)[0] == "ダブル10m" for r in alternate))
+    def test_double_does_not_mean_twice_as_long(self):
+        single = offer("シングル", 100, 900, 1)
+        single["name"] += " 2倍巻き"
+        self.assertEqual(len(group_toilet_offers([single])["double"]), 0)
+        ambiguous = offer("ダブル", 30, 1000, 2)
+        ambiguous["name"] += " 60mも選択可能"
+        self.assertIsNone(toilet_ply_length(ambiguous))
+        self.assertIsNone(comparison_unit("toilet-paper", ambiguous))
 
-    def test_no_invented_double_from_unverified_product(self):
-        singles = [item("シングル", 50, 900, 1)]
-        unknown = item("ダブル", 50, 900, 2)
-        unknown["name"] = "トイレットペーパー ダブル 12ロール 長さ不明"
-        result = select_toilet_rankings(
-            singles + [unknown], rank, lambda cid, rows: rows
-        )
-        self.assertEqual(result[2], [])
-        self.assertEqual(result[3], "シングル10m")
+    def test_ambiguous_and_wrong_shipping_are_not_reinstated(self):
+        ambiguous = offer("ダブル", 30, 1000, 1)
+        ambiguous["name"] = "トイレットペーパー ダブル 12ロール 長さ未確認"
+        postage = offer("ダブル", 30, 1000, 2)
+        postage["postage"] = "送料別"
+        accessory = offer("ダブル", 30, 1000, 3)
+        accessory["name"] += " トイレットペーパーホルダー"
+        result = build_toilet_ply_groups([ambiguous, postage, accessory])
+        self.assertEqual(result, {"single": [], "double": []})
 
-    def test_double_can_be_primary_when_single_absent(self):
-        doubles = [item("ダブル", 30, 900, 3)]
-        _, ranked, alternate, family = select_toilet_rankings(
-            doubles, rank, lambda cid, rows: rows
-        )
-        self.assertEqual(ranked, doubles)
-        self.assertEqual(alternate, [])
-        self.assertEqual(family, "ダブル10m")
+    def test_duplicate_offer_and_capacity_limit(self):
+        entries = [offer("ダブル", 60, 1200 + i, i) for i in range(8)]
+        entries.append(entries[0].copy())
+        self.assertEqual(len(build_toilet_ply_groups(entries)["double"]), MAX_PER_PLY)
+        with self.assertRaises(ValueError):
+            build_toilet_ply_groups(entries, limit=20)
 
-    def test_group_validation_rechecks_alternatives(self):
-        check = Mock(return_value=[])
-        _, _, alternate, _ = select_toilet_rankings(
-            [item("シングル", 100, 1000, 1), item("ダブル", 30, 900, 2)],
-            rank, check
-        )
-        check.assert_called_once()
-        self.assertEqual(alternate, [])
+    def test_diagnostics_never_claim_market_is_out_of_stock(self):
+        states = supply_diagnostics({"single": [offer("シングル", 50, 1000, 1)],
+                                    "double": []},
+                                   {"requests": [{"query": "トイレットペーパー ダブル 12ロール",
+                                                  "error": "HTTPError"}]})
+        self.assertEqual(states["families"]["single"]["state"], "VERIFIED")
+        self.assertEqual(states["families"]["double"]["state"], "INCOMPLETE_ACQUISITION")
+        self.assertEqual(states["families"]["double"]["verified"], 0)
 
-    def test_html_shows_verified_double_offer_and_real_affiliate_link(self):
-        from improve_category_seo import toilet_ply_compare_panel, toilet_ply_availability_note
-        single = item("シングル", 100, 1000, 1)
-        double = item("ダブル", 60, 1100, 2)
-        data = {"categories": {"toilet-paper": {
-            "items": [single], "toilet_ply_offers": [double],
+    def test_render_both_buying_paths_and_matching_rakuten_offers(self):
+        single = offer("シングル", 100, 1000, 1)
+        double = offer("ダブル", 60, 1100, 2)
+        payload = {"categories": {"toilet-paper": {
+            "toilet_ply_groups": {"single": [single], "double": [double]},
+            "toilet_ply_supply": {"families": {}},
         }}}
-        page = toilet_ply_compare_panel(data)
+        page = toilet_ply_compare_panel(payload)
+        self.assertIn('id="toilet-single-offers"', page)
+        self.assertIn('id="toilet-double-offers"', page)
         self.assertIn("ダブルの比較候補（1件）", page)
         self.assertIn("¥15.28／ダブル10m", page)
-        self.assertIn('href="https://item.rakuten.co.jp/shop/2/"', page)
         self.assertIn("シングルの比較を見る", page)
-        self.assertEqual(toilet_ply_availability_note(data), "")
+        self.assertIn("支払総額 ¥1,100", page)
+        self.assertIn("60m／ロール", page)
+        self.assertIn('href="https://item.rakuten.co.jp/shop/2/"', page)
+        self.assertEqual(page.count('class="toilet-ply-card"'), 2)
 
-    def test_2x_longer_roll_is_not_two_ply(self):
-        item_single = item("シングル", 100, 1000, 1)
-        item_single["name"] += " 2倍巻き"
-        self.assertEqual(len(group_toilet_offers([item_single])["ダブル10m"]), 0)
+    def test_unavailable_family_has_search_not_fake_checkout(self):
+        payload = {"categories": {"toilet-paper": {
+            "toilet_ply_groups": {"single": [offer("シングル", 50, 900, 1)], "double": []},
+            "toilet_ply_supply": {"families": {"double": {
+                "state": "NO_VERIFIED_SNAPSHOT_OFFER",
+                "search_failed": False,
+            }}},
+        }}}
+        page = toilet_ply_compare_panel(payload)
+        self.assertIn("ダブルの比較候補（0件）", page)
+        self.assertIn("ダブルを商品名でさらに検索する", page)
+        self.assertNotIn("楽天でダブルの商品を確認する", page)
+        self.assertEqual(page.count('class="toilet-ply-card"'), 1)
 
 
 if __name__ == "__main__":
