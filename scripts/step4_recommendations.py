@@ -87,9 +87,15 @@ def verified_purpose_candidates(cid, category):
     except (KeyError, TypeError, ValueError, AttributeError):
         return []
     families = {u[0] for r in safe_ranked if (u := comparison_unit(cid, r))}
-    if len(families) != 1:
+    if cid == 'toilet-paper' and 'シングル10m' in families:
+        # STEP5's household pool is explicitly single-ply. Additional
+        # verified double-ply items in the category ranking must not hide
+        # the already validated small/everyday single-ply choices.
+        family = 'シングル10m'
+    elif len(families) == 1:
+        family = next(iter(families))
+    else:
         return []
-    family = next(iter(families))
     safe = []
     # Whole-group outliers must be removed before any per-offer checks.
     for row in safe_rows:
