@@ -63,13 +63,38 @@ class CandidateAcquisitionTests(unittest.TestCase):
                         url=f'https://item.rakuten.co.jp/shop/paper{idx}/')
         singles = [paper(i, 'シングル') for i in range(5)]
         double = paper(6, 'ダブル')
-        fetch = Mock(side_effect=[singles, [double]])
+        fetch = Mock(side_effect=[singles, [double], []])
         rows, report = acquire({'id': 'toilet-paper', 'keyword': 'トイレットペーパー'},
                                fetch, lambda x, c: x, rank, Mock())
-        self.assertEqual(fetch.call_count, 2)
+        self.assertEqual(fetch.call_count, 3)
         self.assertEqual(report['baseline']['ranked'], 5)
         self.assertEqual(report['requests'][1]['query'], 'トイレットペーパー ダブル 12ロール')
+        self.assertEqual(report['requests'][2]['query'], 'トイレットペーパー ダブル 48ロール')
         self.assertIn(double, rows)
+
+    def test_single_is_searched_independently_even_when_double_fills_ranking(self):
+        def paper(idx, ply):
+            price = 1200 + idx
+            return dict(item_code=f'shop:{idx}',
+                        name=f'トイレットペーパー {ply} 50m 12ロール 品番{idx}',
+                        price=price, unit_price=price/12, confidence=.99,
+                        metric='roll', postage='送料込み',
+                        url=f'https://item.rakuten.co.jp/shop/{idx}/')
+        doubles = [paper(i, 'ダブル') for i in range(5)]
+        single = paper(9, 'シングル')
+        calls = []
+        def fetch(category, page):
+            calls.append(category['keyword'])
+            if category['keyword'].endswith('シングル 12ロール'):
+                return [single]
+            return doubles if category['keyword'] == 'トイレットペーパー' else []
+        rows, report = acquire({'id': 'toilet-paper', 'keyword': 'トイレットペーパー'},
+                               fetch, lambda x, c: x, rank, Mock())
+        self.assertIn(single, rows)
+        self.assertIn('トイレットペーパー シングル 12ロール', calls)
+        self.assertIn('トイレットペーパー シングル 48ロール', calls)
+        self.assertLessEqual(len(calls), 6)
+        self.assertEqual(report['baseline']['ranked'], 5)
 
     def test_first_page_failure_remains_a_failure(self):
         with self.assertRaises(TimeoutError):
