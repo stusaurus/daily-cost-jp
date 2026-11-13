@@ -51,6 +51,8 @@ def main():
         parse_failures[cid] = failed
         if result.get('checked', 0) >= 20 and failed / result['checked'] > .5:
             warnings.append(f'{cid}: more than half of fetched candidates have uncertain quantity; do not relax quality filters')
+    toilet_groups = current.get('categories', {}).get('toilet-paper', {}).get('toilet_ply_groups') or {}
+    ply_counts = {family: len(toilet_groups.get(family) or []) for family in ('single', 'double')}
     report = {'updated_at':current['updated_at'],'errors':errors,'warnings':warnings,
               'counts':{k:len(v['items']) for k,v in current['categories'].items()},
               'quantity_parse_failures':parse_failures,
