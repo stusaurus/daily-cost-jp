@@ -203,6 +203,15 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
     errors.extend(freshness_errors(social, payload))
     if today.get('items') != social.get('items'):
         errors.append('Today and X have different product candidates')
+    from toilet_ply_contract import audit_page
+    toilet_page = root / "categories/toilet-paper/index.html"
+    if not toilet_page.is_file():
+        errors.append("toilet-paper: public comparison route is missing")
+    else:
+        errors.extend(audit_page(
+            payload["categories"]["toilet-paper"],
+            toilet_page.read_text(encoding="utf-8"),
+        ))
     all_urls = {url for rows in accepted.values() for url in rows}
     today_urls = {row['url'] for row in today.get('items', [])}
     purpose_links = verified_purpose_links(payload)
