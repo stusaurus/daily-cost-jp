@@ -16,6 +16,17 @@ def monitor(current, prior, today, history):
         if before > 0 and count == 0: errors.append(f'{cid}: safe products disappeared')
         if before >= 5 and count < before * .4: errors.append(f'{cid}: product count fell by more than 60% ({before} -> {count})')
         if not count and not before: warnings.append(f'{cid}: no verified candidate')
+    toilet = categories.get('toilet-paper', {})
+    typed = toilet.get('toilet_ply_groups')
+    ply_counts = {}
+    if isinstance(typed, dict):
+        ply_counts = {family: len(typed.get(family) or []) for family in ('single', 'double')}
+        for family, count in ply_counts.items():
+            if count == 0:
+                warnings.append(f'toilet-paper: {family} has no source-verified 10m offers; product-search fallback must remain visible')
+            old = older.get('toilet-paper', {}).get('toilet_ply_groups') or {}
+            if old.get(family) and count == 0:
+                warnings.append(f'toilet-paper: {family} verified purchase supply disappeared since last snapshot')
     if not today.get('items'): errors.append('Today selection empty; preserve last good deployment')
     recent = history.get('selections', [])[-14:]
     if len(recent) >= 6 and len({tuple(sorted(e.get('keys', []))) for e in recent}) == 1:
@@ -43,7 +54,8 @@ def main():
     report = {'updated_at':current['updated_at'],'errors':errors,'warnings':warnings,
               'counts':{k:len(v['items']) for k,v in current['categories'].items()},
               'quantity_parse_failures':parse_failures,
-              'observed_products':len(history['products']),'today_count':len(today['items'])}
+              'observed_products':len(history['products']),'today_count':len(today['items']),
+              'toilet_ply_counts':ply_counts}
     Path('quality-monitor-report.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
     (site/'quality-status.json').write_text(json.dumps(report,ensure_ascii=False))
     if errors: raise SystemExit('\n'.join(errors))
