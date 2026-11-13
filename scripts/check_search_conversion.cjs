@@ -87,7 +87,20 @@ if(require.main===module)(async()=>{
        else
          assert.equal(await section.locator('a.toilet-ply-buy').count(),groups[family].length);
        assert.equal(await section.locator('a.toilet-ply-search').count(),1);
+       if(width<=390 && groups[family].length){
+         const sizes=await cards.first().evaluate(card=>{
+           const rect=card.getBoundingClientRect();
+           const unit=card.querySelector('.toilet-ply-price').getBoundingClientRect();
+           const checkout=card.querySelector('.toilet-ply-buy').getBoundingClientRect();
+           return {card:rect.width,unit:unit.width,checkout:checkout.width};
+         });
+         assert(sizes.unit>=sizes.card*.78,
+           family+' 10m price should use the full phone card width at '+width+'px: '+JSON.stringify(sizes));
+         assert(sizes.checkout>=sizes.card*.78,
+           family+' checkout CTA should use the full phone card width at '+width+'px: '+JSON.stringify(sizes));
+       }
      }
+     assert.equal(await page.locator('link[data-toilet-ply-design="v1"]').count(),1);
      await page.locator('.toilet-ply-compare').scrollIntoViewIfNeeded();
      await page.screenshot({path:`qa-search/toilet-ply-choice-${width}.png`});
    }
