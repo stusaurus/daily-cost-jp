@@ -125,77 +125,116 @@ def render_search_copy(text: str, label: str) -> str:
 
 
 def toilet_ply_compare_panel(payload: dict) -> str:
-    """Show only independently verified, separately sorted double-ply offers."""
-    from comparison_units import comparison_unit, quantity_label
+    """Two equal, source-verified buying paths with no inferred inventory."""
+    from urllib.parse import urlsplit
+    from comparison_units import comparison_unit, quantity_label, toilet_ply_length
+    from product_quality import filter_items
     from product_display import clean_display_name
 
     data = payload.get("categories", {}).get("toilet-paper", {})
-    if not isinstance(data, dict):
-        return ""
-    # The original top-12 catalog is retained. Include any double offers it
-    # already contains, then independently validated double supplements.
-    from comparison_units import comparison_unit
-    offers = (data.get("items") or []) + (data.get("toilet_ply_offers") or [])
-    offers = sorted(
-        (item for item in offers if isinstance(item, dict) and
-         (unit := comparison_unit("toilet-paper", item)) and unit[0] == "ダブル10m"),
-        key=lambda item: (comparison_unit("toilet-paper", item)[1], item["price"]),
-    )
-    if not offers:
+    groups = data.get("toilet_ply_groups") if isinstance(data, dict) else None
+    if not isinstance(groups, dict):
         return ""
 
-    cards, seen = [], set()
-    for item in offers:
-        if len(cards) >= 6:
-            break
-        if item.get("url") in seen:
-            continue
-        seen.add(item.get("url"))
-        if not isinstance(item, dict):
-            continue
+    status = data.get("toilet_ply_supply") or {}
+    family_status = status.get("families") if isinstance(status, dict) else {}
+    family_status = family_status if isinstance(family_status, dict) else {}
+
+    def offer_card(item, label):
         unit = comparison_unit("toilet-paper", item)
-        if not unit or unit[0] != "ダブル10m":
-            # Current UX has single as primary whenever it exists. Never claim
-            # a secondary item is double based solely on its search query.
-            continue
-        try:
-            price = int(item["price"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        name = html.escape(clean_display_name(item.get("name", "")))
-        href = html.escape(str(item.get("url", "")), quote=True)
-        shop = html.escape(str(item.get("shop", "")))
+        details = toilet_ply_length(item)
+        if not unit or unit[0] != label + "10m" or not details:
+            return ""
+        name = html.escape(clean_display_name(item["name"]))
+        url = html.escape(item["url"], quote=True)
+        price = int(item["price"])
+        length = details[1]
+        length_label = f"{length:g}m／ロール"
         quantity = html.escape(quantity_label(item))
+        shop = html.escape(str(item.get("shop", "") or "販売店の表記なし"))
         code = html.escape(str(item.get("item_code", "")), quote=True)
-        cards.append(
-            '<article class="toilet-double-card">'
-            f'<h3>{name}</h3>'
-            f'<p class="toilet-double-unit">¥{unit[1]:.2f}／ダブル10m</p>'
-            f'<p>{quantity} ・ 支払総額 ¥{price:,}（送料込み）</p>'
-            f'<p>ショップ：{shop}</p>'
-            f'<a href="{href}" target="_blank" rel="nofollow sponsored noopener" '
-            f'data-category-id="toilet-paper" data-conversion-source="category" '
-            f'data-item-code="{code}">楽天でダブルの商品を確認する</a>'
-            '<p class="toilet-double-fine">価格・在庫・地域別送料は楽天市場で最終確認</p>'
-            '</article>'
+        image_url = str(item.get("image") or "")
+        image_host = urlsplit(image_url).hostname or ""
+        photo = (
+            f'<img src="{html.escape(image_url, quote=True)}" alt="" loading="lazy" '
+            'width="90" height="90">'
+            if image_url.startswith("https://") and
+            (image_host == "rakuten.co.jp" or image_host.endswith(".rakuten.co.jp"))
+            else '<span aria-hidden="true">🧻</span>'
         )
-    if not cards:
-        return ""
-    query = urllib.parse.quote("トイレットペーパー ダブル")
+        return (
+            '<article class="toilet-ply-card">'
+            f'<div class="toilet-ply-photo">{photo}</div>'
+            '<div class="toilet-ply-card-body">'
+            f'<h4>{name}</h4>'
+            f'<strong class="toilet-ply-price">¥{unit[1]:.2f}／{label}10m</strong>'
+            f'<p class="toilet-ply-facts">{quantity} ・ {length_label}</p>'
+            f'<p class="toilet-ply-total">支払総額 ¥{price:,}（送料込み）</p>'
+            f'<p class="toilet-ply-shop">{shop}</p>'
+            f'<a class="toilet-ply-buy buy-button" href="{url}" target="_blank" '
+            'rel="nofollow sponsored noopener" data-conversion-source="category" '
+            f'data-category-id="toilet-paper" data-id="{code}" '
+            f'data-product-name="{name}" data-shipping-price="{price}" '
+            f'data-unit-price-label="¥{unit[1]:.2f}／{label}10m">'
+            f'楽天で{label}の商品を確認する</a>'
+            '</div></article>'
+        )
+
+    blocks = []
+    for key, label in (("single", "シングル"), ("double", "ダブル")):
+        raw = groups.get(key, [])
+        if not isinstance(raw, list):
+            raise ValueError("Malformed toilet-paper family")
+        eligible = filter_items("toilet-paper", raw)
+        offers = sorted(
+            (r for r in eligible if (u := comparison_unit("toilet-paper", r))
+             and u[0] == label + "10m"),
+            key=lambda r: (comparison_unit("toilet-paper", r)[1], r["price"],
+                           str(r.get("item_code", ""))),
+        )
+        cards = [offer_card(row, label) for row in offers]
+        cards = [card for card in cards if card]
+        query = urllib.parse.quote("トイレットペーパー " + label)
+        if cards:
+            content = (
+                '<div class="toilet-ply-card-list">' + ''.join(cards[:2]) + '</div>'
+                + (f'<details class="toilet-ply-more"><summary>ほかの{label}候補'
+                   f'{len(cards) - 2}件を表示</summary>'
+                   '<div class="toilet-ply-card-list">' + ''.join(cards[2:]) + '</div>'
+                   '</details>' if len(cards) > 2 else '')
+            )
+        else:
+            details = family_status.get(key) or {}
+            error_note = (
+                "取得が一部失敗しているため、該当商品を確認できませんでした。"
+                if details.get("state") == "INCOMPLETE_ACQUISITION"
+                else "今回の取得データでは、重ね数・長さ・送料を確認できる候補がありません。"
+            )
+            content = '<p class="toilet-ply-empty">' + error_note + '</p>'
+        blocks.append(
+            f'<section class="toilet-ply-group" id="toilet-{key}-offers" '
+            f'aria-labelledby="toilet-{key}-heading">'
+            f'<h3 id="toilet-{key}-heading">{label}の比較候補（{len(cards)}件）</h3>'
+            f'<p class="toilet-ply-desc">{label}同士で10mあたりの価格が安い順。'
+            '送料込みで数量が確定した商品のみです。</p>'
+            + content
+            + f'<a class="toilet-ply-search" href="../../products/?q={query}">'
+            f'{label}を商品名でさらに検索する</a>'
+            '</section>'
+        )
     return (
         '<section class="toilet-ply-compare" aria-labelledby="toilet-ply-heading">'
-        '<h2 id="toilet-ply-heading">シングル・ダブル、どちらを探していますか？</h2>'
+        '<h2 id="toilet-ply-heading">シングル・ダブルを選んで価格比較</h2>'
+        '<p class="toilet-ply-intro">まず種類を選び、10m単価と支払総額を確認。'
+        'シングルとダブルでは紙の重ね数が異なるため、両者の安さを直接順位付けしません。</p>'
         '<nav class="toilet-ply-links" aria-label="トイレットペーパーの種類">'
-        '<a href="#toilet-paper">シングルの比較を見る</a>'
-        '<a class="toilet-ply-double" href="#toilet-double-offers">ダブルの比較を見る</a>'
+        '<a href="#toilet-single-offers">シングルの比較を見る</a>'
+        '<a href="#toilet-double-offers">ダブルの比較を見る</a>'
         '</nav>'
-        '<section id="toilet-double-offers" aria-labelledby="toilet-double-heading">'
-        f'<h3 id="toilet-double-heading">ダブルの比較候補（{len(cards)}件）</h3>'
-        '<p>重ね数と1ロールの長さが確認できた商品だけを、ダブル10m単価の安い順に表示。'
-        'シングルとは順位を混ぜていません。</p>'
-        '<div class="toilet-double-grid">' + ''.join(cards) + '</div>'
-        f'<p><a href="../../products/?q={query}">ダブルを商品名でさらに検索する</a></p>'
-        '</section></section>'
+        '<div class="toilet-ply-groups">' + ''.join(blocks) + '</div>'
+        '<p class="toilet-ply-caution">表示は取得時点の候補で、楽天市場全体の最安値ではありません。'
+        '地域別送料・在庫・クーポンは購入前に楽天で再確認してください。</p>'
+        '</section>'
     )
 
 
@@ -207,13 +246,19 @@ def toilet_ply_availability_note(payload: dict) -> str:
     items = category.get("items") if isinstance(category, dict) else None
     if not isinstance(items, list) or not items:
         return ""
+    groups = category.get("toilet_ply_groups") if isinstance(category, dict) else None
     eligible = set()
-    for item in items + (category.get("toilet_ply_offers") or []):
-        if not isinstance(item, dict):
-            continue
-        unit = comparison_unit("toilet-paper", item)
-        if unit and unit[0] in {"シングル10m", "ダブル10m"}:
-            eligible.add(unit[0])
+    if isinstance(groups, dict):
+        for key, label in (("single", "シングル10m"), ("double", "ダブル10m")):
+            if groups.get(key):
+                eligible.add(label)
+    else:
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            unit = comparison_unit("toilet-paper", item)
+            if unit and unit[0] in {"シングル10m", "ダブル10m"}:
+                eligible.add(unit[0])
     if len(eligible) != 1:
         return ""
     available = "シングル" if "シングル10m" in eligible else "ダブル"
@@ -305,22 +350,35 @@ CSS = """
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
-.toilet-ply-compare{margin:14px 0;padding:14px;border:1px solid #d7c7bb;border-radius:16px;background:#fff;max-width:960px}
-.toilet-ply-compare h2{font-size:17px;line-height:1.5;margin:0 0 11px}
-.toilet-ply-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px}
-.toilet-ply-links a{display:flex;align-items:center;justify-content:center;text-align:center;padding:12px 8px;min-height:48px;border:1px solid #8b7a6b;border-radius:11px;color:#292523;background:#fff;text-decoration:none;font-weight:800;font-size:13px}
-.toilet-ply-links .toilet-ply-double{background:#292523;color:white}
-.toilet-ply-compare #toilet-double-offers{scroll-margin-top:20px}
-.toilet-ply-compare #toilet-double-heading{font-size:16px;margin:5px 0}
-.toilet-ply-compare p{font-size:12px;line-height:1.65}
-.toilet-double-grid{display:grid;grid-template-columns:1fr;gap:9px;margin:12px 0}
-.toilet-double-card{background:#f9f7f5;border:1px solid #ebe1d8;border-radius:12px;padding:12px;overflow-wrap:anywhere}
-.toilet-double-card h3{font-size:13px;line-height:1.6;margin:0 0 7px}
-.toilet-double-card p{margin:5px 0}
-.toilet-double-card .toilet-double-unit{font-size:18px;font-weight:900;color:#9d281f}
-.toilet-double-card a{display:flex;min-height:48px;justify-content:center;align-items:center;padding:10px;border-radius:10px;background:#292523;color:white;text-align:center;text-decoration:none;font-weight:800;font-size:13px}
-.toilet-double-card .toilet-double-fine{font-size:10px;color:#555}
-@media(min-width:760px){.toilet-double-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.toilet-ply-compare{margin:16px 0 18px;padding:16px;border:1px solid #ded7cf;border-radius:16px;background:#fff}
+.toilet-ply-compare h2{font-size:19px;line-height:1.4;margin:0 0 7px}
+.toilet-ply-compare .toilet-ply-intro,.toilet-ply-caution{font-size:13px;line-height:1.75;color:#514b45;margin:5px 0 14px}
+.toilet-ply-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.toilet-ply-links a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;border-radius:12px;background:#242424;color:#fff;text-decoration:none;font-size:13px;font-weight:800;padding:10px 8px}
+.toilet-ply-links a:first-child{background:#fff;color:#242424;border:1px solid #b2a89d}
+.toilet-ply-groups{display:grid;grid-template-columns:1fr;gap:14px}
+.toilet-ply-group{min-width:0;padding:14px;border:1px solid #e2dcd6;background:#faf9f7;border-radius:13px;scroll-margin-top:14px}
+.toilet-ply-group h3{font-size:17px;margin:0 0 4px}
+.toilet-ply-group .toilet-ply-desc{font-size:12px;line-height:1.7;margin:0 0 11px}
+.toilet-ply-card-list{display:grid;grid-template-columns:1fr;gap:9px}
+.toilet-ply-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px;background:white;border:1px solid #e7e0da;border-radius:11px;padding:11px;min-width:0}
+.toilet-ply-photo{width:76px;height:76px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px}
+.toilet-ply-photo img{width:100%;height:100%;object-fit:contain}
+.toilet-ply-photo span{font-size:29px}
+.toilet-ply-card-body{min-width:0;overflow-wrap:anywhere}
+.toilet-ply-card h4{font-size:12px;line-height:1.55;margin:0 0 6px;font-weight:800}
+.toilet-ply-card .toilet-ply-price{display:block;color:#a1271e;font-size:20px;line-height:1.35;margin:4px 0}
+.toilet-ply-card p{font-size:12px;line-height:1.5;margin:5px 0}
+.toilet-ply-card .toilet-ply-shop{color:#605952;font-size:11px}
+.toilet-ply-card a.toilet-ply-buy{display:flex;min-height:48px;align-items:center;justify-content:center;text-align:center;border-radius:10px;background:#242424;color:#fff;text-decoration:none;padding:10px 8px;font-size:13px;font-weight:800;margin-top:8px}
+.toilet-ply-more{margin-top:11px}
+.toilet-ply-more summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#242424;padding:9px 0}
+.toilet-ply-more .toilet-ply-card-list{margin-top:6px}
+.toilet-ply-search{display:inline-flex;align-items:center;min-height:48px;font-size:13px;font-weight:800;text-decoration:underline;color:#272727;padding:8px 0}
+.toilet-ply-empty{font-size:13px;line-height:1.75;color:#545454;padding:12px;background:#fff;border-radius:10px}
+.toilet-ply-caution{margin:14px 0 0;font-size:11px}
+@media(min-width:920px){.toilet-ply-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.toilet-ply-group{padding:16px}}
+@media(max-width:370px){.toilet-ply-card{grid-template-columns:62px minmax(0,1fr);gap:8px}.toilet-ply-photo{width:62px;height:62px}.toilet-ply-compare{padding:12px}.toilet-ply-group{padding:10px}}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
