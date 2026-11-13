@@ -263,14 +263,10 @@ def build_site_improved():
             print(f"{category['name']}: fetch failed: {exc}", file=sys.stderr)
 
         items = filter_items(category["id"], items, quality_report)
-        toilet_alternatives, toilet_primary = [], None
-        if category["id"] == "toilet-paper":
-            from toilet_ply_supply import select_toilet_rankings
-            metric, ranked, toilet_alternatives, toilet_primary = select_toilet_rankings(
-                items, core.choose_ranked_items, filter_items
-            )
-        else:
-            metric, ranked = core.choose_ranked_items(items)
+        # Existing top-12 and its downstream checkout/purpose selectors are
+        # unaffected. Single/double 10m comparisons are a canonical parallel
+        # view built from the *full* strictly validated acquisition pool.
+        metric, ranked = core.choose_ranked_items(items)
         original_count = len(ranked)
         ranked = stable_published_ranking(category["id"], ranked)
         if len(ranked) != original_count:
@@ -289,11 +285,20 @@ def build_site_improved():
             "error": error,
         }
         if category["id"] == "toilet-paper":
-            # Secondary-ply offers are a separate, explicitly evidenced 10m
-            # comparison, not mixed into the primary 1-roll ranking.
-            serializable[category["id"]]["toilet_ply_offers"] = toilet_alternatives
-            quality_report[category["id"]]["toilet_primary_ply"] = toilet_primary
-            quality_report[category["id"]]["toilet_secondary_count"] = len(toilet_alternatives)
+            from toilet_ply_supply import build_toilet_ply_groups, supply_diagnostics
+            grouped = build_toilet_ply_groups(items)
+            diagnostics = supply_diagnostics(
+                grouped, ACQUISITION_REPORT.get(category["id"], {})
+            )
+            serializable[category["id"]]["toilet_ply_groups"] = grouped
+            serializable[category["id"]]["toilet_ply_supply"] = diagnostics
+            quality_report[category["id"]]["toilet_ply_counts"] = {
+                family: len(rows) for family, rows in grouped.items()
+            }
+            quality_report[category["id"]]["toilet_ply_status"] = {
+                family: evidence["state"]
+                for family, evidence in diagnostics["families"].items()
+            }
         if category['id'] in ('tissue', 'toilet-paper', 'laundry') and not error:
             from step5_household_candidates import acquire_household, attach
             pool, household_report = acquire_household(category, ranked, fetch_page,
