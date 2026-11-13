@@ -344,41 +344,14 @@ def faq_section(category_id: str, name: str, label: str) -> str:
 </section>
 """
 
+# The final published layout is fingerprinted from scripts/design/laboratory.css.
+# The generator's temporary inline CSS is stripped by redesign_laboratory.
 CSS = """
 <style id="category-seo-style">
 .category-seo-guide,.category-seo-faq{margin:18px 0;padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff}
 .category-seo-guide h2,.category-seo-faq h2{font-size:18px;line-height:1.4;margin:0 0 9px}
 .category-seo-guide p,.category-seo-guide li,.category-seo-faq p{font-size:12px;line-height:1.75;color:#4b5563}
 .category-seo-guide ul{margin:10px 0 14px;padding-left:20px}.category-search-cta{display:block;padding:12px 14px;border-radius:11px;background:#252525;color:#fff;text-decoration:none;text-align:center;font-size:12px;font-weight:900}
-.toilet-ply-compare{margin:16px 0 18px;padding:16px;border:1px solid #ded7cf;border-radius:16px;background:#fff}
-.toilet-ply-compare h2{font-size:19px;line-height:1.4;margin:0 0 7px}
-.toilet-ply-compare .toilet-ply-intro,.toilet-ply-caution{font-size:13px;line-height:1.75;color:#514b45;margin:5px 0 14px}
-.toilet-ply-links{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.toilet-ply-links a{display:flex;align-items:center;justify-content:center;text-align:center;min-height:52px;border-radius:12px;background:#242424;color:#fff;text-decoration:none;font-size:13px;font-weight:800;padding:10px 8px}
-.toilet-ply-links a:first-child{background:#fff;color:#242424;border:1px solid #b2a89d}
-.toilet-ply-groups{display:grid;grid-template-columns:1fr;gap:14px}
-.toilet-ply-group{min-width:0;padding:14px;border:1px solid #e2dcd6;background:#faf9f7;border-radius:13px;scroll-margin-top:14px}
-.toilet-ply-group h3{font-size:17px;margin:0 0 4px}
-.toilet-ply-group .toilet-ply-desc{font-size:12px;line-height:1.7;margin:0 0 11px}
-.toilet-ply-card-list{display:grid;grid-template-columns:1fr;gap:9px}
-.toilet-ply-card{display:grid;grid-template-columns:76px minmax(0,1fr);gap:10px;background:white;border:1px solid #e7e0da;border-radius:11px;padding:11px;min-width:0}
-.toilet-ply-photo{width:76px;height:76px;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:8px}
-.toilet-ply-photo img{width:100%;height:100%;object-fit:contain}
-.toilet-ply-photo span{font-size:29px}
-.toilet-ply-card-body{min-width:0;overflow-wrap:anywhere}
-.toilet-ply-card h4{font-size:12px;line-height:1.55;margin:0 0 6px;font-weight:800}
-.toilet-ply-card .toilet-ply-price{display:block;color:#a1271e;font-size:20px;line-height:1.35;margin:4px 0}
-.toilet-ply-card p{font-size:12px;line-height:1.5;margin:5px 0}
-.toilet-ply-card .toilet-ply-shop{color:#605952;font-size:11px}
-.toilet-ply-card a.toilet-ply-buy{display:flex;min-height:48px;align-items:center;justify-content:center;text-align:center;border-radius:10px;background:#242424;color:#fff;text-decoration:none;padding:10px 8px;font-size:13px;font-weight:800;margin-top:8px}
-.toilet-ply-more{margin-top:11px}
-.toilet-ply-more summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:13px;font-weight:800;color:#242424;padding:9px 0}
-.toilet-ply-more .toilet-ply-card-list{margin-top:6px}
-.toilet-ply-search{display:inline-flex;align-items:center;min-height:48px;font-size:13px;font-weight:800;text-decoration:underline;color:#272727;padding:8px 0}
-.toilet-ply-empty{font-size:13px;line-height:1.75;color:#545454;padding:12px;background:#fff;border-radius:10px}
-.toilet-ply-caution{margin:14px 0 0;font-size:11px}
-@media(min-width:920px){.toilet-ply-groups{grid-template-columns:repeat(2,minmax(0,1fr))}.toilet-ply-group{padding:16px}}
-@media(max-width:370px){.toilet-ply-card{grid-template-columns:62px minmax(0,1fr);gap:8px}.toilet-ply-photo{width:62px;height:62px}.toilet-ply-compare{padding:12px}.toilet-ply-group{padding:10px}}
 .category-ply-availability{margin:10px 0 0;padding:11px 13px;border-left:3px solid #897665;background:#f7f3ef;font-size:12px;line-height:1.7;color:#484039}.category-ply-availability a{display:inline-block;padding:8px 0;font-weight:800;color:#252525;text-decoration:underline}
 .search-priority-links{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}.search-priority-links strong{font-size:11px}.search-priority-links a{font-size:11px;font-weight:800;color:#252525}.category-seo-faq details{border-top:1px solid var(--line);padding:10px 0}.category-seo-faq details:first-of-type{border-top:0}.category-seo-faq summary{cursor:pointer;font-size:12px;font-weight:800;line-height:1.55}.category-seo-faq p{margin:7px 0 0}
 </style>
