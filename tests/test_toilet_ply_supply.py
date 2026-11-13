@@ -22,16 +22,17 @@ def rank(rows):
 
 
 class ToiletPlySupplyTests(unittest.TestCase):
-    def test_both_ply_types_remain_separate_and_rank_by_10m(self):
-        singles = [item("シングル", 100, 1000, 1), item("シングル", 50, 900, 2)]
-        doubles = [item("ダブル", 30, 900, 3), item("ダブル", 60, 1100, 4)]
+    def test_double_supply_does_not_shrink_the_12_product_ranking(self):
+        singles = [item("シングル", 100, 600 + n, n) for n in range(12)]
+        doubles = [item("ダブル", 30, 900, 20), item("ダブル", 60, 1100, 21)]
         metric, primary, alternate, family = select_toilet_rankings(
             singles + doubles, rank, lambda cid, rows: rows
         )
         self.assertEqual(metric, "roll")
         self.assertEqual(family, "シングル10m")
-        self.assertEqual([r['item_code'] for r in primary], ['shop:2', 'shop:1'])
-        self.assertEqual([r["item_code"] for r in alternate], ["shop:4", "shop:3"])
+        self.assertEqual(len(primary), 12)
+        self.assertEqual([r["item_code"] for r in primary], [r["item_code"] for r in singles])
+        self.assertEqual([r["item_code"] for r in alternate], ["shop:21", "shop:20"])
         self.assertTrue(all(comparison_unit("toilet-paper", r)[0] == "ダブル10m" for r in alternate))
 
     def test_no_invented_double_from_unverified_product(self):
