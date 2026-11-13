@@ -132,12 +132,25 @@ def toilet_ply_compare_panel(payload: dict) -> str:
     data = payload.get("categories", {}).get("toilet-paper", {})
     if not isinstance(data, dict):
         return ""
-    offers = data.get("toilet_ply_offers") or []
+    # The original top-12 catalog is retained. Include any double offers it
+    # already contains, then independently validated double supplements.
+    from comparison_units import comparison_unit
+    offers = (data.get("items") or []) + (data.get("toilet_ply_offers") or [])
+    offers = sorted(
+        (item for item in offers if isinstance(item, dict) and
+         (unit := comparison_unit("toilet-paper", item)) and unit[0] == "ダブル10m"),
+        key=lambda item: (comparison_unit("toilet-paper", item)[1], item["price"]),
+    )
     if not offers:
         return ""
 
-    cards = []
+    cards, seen = [], set()
     for item in offers:
+        if len(cards) >= 6:
+            break
+        if item.get("url") in seen:
+            continue
+        seen.add(item.get("url"))
         if not isinstance(item, dict):
             continue
         unit = comparison_unit("toilet-paper", item)
