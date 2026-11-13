@@ -11,7 +11,7 @@ from sync_trend_search_chips import checked_suggestions
 from product_display import clean_display_name
 from comparison_units import comparison_unit
 from build_freshness import freshness_errors
-from candidate_acquisition import TARGET, MAX_REQUESTS, SUPPLEMENTAL_QUERIES
+from candidate_acquisition import TARGET, MAX_REQUESTS, SUPPLEMENTAL_QUERIES, TOILET_PLY_QUERIES, max_requests_for
 from step4_recommendations import CATEGORIES, select_category, verified_purpose_candidates
 
 
@@ -54,12 +54,12 @@ def validate_acquisition(catalog, report):
             errors.append(f'{cid}: acquisition report differs from catalog')
         if category.get('error') and not items:
             continue  # A failed first request is visible as an empty category.
-        if not requests or len(requests) > MAX_REQUESTS:
+        if not requests or len(requests) > max_requests_for(cid):
             errors.append(f'{cid}: missing/unbounded acquisition evidence')
         baseline = acquisition.get('baseline', {}).get('ranked')
         if baseline is None:
             errors.append(f'{cid}: missing baseline count')
-        elif baseline < TARGET and not any(r.get('supplementary') and r.get('query') in SUPPLEMENTAL_QUERIES.get(cid, ()) for r in requests):
+        elif baseline < TARGET and not any(r.get('supplementary') and r.get('query') in (SUPPLEMENTAL_QUERIES.get(cid, ()) + tuple(q for _, q in TOILET_PLY_QUERIES) if cid == 'toilet-paper' else SUPPLEMENTAL_QUERIES.get(cid, ())) for r in requests):
             errors.append(f'{cid}: supplemental acquisition was skipped')
     return errors
 
@@ -81,34 +81,53 @@ def validate_catalog(payload):
             if item.get('metric') != category.get('metric'):
                 errors.append(f'{category_id}: mixed ranking units')
         accepted[category_id] = {p['url']: p for p in safe}
-        if category_id == 'toilet-paper':
-            extras = category.get('toilet_ply_offers', [])
-            if not isinstance(extras, list) or len(extras) > 6:
-                errors.append('toilet-paper: malformed/unbounded secondary ply offers')
-                extras = []
-            checked = filter_items('toilet-paper', extras)
-            if len(checked) != len(extras):
-                errors.append('toilet-paper: unsafe secondary ply offer')
-            # The main list retains existing validated items; its presentation
-            # already separates 10m prices by explicit ply. Extra links must
-            # always be verified double-ply offers not already in the catalog.
-            seen_extra = set()
-            for row in extras:
-                unit = comparison_unit('toilet-paper', row)
-                url = row.get('url')
-                if not unit or unit[0] not in ('シングル10m', 'ダブル10m'):
-                    errors.append('toilet-paper: secondary offer missing length/ply')
+        if category_id == 'toilet-paper' and 'toilet_ply_groups' in category:
+            from toilet_ply_supply import MAX_PER_PLY, FAMILY_LABELS
+            from candidate_acquisition import identity
+            grouped = category['toilet_ply_groups']
+            if not isinstance(grouped, dict) or set(grouped) != set(FAMILY_LABELS):
+                errors.append('toilet-paper: malformed or missing ply groups')
+                grouped = {}
+            seen = set()
+            for family, label in FAMILY_LABELS.items():
+                rows = grouped.get(family, [])
+                if not isinstance(rows, list) or len(rows) > MAX_PER_PLY:
+                    errors.append(f'toilet-paper: unbounded {family} offers')
                     continue
-                if unit[0] != 'ダブル10m':
-                    errors.append('toilet-paper: additional offer is not double ply')
+                safe_rows = filter_items('toilet-paper', rows)
+                if len(safe_rows) != len(rows):
+                    errors.append(f'toilet-paper: unsafe {family} offers')
+                prices = []
+                for row in rows:
+                    unit = comparison_unit('toilet-paper', row)
+                    if unit is None or unit[0] != label:
+                        errors.append(f'toilet-paper: invalid ply/length for {family}')
+                        continue
+                    prices.append(unit[1])
+                    marker = identity(row)
+                    if marker in seen:
+                        errors.append('toilet-paper: offer duplicated across ply groups')
+                    seen.add(marker)
+                    if row.get('metric') != 'roll' or item_rejection('toilet-paper', row):
+                        errors.append(f'toilet-paper: unsafe or non-roll {family} item')
+                    else:
+                        accepted[category_id][row['url']] = row
+                if prices != sorted(prices):
+                    errors.append(f'toilet-paper: {family} is not sorted by 10m price')
+            diagnostic = category.get('toilet_ply_supply', {}).get('families', {})
+            for family in FAMILY_LABELS:
+                if not isinstance(diagnostic, dict) or not isinstance(diagnostic.get(family), dict):
+                    errors.append(f'toilet-paper: missing {family} acquisition status')
                     continue
-                if not url or url in seen_extra or url in accepted[category_id]:
-                    errors.append('toilet-paper: duplicate secondary offer')
-                    continue
-                if row not in checked:
-                    continue
-                seen_extra.add(url)
-                accepted[category_id][url] = row
+                reported = diagnostic[family]
+                if reported.get('verified') != len(grouped.get(family, [])):
+                    errors.append(f'toilet-paper: {family} reported count differs')
+                expected = 'VERIFIED' if grouped.get(family) else (
+                    'INCOMPLETE_ACQUISITION' if reported.get('search_failed') else
+                    'NO_VERIFIED_SNAPSHOT_OFFER'
+                )
+                if reported.get('state') != expected:
+                    errors.append(f'toilet-paper: {family} status is inconsistent')
         if category_id == 'tissue' and category.get('small_pack_offer') is not None:
             # The extra direct-buy offer must pass the same production safety
             # gate. It may be absent from the bulk top-12, but is not an
@@ -173,6 +192,8 @@ def verified_purpose_links(payload):
 def validate(root=Path('site'), report_path=Path('quality-report.json')):
     payload = json.loads((root / 'data.json').read_text(encoding='utf-8'))
     errors, accepted = validate_catalog(payload)
+    if not isinstance(payload.get('categories', {}).get('toilet-paper', {}).get('toilet_ply_groups'), dict):
+        errors.append('toilet-paper: permanent single/double comparison missing from catalog')
     errors.extend(validate_acquisition(payload, json.loads(report_path.read_text(encoding='utf-8'))))
     today = json.loads((root / 'today/data.json').read_text(encoding='utf-8'))
     social = json.loads((root / 'social/latest.json').read_text(encoding='utf-8'))
