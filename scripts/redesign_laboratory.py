@@ -332,6 +332,9 @@ def main(site=SITE):
     today=json.loads((site/'today/data.json').read_text())
     (site/'assets').mkdir(exist_ok=True)
     (site/'assets/laboratory.css').write_text(Path('scripts/design/laboratory.css').read_text(),encoding='utf-8')
+    # Independent, versioned category stylesheet. The shared laboratory stylesheet
+    # keeps its STEP3 fixed-recipe fingerprint and remains unchanged.
+    (site/'assets/toilet-paper.css').write_text(Path('scripts/design/toilet-paper.css').read_text(encoding='utf-8'),encoding='utf-8')
     (site/'assets/favicon.svg').write_text(Path('scripts/design/favicon.svg').read_text(),encoding='utf-8')
     install_art(site)
     for path in site.rglob('*.html'):
@@ -345,6 +348,14 @@ def main(site=SITE):
         css_version=hashlib.sha256((site/'assets/laboratory.css').read_bytes()).hexdigest()[:12]
         css=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/laboratory.css?v='+css_version)
         css['data-laboratory-design']='v1';soup.head.append(css)
+        if path==site/'categories/toilet-paper/index.html':
+            # This link is injected *after* all pre-redesign inline styles
+            # are removed, so real production pages keep the buyer-facing UI.
+            ply_css=site/'assets/toilet-paper.css'
+            ply_version=hashlib.sha256(ply_css.read_bytes()).hexdigest()[:12]
+            link=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/toilet-paper.css?v='+ply_version)
+            link['data-toilet-ply-design']='v1'
+            soup.head.append(link)
         if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
         soup.main['id']='lab-content'
