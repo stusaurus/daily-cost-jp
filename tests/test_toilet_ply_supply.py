@@ -30,7 +30,7 @@ class ToiletPlySupplyTests(unittest.TestCase):
         )
         self.assertEqual(metric, "roll")
         self.assertEqual(family, "シングル10m")
-        self.assertEqual(primary, singles)
+        self.assertEqual([r['item_code'] for r in primary], ['shop:2', 'shop:1'])
         self.assertEqual([r["item_code"] for r in alternate], ["shop:4", "shop:3"])
         self.assertTrue(all(comparison_unit("toilet-paper", r)[0] == "ダブル10m" for r in alternate))
 
@@ -61,6 +61,20 @@ class ToiletPlySupplyTests(unittest.TestCase):
         )
         check.assert_called_once()
         self.assertEqual(alternate, [])
+
+    def test_html_shows_verified_double_offer_and_real_affiliate_link(self):
+        from improve_category_seo import toilet_ply_compare_panel, toilet_ply_availability_note
+        single = item("シングル", 100, 1000, 1)
+        double = item("ダブル", 60, 1100, 2)
+        data = {"categories": {"toilet-paper": {
+            "items": [single], "toilet_ply_offers": [double],
+        }}}
+        page = toilet_ply_compare_panel(data)
+        self.assertIn("ダブルの比較候補（1件）", page)
+        self.assertIn("¥15.28／ダブル10m", page)
+        self.assertIn('href="https://item.rakuten.co.jp/shop/2/"', page)
+        self.assertIn("シングルの比較を見る", page)
+        self.assertEqual(toilet_ply_availability_note(data), "")
 
     def test_2x_longer_roll_is_not_two_ply(self):
         item_single = item("シングル", 100, 1000, 1)
