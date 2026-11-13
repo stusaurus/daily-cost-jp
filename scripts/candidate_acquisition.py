@@ -32,6 +32,23 @@ SUPPLEMENTAL_QUERIES = {
 TARGET = 5
 MAX_REQUESTS = 5
 
+# A fixed total-count threshold is not sufficient for products sold as two
+# incompatible specifications. These bounded, specification-specific searches
+# run only while that family has fewer than three validated candidates.
+TOILET_PLY_TARGET = 3
+TOILET_PLY_MAX_REQUESTS = 6
+TOILET_PLY_QUERIES = (
+    ("double", "トイレットペーパー ダブル 12ロール"),
+    ("single", "トイレットペーパー シングル 12ロール"),
+    ("double", "トイレットペーパー ダブル 48ロール"),
+    ("single", "トイレットペーパー シングル 48ロール"),
+)
+
+
+def max_requests_for(category_id):
+    return TOILET_PLY_MAX_REQUESTS if category_id == "toilet-paper" else MAX_REQUESTS
+
+
 
 def identity(item):
     if item.get('item_code'):
@@ -49,7 +66,8 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
     """Keep successful pages on optional failures, dedupe and preserve a bounded search budget.
 
     The first two requests mirror the old acquisition, making the same-run
-    baseline measurable. At most three supplemental searches follow. Only the
+    baseline measurable. The toilet-paper family has a separate bounded request
+    budget to cover both specifications. Only the
     original first-page failure is fatal; an optional failed request never
     discards existing safe products. No URL/secrets from exceptions are logged.
     """
@@ -103,25 +121,29 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
         if choose_small_tissue_offer(items) is None:
             append_page(SUPPLEMENTAL_QUERIES['tissue'][0], 1, supplementary=True)
 
-    # A category-wide target of five can be met by single-ply alone.
-    # Always probe bounded double-ply searches until one *verified* offer
-    # exists, even if the first page already filled the ordinary ranking.
     if category['id'] == 'toilet-paper':
         from comparison_units import comparison_unit
-        for query in SUPPLEMENTAL_QUERIES['toilet-paper'][:2]:
-            safe = filter_items('toilet-paper', items)
-            if any((unit := comparison_unit('toilet-paper', row)) and
-                   unit[0] == 'ダブル10m' for row in safe):
-                break
-            if len(requests) >= MAX_REQUESTS:
-                break
-            append_page(query, 1, supplementary=True)
 
-    for query in SUPPLEMENTAL_QUERIES.get(category['id'], ()):
-        if ranked_count() >= TARGET or len(requests) >= MAX_REQUESTS:
-            break
-        if query != category['keyword'] and not any(r['query'] == query and r['page'] == 1 for r in requests):
+        def verified_by_ply():
+            result = {"single": 0, "double": 0}
+            for row in filter_items("toilet-paper", items):
+                unit = comparison_unit("toilet-paper", row)
+                if unit and unit[0] in ("シングル10m", "ダブル10m"):
+                    result["single" if unit[0] == "シングル10m" else "double"] += 1
+            return result
+
+        for family, query in TOILET_PLY_QUERIES:
+            if len(requests) >= max_requests_for(category['id']):
+                break
+            if verified_by_ply()[family] >= TOILET_PLY_TARGET:
+                continue
             append_page(query, 1, supplementary=True)
+    else:
+        for query in SUPPLEMENTAL_QUERIES.get(category['id'], ()):
+            if ranked_count() >= TARGET or len(requests) >= MAX_REQUESTS:
+                break
+            if query != category['keyword'] and not any(r['query'] == query and r['page'] == 1 for r in requests):
+                append_page(query, 1, supplementary=True)
     return items, {'baseline': baseline, 'requests': requests,
                    'received': sum(r.get('received', 0) for r in requests),
                    'duplicates_removed': duplicates, 'unique': len(items),
