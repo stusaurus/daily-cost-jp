@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/six_site_live_release.py'
+      - 'scripts/six_site_choice_browser.cjs'
       - 'tests/test_six_site_live_release.py'
       - '.github/workflows/six-site-live-release.yml'
   workflow_dispatch:
@@ -11,7 +12,7 @@ permissions:
 jobs:
   verify-live-releases:
     runs-on: ubuntu-24.04
-    timeout-minutes: 9
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,13 +20,28 @@ jobs:
           python-version: '3.12'
       - name: Prove live check never confuses conditional inventory and missing deployment
         run: python -m unittest discover -s tests -p 'test_six_site_live_release.py' -v
-      - name: Inspect six sites and eleven exact public HTML/JS endpoints
+      - name: Verify six sites including priced/unpriced food states and baby size controls
         run: python scripts/six_site_live_release.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the existing pinned browser toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-noto-cjk
+          npm install --prefix /tmp/six-site-browser --no-audit --no-fund playwright@1.56.1
+          /tmp/six-site-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Exercise six public choice flows at mobile and desktop widths without tracking
+        env:
+          NODE_PATH: /tmp/six-site-browser/node_modules
+        run: node scripts/six_site_choice_browser.cjs
       - name: Preserve factual public-release evidence even if checks fail
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: six-site-public-release-evidence
-          path: audit-results/six-site-live-release.json
+          path: |
+            audit-results/six-site-live-release.json
+            audit-results/six-site-choice-browser/
           if-no-files-found: warn
           retention-days: 14
