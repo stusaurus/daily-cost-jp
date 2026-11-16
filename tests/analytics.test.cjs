@@ -72,7 +72,7 @@ test('trend search then typed/Enter search resets source only on new results',()
   p.click('a'); assert.equal(p.affiliate()[1][2].conversion_source,'trend');
   p.w.gtag('event','realtime_product_search',{search_term:'tissue'}); p.click('a');
   assert.equal(p.affiliate()[2][2].conversion_source,'product_search');
-  assert.equal(p.affiliate()[2][2].search_term,'tissue');
+  assert.equal(p.affiliate()[2][2].search_term,undefined);
 });
 test('ordinary home navigation does not invent product-search attribution',()=>{
   const p=page('products/', '<a href="../">home</a>'); p.click('a');
@@ -147,7 +147,7 @@ test('actual generated product page: search -> result -> ONE affiliate and ONE l
   const affiliate=events.find(e=>e[1]==='affiliate_click')[2];
   assert.equal(affiliate.conversion_source,'product_search');
   assert.equal(events.find(e=>e[1]==='product_result_click')[2].conversion_source,'product_search');
-  assert.equal(affiliate.search_term,'ティッシュ');
+  assert.equal(affiliate.search_term,undefined);
   assert.equal(affiliate.shipping_included_price,1000);
   assert.deepEqual(errors,[]);
   dom.window.close();
@@ -175,4 +175,31 @@ test('site and environment cannot be overridden by legacy event payloads',()=>{
     assert.equal(data.traffic_environment,url.startsWith(BASE)?'production':'development');
     dom.window.close();
   }
+});
+
+test('raw search terms and query URLs never reach analytics, while source and UTM survive',()=>{
+  const raw='private.person@example.com';
+  const p=page('products/?q='+encodeURIComponent(raw)+'&utm_source=organic_example',
+    '<input id="q"><button id="searchBtn">search</button>'+link('product-result-link'));
+  p.w.gtag('event','realtime_product_search',{search_term:raw,query:raw,result_count:2});
+  p.w.gtag('event','category_search_click',{
+    category_id:'laundry',search_term:raw,
+    destination:'https://stusaurus.github.io/daily-cost-jp/products/?q='+encodeURIComponent(raw)
+  });
+  p.click('a');
+  const ev=p.events.filter(e=>e[0]==='event');
+  for (const [,eventName,data] of ev) {
+    assert.equal(data.search_term,undefined,eventName);
+    assert.equal(data.query,undefined,eventName);
+    assert.equal(JSON.stringify(data).includes(raw),false,eventName);
+    assert.equal(JSON.stringify(data).includes(encodeURIComponent(raw)),false,eventName);
+    assert.ok(data.page_location.includes('utm_source=organic_example'),eventName);
+    assert.equal(new URL(data.page_location).searchParams.has('q'),false,eventName);
+  }
+  assert.equal(p.affiliate()[0][2].conversion_source,'product_search');
+  assert.equal(new URL(ev.find(e=>e[1]==='category_search_click')[2].destination).searchParams.has('q'),false);
+  const context=p.w.dailyCostMeasurementContext();
+  assert.equal(new URL(context.page_location).searchParams.has('q'),false);
+  assert.ok(context.page_location.includes('utm_source=organic_example'));
+  p.w.close();
 });

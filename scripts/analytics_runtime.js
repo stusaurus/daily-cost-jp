@@ -6,6 +6,17 @@
   const TTL = 30 * 60 * 1000;
   const allowed = new Set(['product_search', 'buy_judge', 'top_pick', 'category', 'trend', 'daily_pick', 'ranking', 'same_product_compare', 'product_guide', 'price_guide', 'saved', 'comparison', 'other']);
   const params = new URLSearchParams(location.search);
+  // GA4 must never receive raw text that a visitor typed into a search box.
+  // Strip free-text query values from tracked URLs but keep UTM/campaign tags.
+  const privacySafeUrl = (raw) => {
+    if (!raw) return '';
+    try {
+      const url = new URL(raw, location.href);
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') return '';
+      for (const key of ['q', 'query', 'search_term']) url.searchParams.delete(key);
+      return url.href;
+    } catch (_) { return ''; }
+  };
   let operator = false;
   let persistent = true;
   try { operator = localStorage.getItem(TEST_KEY) === '1'; }
@@ -101,7 +112,8 @@
       data.operator_test = operator ? '1' : '0';
       data.site_id = 'daily-cost-jp';
       data.page_path = location.pathname;
-      data.page_location = name.startsWith('purchase_') ? location.origin + location.pathname : location.href;
+      data.page_location = name.startsWith('purchase_') ? location.origin + location.pathname : privacySafeUrl(location.href);
+      data.page_referrer = privacySafeUrl(data.page_referrer || document.referrer);
       if (name === 'purchase_search_diagnostics') {
         delete data.search_term; delete data.query; delete data.product_name; delete data.product_id; delete data.link_url;
       }
@@ -115,6 +127,12 @@
       if (name === 'realtime_product_search') {
         resultSource = searchSource;
         resultTerm = data.search_term || '';
+      }
+      // Never send free-text search terms, including on affiliate and utility events.
+      delete data.search_term;
+      delete data.query;
+      for (const key of ['destination', 'link_url', 'form_destination']) {
+        if (typeof data[key] === 'string') data[key] = privacySafeUrl(data[key]);
       }
       if (operator) {
         recentEvents.unshift(`${name} | conversion_source=${data.conversion_source || '—'} | operator_test=${data.operator_test}`);
@@ -130,6 +148,8 @@
   window.gtag('set', { operator_test: operator ? '1' : '0' });
   window.dailyCostMeasurementContext = () => ({
     operator_test: operator ? '1' : '0', site_id: 'daily-cost-jp',
+    page_location: privacySafeUrl(location.href),
+    page_referrer: privacySafeUrl(document.referrer),
     traffic_environment: location.hostname === 'stusaurus.github.io' && location.pathname.startsWith(ROOT) ? 'production' : 'development'
   });
   document.addEventListener('DOMContentLoaded', showOperatorStatus, { once: true });
