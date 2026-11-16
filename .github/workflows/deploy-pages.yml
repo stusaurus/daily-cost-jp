@@ -182,8 +182,24 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Japanese fonts for faithful visual checks
-        run: sudo apt-get update -qq && sudo apt-get install -y fonts-noto-cjk
+      - name: Install pinned Japanese fonts for faithful visual checks
+        # The hosted runner's APT sources do not always expose fonts-noto-cjk.
+        # Fetch the official Noto CJK artifacts at a fixed upstream commit instead.
+        env:
+          NOTO_CJK_COMMIT: f8d157532fbfaeda587e826d4cd5b21a49186f7c
+        run: |
+          set -euo pipefail
+          font_dir="$HOME/.local/share/fonts/noto-cjk-qa"
+          mkdir -p "$font_dir"
+          for weight in Regular Bold; do
+            font_file="$font_dir/NotoSansCJKjp-${weight}.otf"
+            curl --fail --location --retry 3 --retry-delay 2 \
+              --output "$font_file" \
+              "https://raw.githubusercontent.com/notofonts/noto-cjk/${NOTO_CJK_COMMIT}/Sans/OTF/Japanese/NotoSansCJKjp-${weight}.otf"
+            test "$(stat -c%s "$font_file")" -gt 10000000
+          done
+          fc-cache -f "$font_dir"
+          fc-list : family | grep -F 'Noto Sans CJK JP'
       - name: Verify live checkout choices in Chromium and WebKit
         run: |
           npm ci --ignore-scripts
