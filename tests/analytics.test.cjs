@@ -201,5 +201,5 @@ test('raw search terms and query URLs never reach analytics, while source and UT
   const context=p.w.dailyCostMeasurementContext();
   assert.equal(new URL(context.page_location).searchParams.has('q'),false);
   assert.ok(context.page_location.includes('utm_source=organic_example'));
-  p.dom.window.close();
+  p.w.close();
 });
