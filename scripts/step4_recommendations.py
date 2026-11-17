@@ -223,7 +223,7 @@ def block(cid, result, name):
                 '<h4>普段使い：少し多めに買って単価を抑える選択肢</h4>'
                 '<p>同じ単位で比較できる別候補です。'
                 f'支払額は¥{extra_payment:,.0f}増えますが、'
-                f'100gあたり¥{r["unit"][1]:,.2f}から¥{value["unit"][1]:,.2f}になります。</p>'
+                f'{esc(value["unit"][0])}あたり¥{r["unit"][1]:,.2f}から¥{value["unit"][1]:,.2f}になります。</p>'
                 f'<p>{esc(clean_display_name(v["name"]))}</p>'
                 f'<p>確認できた数量：{esc(value_qty)}・数量の根拠：'
                 f'{esc(parsed_quantity(cid, v["name"])["evidence"])}</p>'
