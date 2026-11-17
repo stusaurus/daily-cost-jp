@@ -203,3 +203,28 @@ test('raw search terms and query URLs never reach analytics, while source and UT
   assert.ok(context.page_location.includes('utm_source=organic_example'));
   p.w.close();
 });
+
+
+test('approved everyday-value affiliate purpose is attributed without exposing typed searches',()=>{
+  for (const purpose of ['small','everyday','bulk','everyday-value']) {
+    const p=page('categories/laundry/?q=private.person%40example.com',
+      link('buy-button','data-category-id="laundry" data-conversion-source="category" data-purchase-purpose="'+purpose+'" data-shipping-price="2100"'));
+    p.click('a span');
+    assert.equal(p.affiliate().length,1);
+    const evt=p.affiliate()[0][2];
+    assert.equal(evt.purchase_purpose,purpose);
+    assert.equal(evt.conversion_source,'category');
+    assert.equal(evt.category_id,'laundry');
+    assert.equal(evt.shipping_included_price,2100);
+    assert.equal(evt.search_term,undefined);
+    assert.equal(new URL(evt.page_location).searchParams.has('q'),false);
+    p.w.close();
+  }
+  for (const purpose of ['custom-value','everyday-value;private','']) {
+    const p=page('categories/laundry/',link('buy-button','data-purchase-purpose="'+purpose+'"'));
+    p.click('a');
+    assert.equal(p.affiliate().length,1);
+    assert.equal(p.affiliate()[0][2].purchase_purpose,undefined);
+    p.w.close();
+  }
+});
