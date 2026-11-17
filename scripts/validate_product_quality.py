@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 from html.parser import HTMLParser
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -20,6 +21,7 @@ class Links(HTMLParser):
         super().__init__()
         self.external, self.chips = [], []
         self.external_contexts = []
+        self.everyday_value_links = []
         self.display_names, self._name_tag, self._name_parts = [], None, []
 
     def handle_starttag(self, tag, attrs):
@@ -30,6 +32,8 @@ class Links(HTMLParser):
             self.external.append(a['href'])
         if tag == 'a' and ((urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp') or 'data-purchase-purpose' in a):
             self.external_contexts.append((a['href'], a.get('data-category-id'), a.get('data-purchase-purpose')))
+        if tag == 'a' and a.get('data-purchase-purpose') == 'everyday-value':
+            self.everyday_value_links.append(a)
         if tag == 'button' and 'chip' in a.get('class', '').split():
             self.chips.append(a.get('data-q'))
 
@@ -183,10 +187,46 @@ def verified_purpose_links(payload):
     for cid in CATEGORIES:
         category = payload.get('categories', {}).get(cid)
         safe_urls = {r['url'] for r in verified_purpose_candidates(cid, category)}
-        for purpose, row in select_category(cid, category)['slots'].items():
+        selected = select_category(cid, category)
+        for purpose, row in selected['slots'].items():
             if row and row['offer']['url'] in safe_urls:
                 links.add((row['offer']['url'], cid, purpose))
+        # A separate laundry value choice uses the same strict STEP5 pool
+        # and exactly its own approved, fixed-purpose classification.
+        optional = selected.get('everyday_value') if cid == 'laundry' else None
+        if optional and optional['offer']['url'] in safe_urls:
+            links.add((optional['offer']['url'], cid, 'everyday-value'))
     return links
+
+
+def valid_everyday_value_link(attrs, rel, payload):
+    """The extra CTA needs exact SKU, price, category and safe attributes."""
+    if rel not in ('index.html', 'categories/laundry/index.html'):
+        return False
+    if not isinstance(attrs, dict):
+        return False
+    category = payload.get('categories', {}).get('laundry')
+    if not isinstance(category, dict):
+        return False
+    selected = select_category('laundry', category)
+    choice = selected.get('everyday_value')
+    if choice is None:
+        return False
+    offer = choice['offer']
+    if offer['url'] not in {r['url'] for r in verified_purpose_candidates('laundry', category)}:
+        return False
+    if (attrs.get('href') != offer['url'] or
+            attrs.get('data-category-id') != 'laundry' or
+            attrs.get('data-purchase-purpose') != 'everyday-value' or
+            attrs.get('data-conversion-source') != 'category' or
+            attrs.get('data-id') != choice['spec_ref'] or
+            attrs.get('target') != '_blank' or
+            not {'nofollow', 'sponsored', 'noopener'}.issubset(set((attrs.get('rel') or '').split()))):
+        return False
+    try:
+        return Decimal(str(attrs.get('data-shipping-price'))) == Decimal(str(offer['price']))
+    except (InvalidOperation, TypeError, ValueError):
+        return False
 
 
 def validate(root=Path('site'), report_path=Path('quality-report.json')):
@@ -248,6 +288,10 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
                (url, cid, purpose) in purpose_links and (category_scope is None or cid == category_scope))
                for url, cid, purpose in page.external_contexts):
             errors.append(f'{rel}: rendered Rakuten link outside verified selection')
+        if len(page.everyday_value_links) > 1 or any(
+                not valid_everyday_value_link(attrs, rel, payload)
+                for attrs in page.everyday_value_links):
+            errors.append(f'{rel}: everyday value link has unverified identity or price')
     page = Links(); page.feed((root / 'products/index.html').read_text(encoding='utf-8'))
     if page.chips != [query for _, query, _ in checked_suggestions()]:
         errors.append('Search suggestions differ from checked daily-goods examples')

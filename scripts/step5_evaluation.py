@@ -17,19 +17,22 @@ from ga4_three_day_report import check_response
 
 DIMENSIONS=('operator_test','purchase_purpose','diagnostic_status','diagnostic_phase','conversion_source')
 PURPOSES=('small','everyday','bulk')
+# Distinguish the optional extra click in GA4 without changing the three
+# purchase bands, stock selection, or existing payment tradeoff calculations.
+TRACKED_PURPOSES=(*PURPOSES, 'everyday-value')
 
 
 def aggregate_purpose(rows, period, registered):
     start,end=map(dt.date.fromisoformat,period)
     if (end-start).days!=27:raise ValueError('Expected 28-day window')
-    buckets={p:{purpose:{k:0 for k in ('non_operator','operator','unknown')} for purpose in (*PURPOSES,'unspecified')} for p in FOCUS_PAGES}
+    buckets={p:{purpose:{k:0 for k in ('non_operator','operator','unknown')} for purpose in (*TRACKED_PURPOSES,'unspecified')} for p in FOCUS_PAGES}
     daily={};observed=set()
     for day,path,purpose,flag,count in rows:
         date=dt.date.fromisoformat(day)
         if not start<=date<=end or type(count) is not int or count<0:raise ValueError('Invalid metrics')
         path=path_from_location(path)
         if path not in buckets:continue
-        purpose=purpose if purpose in PURPOSES else 'unspecified'
+        purpose=purpose if purpose in TRACKED_PURPOSES else 'unspecified'
         scope='non_operator' if registered.get('operator_test') and flag=='0' else 'operator' if registered.get('operator_test') and flag=='1' else 'unknown'
         buckets[path][purpose][scope]+=count
         daily.setdefault(day,{k:0 for k in ('non_operator','operator','unknown')})[scope]+=count

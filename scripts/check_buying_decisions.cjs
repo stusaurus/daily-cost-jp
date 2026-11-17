@@ -31,6 +31,24 @@ function observedChoices(cid){
     if(final)choices.push({id:card.id,url:link.href,price:Number(link.dataset.shippingPrice),
       value:Number(final[1].replaceAll(',','')),unit:'／'+final[2]});
   }
+  // The optional laundry value option is nested inside the everyday card.
+  // Observe its actual rendered price, unit and merchant link independently:
+  // the summary is only valid if the target is a visible, verifiable choice.
+  if(cid==='laundry'){
+    for(const card of document.querySelectorAll(
+      '.step4-recommendations[data-step4-category="laundry"] .step4-value-choice'
+    )){
+      const link=card.querySelector('a.buy-button');
+      const shown=card.textContent.match(/(100g|100ml)あたり¥[0-9,.]+から¥([0-9,.]+)になります/);
+      if(link&&shown)choices.push({
+        id:card.id,
+        url:link.href,
+        price:Number(link.dataset.shippingPrice),
+        unit:'／'+shown[1],
+        value:Number(shown[2].replaceAll(',',''))
+      });
+    }
+  }
   return choices;
 }
 
