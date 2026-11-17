@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from test_step4_purchase_audit import offer, snapshot
 from step4_recommendations import select_category, block, apply
 from buying_decision_summary import render
+from validate_product_quality import Links, verified_purpose_links, valid_everyday_value_link
 
 
 def catalog():
@@ -122,6 +123,34 @@ class LaundryEverydayValueChoiceTests(unittest.TestCase):
             self.assertNotIn("item.rakuten.co.jp", public)
             self.assertNotIn("shop:value", public)
             self.assertNotIn("アタック 洗濯洗剤", public)
+
+    def test_step5_publish_allowlist_checks_exact_extra_link_and_forgery(self):
+        source = catalog()
+        payload = {"categories": {"laundry": source}}
+        choice = select_category("laundry", source)["everyday_value"]
+        self.assertIn(
+            (choice["offer"]["url"], "laundry", "everyday-value"),
+            verified_purpose_links(payload)
+        )
+        parsed = Links()
+        parsed.feed(block("laundry", select_category("laundry", source), "洗濯洗剤"))
+        self.assertEqual(len(parsed.everyday_value_links), 1)
+        attrs = parsed.everyday_value_links[0]
+        self.assertTrue(valid_everyday_value_link(attrs, "index.html", payload))
+        self.assertTrue(valid_everyday_value_link(attrs, "categories/laundry/index.html", payload))
+        self.assertFalse(valid_everyday_value_link(attrs, "categories/tissue/index.html", payload))
+        for key, bad in (
+            ("href", "https://item.rakuten.co.jp/shop/wrong/"),
+            ("data-category-id", "tissue"),
+            ("data-id", "wrong-spec"),
+            ("data-shipping-price", "1"),
+            ("data-conversion-source", "other"),
+            ("rel", "noopener"),
+            ("target", "_self"),
+        ):
+            with self.subTest(key=key):
+                self.assertFalse(valid_everyday_value_link({**attrs, key: bad}, "index.html", payload))
+        self.assertFalse(valid_everyday_value_link(attrs, "index.html", {"categories": {"laundry": {"items": []}}}))
 
     def test_volume_metric_never_mislabels_100ml_as_100g(self):
         source = catalog()
