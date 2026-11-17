@@ -114,7 +114,8 @@ def select_category(cid, category):
     rows = category.get('items')
     if not isinstance(rows, list) or len(rows) > 100 or any(not isinstance(r, dict) for r in rows): return result
     candidates = filter_items(cid, rows)
-    candidates += verified_purpose_candidates(cid, category)
+    verified_supplements = verified_purpose_candidates(cid, category)
+    candidates += verified_supplements
     extra = category.get('small_pack_offer') if cid == 'tissue' else None
     if isinstance(extra, dict):
         candidates += filter_items(cid, [extra])
@@ -166,9 +167,13 @@ def select_category(cid, category):
     if cid == 'laundry' and result['slots']['everyday']:
         everyday = result['slots']['everyday']
         chosen = {row['spec_ref'] for row in result['slots'].values() if row}
+        # Only authorize a secondary CTA from the strictly vetted household
+        # acquisition pool; a ranked-only item has not passed this extra gate.
+        eligible_urls = {offer['url'] for offer in verified_supplements}
         alternatives = [
             row for row in groups['everyday']
             if row['spec_ref'] not in chosen
+            and row['offer']['url'] in eligible_urls
             and row['unit'][0] == everyday['unit'][0]
             and row['quantity'] != everyday['quantity']
             and everyday['offer']['price'] < row['offer']['price'] <= everyday['offer']['price'] * 1.5
