@@ -123,6 +123,18 @@ class LaundryEverydayValueChoiceTests(unittest.TestCase):
             self.assertNotIn("shop:value", public)
             self.assertNotIn("アタック 洗濯洗剤", public)
 
+    def test_volume_metric_never_mislabels_100ml_as_100g(self):
+        source = catalog()
+        for row in source["items"] + source["purpose_candidates"]:
+            row["metric"] = "100ml"
+            row["name"] = row["name"].replace("g×", "ml×").replace("g", "ml")
+        result = select_category("laundry", source)
+        self.assertEqual(result["everyday_value"]["unit"][0], "100ml")
+        html = block("laundry", result, "洗濯洗剤")
+        entry = BeautifulSoup(html, "html.parser").select_one("#laundry-purpose-everyday-value")
+        self.assertIn("100mlあたり", entry.get_text())
+        self.assertNotIn("100gあたり", entry.get_text())
+
     def test_non_laundry_categories_keep_three_purpose_slots_only(self):
         tissue = {"items": [offer("tissue", 60, "box", 70, "bulk",
                                  title="ボックスティッシュ 200組 5箱×12パック")]}
