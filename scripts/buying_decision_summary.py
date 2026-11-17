@@ -28,11 +28,12 @@ def published_purpose_offers(doc, category, cid):
         return []
     selected = select_category(cid, category)
     result = []
-    for purpose, row in selected['slots'].items():
-        if row is None:
-            continue
+    choices = [(purpose, row) for purpose, row in selected['slots'].items() if row]
+    if cid == 'laundry' and selected.get('everyday_value'):
+        choices.append(('everyday-value', selected['everyday_value']))
+    for purpose, row in choices:
         anchor = f'{cid}-purpose-{purpose}'
-        card = section.select_one(f'article.step4-purpose[id="{anchor}"][data-purpose="{purpose}"]')
+        card = section.select_one(f'[id="{anchor}"][data-purpose="{purpose}"]')
         link = card.select_one('a.buy-button') if card else None
         offer = row['offer']
         if (link is None or offer.get('postage') != '送料込み' or
