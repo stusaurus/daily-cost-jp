@@ -14,7 +14,7 @@ from urllib.parse import urlsplit, parse_qs, unquote
 from step4_purchase_audit import verify_snapshot, BANDS
 from product_quality import filter_items, parsed_quantity
 from sale_quantity import normalize
-from comparison_units import comparison_unit, LABELS
+from comparison_units import comparison_unit, LABELS, quantity_label
 from product_display import clean_display_name
 
 VERSION = 'purchase-purpose-v1'
