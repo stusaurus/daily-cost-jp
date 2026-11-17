@@ -159,6 +159,25 @@ def select_category(cid, category):
             break
     result['status'] = 'SELECTED' if seen else 'NO_VERIFIED_CANDIDATES'
     result['reasons'] += ['NO_' + p.upper() + '_CANDIDATE' for p,r in result['slots'].items() if r is None]
+    # Keep the original three purpose choices unchanged. For laundry only,
+    # optionally expose an independently verified everyday-size trade-off:
+    # pay at most 50% more up front for at least 10% less per comparable unit.
+    # Do not promote arbitrary rows just because they appear in the STEP5 pool.
+    if cid == 'laundry' and result['slots']['everyday']:
+        everyday = result['slots']['everyday']
+        chosen = {row['spec_ref'] for row in result['slots'].values() if row}
+        alternatives = [
+            row for row in groups['everyday']
+            if row['spec_ref'] not in chosen
+            and row['unit'][0] == everyday['unit'][0]
+            and row['quantity'] != everyday['quantity']
+            and everyday['offer']['price'] < row['offer']['price'] <= everyday['offer']['price'] * 1.5
+            and row['unit'][1] <= everyday['unit'][1] * .9
+        ]
+        if alternatives:
+            result['everyday_value'] = min(
+                alternatives, key=lambda row: (row['unit'][1], row['offer']['price'],
+                                               row['spec_ref'], row['offer']['item_code']))
     return result
 
 
@@ -194,6 +213,28 @@ def block(cid, result, name):
                        f'<p>¥{p["unit_price"]:,.2f}／{esc(unit_label)}{normalized}</p>'
                        f'<p class="step4-reason">{esc(label)}：' + ('この数量区分の確認済み候補から同じ比較単位の単価を重視。保管場所もご確認ください。' if purpose=='bulk' else 'この数量区分の確認済み候補から支払総額を重視。用途・ブランドもご確認ください。') + '</p>'
                        f'<a class="buy-button" href="{esc(p["url"])}" target="_blank" rel="nofollow sponsored noopener" data-conversion-source="category" data-category-id="{cid}" data-id="{esc(r["spec_ref"])}" data-purchase-purpose="{purpose}" data-shipping-price="{p["price"]}">楽天でこの商品を確認する ↗</a>')
+        if cid == 'laundry' and purpose == 'everyday' and r is not None and result.get('everyday_value'):
+            value = result['everyday_value']
+            v = value['offer']
+            value_qty = quantity_label(v)
+            extra_payment = v['price'] - r['offer']['price']
+            content += (
+                '<div class="step4-value-choice" id="laundry-purpose-everyday-value" data-purpose="everyday-value">'
+                '<h4>普段使い：少し多めに買って単価を抑える選択肢</h4>'
+                '<p>同じ単位で比較できる別候補です。'
+                f'支払額は¥{extra_payment:,.0f}増えますが、'
+                f'100gあたり¥{r["unit"][1]:,.2f}から¥{value["unit"][1]:,.2f}になります。</p>'
+                f'<p>{esc(clean_display_name(v["name"]))}</p>'
+                f'<p>確認できた数量：{esc(value_qty)}・数量の根拠：'
+                f'{esc(parsed_quantity(cid, v["name"])["evidence"])}</p>'
+                f'<p>支払総額 ¥{v["price"]:,.0f}（送料込み）／ショップ：{esc(v.get("shop") or "不明")}</p>'
+                f'<a class="buy-button" href="{esc(v["url"])}" target="_blank" '
+                'rel="nofollow sponsored noopener" data-conversion-source="category" '
+                f'data-category-id="{cid}" data-id="{esc(value["spec_ref"])}" '
+                f'data-purchase-purpose="everyday-value" data-shipping-price="{v["price"]}">'
+                '楽天でこの商品の条件を確認する ↗</a>'
+                '</div>'
+            )
         parts.append(f'<article class="step4-purpose" id="{cid}-purpose-{purpose}" data-purpose="{purpose}"><h3>{label}</h3>{content}</article>')
     return (f'<section class="step4-recommendations" data-step4-category="{cid}" aria-label="{esc(name)}の購入目的別候補"><h2>{esc(name)}：買う量から選ぶ</h2>'
             '<p>単価ランキングとは別の選び方です。数量区分は家庭での扱いやすさの目安です。</p><div class="step4-grid">' + ''.join(parts) + '</div>'
@@ -201,7 +242,7 @@ def block(cid, result, name):
             '<p class="step4-caution">価格・在庫・地域別送料は変動します。購入前に楽天で最新の条件を確認してください。</p></section>')
 
 
-CSS = '''.step4-home-purpose{margin:12px 0;border:1px solid #dfcdbf;border-radius:12px;background:#fffaf6}.step4-home-purpose>summary{min-height:44px;padding:14px 16px;font-size:16px;font-weight:700;cursor:pointer}.step4-home-purpose .step4-recommendations{border:0;margin:0}.step4-recommendations{margin:24px 0;padding:20px;border:1px solid #dfcdbf;border-radius:14px;background:#fffaf6;color:#342f2c}.step4-recommendations h2{font-size:20px;margin:0 0 12px}.step4-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.step4-purpose{min-width:0;padding:12px;background:#fff;border-radius:10px;overflow-wrap:anywhere}.step4-purpose h3{font-size:16px;margin:0 0 10px}.step4-purpose h4{font-size:14px;line-height:1.6}.step4-purpose p{font-size:13px;line-height:1.7}.step4-purpose img{object-fit:contain;max-width:100%}.step4-recommendations a{display:inline-flex;align-items:center;min-height:44px;padding:8px 4px;max-width:100%;white-space:normal}.step4-purpose .buy-button{font-size:13px}.step4-caution{font-size:12px;color:#5f5650}.step4-recommendations a:focus-visible{outline:3px solid #22663a;outline-offset:3px}@media(max-width:650px){.step4-grid{grid-template-columns:1fr}.step4-recommendations{padding:16px}}'''
+CSS = '''.step4-value-choice{margin-top:12px;padding-top:12px;border-top:1px solid #ddccbd}.step4-value-choice h4{font-size:14px;margin:0 0 6px}.step4-home-purpose{margin:12px 0;border:1px solid #dfcdbf;border-radius:12px;background:#fffaf6}.step4-home-purpose>summary{min-height:44px;padding:14px 16px;font-size:16px;font-weight:700;cursor:pointer}.step4-home-purpose .step4-recommendations{border:0;margin:0}.step4-recommendations{margin:24px 0;padding:20px;border:1px solid #dfcdbf;border-radius:14px;background:#fffaf6;color:#342f2c}.step4-recommendations h2{font-size:20px;margin:0 0 12px}.step4-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.step4-purpose{min-width:0;padding:12px;background:#fff;border-radius:10px;overflow-wrap:anywhere}.step4-purpose h3{font-size:16px;margin:0 0 10px}.step4-purpose h4{font-size:14px;line-height:1.6}.step4-purpose p{font-size:13px;line-height:1.7}.step4-purpose img{object-fit:contain;max-width:100%}.step4-recommendations a{display:inline-flex;align-items:center;min-height:44px;padding:8px 4px;max-width:100%;white-space:normal}.step4-purpose .buy-button{font-size:13px}.step4-caution{font-size:12px;color:#5f5650}.step4-recommendations a:focus-visible{outline:3px solid #22663a;outline-offset:3px}@media(max-width:650px){.step4-grid{grid-template-columns:1fr}.step4-recommendations{padding:16px}}'''
 
 
 def apply(site=Path('site'), *, enabled=False):
@@ -209,7 +250,27 @@ def apply(site=Path('site'), *, enabled=False):
     report = select(snapshot)
     report['display_enabled'] = bool(enabled)
     # Public state contains anonymous evidence only, never raw search terms.
-    public = {**report, 'categories': {cid:{**r,'slots': {p: ({k:v for k,v in row.items() if k!='offer'} | {'price_total_yen':row['offer']['price'], 'offer_ref':hashlib.sha256(row['offer']['item_code'].encode()).hexdigest()[:20]}) if row else None for p,row in r['slots'].items()}} for cid,r in report['categories'].items()}}
+    # Strip seller URLs, raw item codes and product titles from the public QA
+    # report, including optional secondary offers (also present in data.json).
+    def anonymize(row):
+        if row is None:
+            return None
+        return ({k: v for k, v in row.items() if k != 'offer'} |
+                {'price_total_yen': row['offer']['price'],
+                 'offer_ref': hashlib.sha256(row['offer']['item_code'].encode()).hexdigest()[:20]})
+
+    public = {
+        **report,
+        'categories': {
+            cid: {
+                **{k: v for k, v in r.items() if k not in ('slots', 'everyday_value')},
+                'slots': {p: anonymize(row) for p, row in r['slots'].items()},
+                **({'everyday_value': anonymize(r['everyday_value'])}
+                   if r.get('everyday_value') else {}),
+            }
+            for cid, r in report['categories'].items()
+        },
+    }
     (site/'purchase-recommendations.json').write_text(json.dumps(public,ensure_ascii=False,indent=2))
     if not enabled or report['status'] != 'TRUSTED_RECENT': return report
     paths = [site/'index.html'] + [site/'categories'/cid/'index.html' for cid in CATEGORIES]
