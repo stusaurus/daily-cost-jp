@@ -39,7 +39,7 @@ function observedChoices(cid){
       '.step4-recommendations[data-step4-category="laundry"] .step4-value-choice'
     )){
       const link=card.querySelector('a.buy-button');
-      const shown=card.textContent.match(/(100g|100ml)あたり¥[\\d,.]+から¥([\\d,.]+)になります/);
+      const shown=card.textContent.match(/(100g|100ml)あたり¥[0-9,.]+から¥([0-9,.]+)になります/);
       if(link&&shown)choices.push({
         id:card.id,
         url:link.href,
