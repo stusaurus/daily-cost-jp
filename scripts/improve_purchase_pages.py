@@ -138,12 +138,17 @@ def price_answer(category_id, data):
         unit = comparison_unit(category_id, item)
         if unit:
             groups.setdefault(unit[0], []).append((unit[1], rank, item))
+    # This statistic is calculated from the ranking rows only.  The laundry
+    # page also presents separately verified STEP4/STEP5 buying choices which
+    # may have a lower unit price, so identify the scope explicitly.
+    ranking_scope = ('下の「今日の安い順ランキング」内の' if category_id == 'laundry'
+                     else '掲載候補の')
     parts = []
     for label, rows in groups.items():
         value, rank, item = min(rows, key=lambda row: row[0])
         median = statistics.median(row[0] for row in rows)
         parts.append(f'<div class="search-price-group{ " answer-pick" if not parts else "" }"><h3>{esc(label)}で比較</h3>'
-                     f'<p><strong>掲載候補の最低単価 {money(value)}／{esc(label)}</strong><br>'
+                     f'<p><strong>{ranking_scope}最低単価 {money(value)}／{esc(label)}</strong><br>'
                      f'中央値 {money(median)}／{esc(label)}（{len(rows)}候補）</p>'
                      f'<p>この条件の掲載候補では、{money(median)}／{esc(label)}未満が中央値より安い目安です。'
                      '銘柄・素材・用途も確認してください。</p>'
@@ -157,6 +162,12 @@ def price_answer(category_id, data):
                      f'href="{esc(item["url"])}" target="_blank" rel="nofollow sponsored noopener">'
                      '楽天でこの商品の価格・送料を確認</a></div>')
     overview = ''.join(parts) or '<p>同じ条件で比較できる候補がありません。商品検索で内容量と送料を確認してください。</p>'
+    if category_id == 'laundry' and parts:
+        overview += (
+            '<p class="purchase-note">※上記の最低単価と中央値は下の「今日の安い順ランキング」に'
+            '掲載する商品の集計です。ページ上部の「買う量から選ぶ」に表示される別候補は'
+            '含めていません。</p>'
+        )
     overview += '<p class="purchase-note">取得時点の掲載候補だけを集計しています。市場全体の最安値・相場ではありません。クーポン・ポイント還元は含みません。地域別送料、在庫、必要な量は購入前に確認してください。</p>'
     answers = {
         'laundry': ('洗濯洗剤はどこが安い？今日の比較価格', '同じ銘柄・タイプなら、店頭の税込価格を容量で割り、下の楽天送料込み単価と比べると買い先を選べます。濃縮度が違う洗剤同士は100g単価だけで決めず、1回使用量もそろえてください。'),
