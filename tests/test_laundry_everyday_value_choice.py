@@ -96,6 +96,21 @@ class LaundryEverydayValueChoiceTests(unittest.TestCase):
                 rendered = block("laundry", result, "洗濯洗剤")
                 self.assertNotIn("laundry-purpose-everyday-value", rendered)
 
+    def test_rank_only_low_unit_offer_cannot_be_unverified_extra_cta(self):
+        source = catalog()
+        ranked_extra = offer("laundry", 25.5, "100g", unit_price=60.0,
+                             suffix="rank_only", title="アタック 洗濯洗剤 2550g")
+        ranked_extra["price"] = 1530
+        ranked_extra["shop"] = "テスト販売店"
+        source["items"].append(ranked_extra)
+        result = select_category("laundry", source)
+        # The ranked-only offer can be seen in the regular ranking but is not
+        # automatically authorized as an extra STEP5 acquisition link.
+        self.assertEqual(result["everyday_value"]["offer"]["item_code"], "shop:value")
+        source["purpose_candidates"] = source["purpose_candidates"][:2]
+        result_without_pool = select_category("laundry", source)
+        self.assertNotIn("everyday_value", result_without_pool)
+
     def test_no_candidate_from_unpublished_markup_enters_decision(self):
         source = catalog()
         html = ranked_html(source)
