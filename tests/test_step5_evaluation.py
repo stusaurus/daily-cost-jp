@@ -31,6 +31,26 @@ class EvaluationTests(unittest.TestCase):
         self.assertEqual(r['counts']['/products/']['bulk']['unknown'],2)
         self.assertFalse(r['real_users_verified']);self.assertNotIn('private',json.dumps(r));self.assertNotIn('evil',json.dumps(r))
 
+    def test_everyday_value_is_its_own_approved_ga4_bucket(self):
+        self.assertEqual(e.PURPOSES, ('small', 'everyday', 'bulk'))
+        self.assertIn('everyday-value', e.TRACKED_PURPOSES)
+        rows = [
+            ('2026-10-08','https://stusaurus.github.io/daily-cost-jp/categories/laundry/',
+             'everyday-value','0',3),
+            ('2026-10-08','https://stusaurus.github.io/daily-cost-jp/categories/laundry/',
+             'everyday','1',2),
+            ('2026-10-08','https://stusaurus.github.io/daily-cost-jp/categories/laundry/',
+             'unapproved;pii','0',100),
+        ]
+        r = e.aggregate_purpose(rows, ['2026-09-12','2026-10-09'],
+                                {'purchase_purpose':True,'operator_test':True})
+        counts = r['counts']['/categories/laundry/']
+        self.assertEqual(counts['everyday-value']['non_operator'],3)
+        self.assertEqual(counts['everyday']['operator'],2)
+        self.assertEqual(counts['unspecified']['non_operator'],100)
+        self.assertNotIn('unapproved;pii', json.dumps(r, ensure_ascii=False))
+        self.assertFalse(r['real_users_verified'])
+
     def test_equal_seven_windows_and_invalid_count(self):
         r=e.aggregate_purpose([('2026-10-01','https://stusaurus.github.io/daily-cost-jp/','small','0',2),('2026-10-08','https://stusaurus.github.io/daily-cost-jp/','small','0',3)],['2026-09-12','2026-10-09'],{'purchase_purpose':True,'operator_test':True})
         self.assertEqual(r['seven_day_windows']['last_7']['clicks']['non_operator'],3)
