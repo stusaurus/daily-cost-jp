@@ -1,0 +1,30 @@
+name: One-time paper comparison X experiment
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type PUBLISH_PAPER_EXPERIMENT to publish; anything else is dry-run'
+        required: true
+        default: DRY_RUN
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: paper-x-experiment-20261118
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check script syntax
+        run: python -m py_compile scripts/post_paper_experiment.py
+      - name: Run once through existing Buffer integration
+        env:
+          BUFFER_API_KEY: ${{ secrets.BUFFER_API_KEY }}
+          BUFFER_CHANNEL_NAME: nichiyo_cost
+          PAPER_X_CONFIRM: ${{ inputs.confirm }}
+        run: python scripts/post_paper_experiment.py
