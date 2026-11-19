@@ -149,11 +149,11 @@ ADDITIONAL_CATEGORIES = [
     },
     {
         "id": "kitchen-paper",
-        "name": "キッチンペーパー（シート型）",
+        "name": "キッチンペーパー",
         "emoji": "🍳",
-        "keyword": "クッキングペーパー シート 100枚",
+        "keyword": "キッチンペーパー 80枚 2ロール",
         "kind": "count",
-        "allowed_units": {"枚": "sheet"},
+        "allowed_units": {"枚": "sheet", "カット": "sheet"},
     },
     {
         "id": "sink-net",
