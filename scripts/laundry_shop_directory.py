@@ -14,18 +14,24 @@ from bs4 import BeautifulSoup
 
 MARKER = '<!-- laundry-shop-directory-v1 -->'
 STYLE = '''<style id="laundry-shop-directory-css">
-.laundry-shop-directory{margin:14px 0 18px;padding:18px;border:1px solid #d8ddd9;border-radius:14px;background:#f8faf9}
+.laundry-shop-directory{margin:14px 0 18px;padding:18px;border:1px solid #d8ddd9;border-radius:14px;background:#fafbfa}
 .laundry-shop-directory h2{font-size:20px;line-height:1.45;margin:0 0 8px}
 .laundry-shop-directory .shop-directory-note{font-size:13px;line-height:1.75;margin:8px 0 14px}
 .laundry-shop-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0;padding:0;list-style:none}
-.laundry-shop-item{background:#fff;border:1px solid #dfe4df;border-radius:11px;padding:12px;min-width:0}
-.laundry-shop-item h3{font-size:15px;line-height:1.45;overflow-wrap:anywhere;margin:0 0 4px}
-.laundry-shop-item p{font-size:12px;line-height:1.55;margin:2px 0 8px;color:#514d4b}
-.laundry-shop-item ul{margin:0;padding:0;list-style:none}
-.laundry-shop-item li+li{margin-top:7px;border-top:1px solid #eee;padding-top:7px}
-.laundry-shop-item a{display:block;padding:5px 0;color:#175840;font-weight:750;line-height:1.5;overflow-wrap:anywhere;text-underline-offset:2px}
-.laundry-shop-item a:focus-visible{outline:3px solid #166f81;outline-offset:2px;border-radius:4px}
-.laundry-shop-item small{display:block;font-size:12px;color:#5d5854;line-height:1.5}
+.laundry-shop-item{min-width:0}
+.laundry-shop-item details{background:#fff;border:1px solid #dfe4df;border-radius:11px;overflow:hidden}
+.laundry-shop-item summary{display:flex;align-items:center;gap:10px;padding:12px;cursor:pointer;min-height:54px;list-style:none;line-height:1.5}
+.laundry-shop-item summary::-webkit-details-marker{display:none}
+.laundry-shop-item summary strong{font-size:14px;overflow-wrap:anywhere;flex:1}
+.laundry-shop-item summary small{font-size:11px;color:#625b53;white-space:nowrap}
+.laundry-shop-item summary::after{content:"＋";font-size:18px;color:#4b6154}
+.laundry-shop-item details[open] summary::after{content:"－"}
+.laundry-shop-item summary:focus-visible,.laundry-shop-item a:focus-visible{outline:3px solid #166f81;outline-offset:2px;border-radius:4px}
+.laundry-shop-item ul{margin:0;padding:0 12px;list-style:none}
+.laundry-shop-item li{border-top:1px solid #ededeb;padding:10px 0}
+.laundry-shop-item li+li{margin-top:0}
+.laundry-shop-item a{display:block;color:#175840;font-size:13px;font-weight:700;line-height:1.55;overflow-wrap:anywhere;text-underline-offset:2px}
+.laundry-shop-item li small{display:block;font-size:12px;color:#5d5854;line-height:1.5;margin-top:4px}
 @media(max-width:600px){.laundry-shop-directory{padding:12px}.laundry-shop-list{grid-template-columns:1fr}}
 </style>'''
 
@@ -87,8 +93,9 @@ def render(groups):
                 + format(entry['price'], ',.0f') + ' ／ 100gあたり ¥'
                 + format(entry['unit'], ',.2f') + '</small></li>'
             )
-        blocks.append('<li class="laundry-shop-item"><h3>' + escape(shop) + '</h3><p>掲載商品 '
-                      + str(len(entries)) + '件</p><ul>' + ''.join(rows) + '</ul></li>')
+        blocks.append('<li class="laundry-shop-item"><details><summary><strong>'
+                      + escape(shop) + '</strong><small>掲載' + str(len(entries))
+                      + '商品</small></summary><ul>' + ''.join(rows) + '</ul></details></li>')
     return (MARKER + '<section class="laundry-shop-directory" id="laundry-shop-directory" aria-labelledby="laundry-shop-directory-title">'
             '<h2 id="laundry-shop-directory-title">掲載ショップ別に洗濯洗剤を探す</h2>'
             f'<p class="shop-directory-note">楽天で送料込み価格を確認できた掲載{count}商品の、{len(groups)}ショップ別の一覧です。'
