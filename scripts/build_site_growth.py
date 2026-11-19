@@ -132,6 +132,37 @@ ADDITIONAL_CATEGORIES = [
         "kind": "count",
         "allowed_units": {"枚": "sheet"},
     },
+    {
+        "id": "toothpaste",
+        "name": "歯磨き粉",
+        "emoji": "🦷",
+        "keyword": "歯磨き粉 100g",
+        "kind": "measure",
+    },
+    {
+        "id": "wet-wipes",
+        "name": "除菌ウェットティッシュ",
+        "emoji": "🧻",
+        "keyword": "除菌 ウェットティッシュ 80枚",
+        "kind": "count",
+        "allowed_units": {"枚": "sheet"},
+    },
+    {
+        "id": "kitchen-paper",
+        "name": "キッチンペーパー（シート型）",
+        "emoji": "🍳",
+        "keyword": "クッキングペーパー シート 100枚",
+        "kind": "count",
+        "allowed_units": {"枚": "sheet"},
+    },
+    {
+        "id": "sink-net",
+        "name": "排水口ネット（キッチン用）",
+        "emoji": "🧽",
+        "keyword": "キッチン 排水口 ネット 100枚",
+        "kind": "count",
+        "allowed_units": {"枚": "sheet"},
+    },
 ]
 
 existing_ids = {category["id"] for category in core.CATEGORIES}
@@ -141,7 +172,7 @@ core.CATEGORIES.extend(
 core.METRIC_LABELS.update({"sheet": "1枚", "piece": "1本"})
 
 
-# All 21 category rules live in product_quality.py. No downstream override.
+# Every category's inclusion/exclusion rules live in product_quality.py.
 
 GROWTH_CSS = r"""
     .category-pages-block { margin: 18px 0 24px; }
