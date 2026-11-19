@@ -136,6 +136,34 @@ class NewCategorySafetyTests(unittest.TestCase):
             'selectable_type_variant')
 
 
+    def test_explicit_nested_kitchen_paper_packages_count_all_sheets(self):
+        for name,total in [
+            ('リード クッキングペーパー 100枚×2ロ−ル×8袋 1 ケース キッチンペーパー',1600),
+            ('フジ キッチンペーパー 100枚×2ロール×10袋／ケース 不織布',2000),
+            ('花王 シェフ キッチンペーパー 100枚×2ロール×6 ケース販売',1200),
+            ('キッチンペーパー NEO 1箱 80枚×2ロール×10袋',1600),
+        ]:
+            with self.subTest(name=name):
+                self.assertTrue(q.category_is_suitable('kitchen-paper', name))
+                parsed=q.parsed_quantity('kitchen-paper',name)
+                self.assertIsNotNone(parsed)
+                self.assertEqual(parsed['metric'],'sheet')
+                self.assertEqual(parsed['quantity'],total)
+                row={'name':name,'price':4000,'unit_price':4000/total,'metric':'sheet',
+                     'confidence':.99,'postage':'送料込み',
+                     'url':'https://item.rakuten.co.jp/example/paper/'}
+                self.assertIsNone(q.item_rejection('kitchen-paper',row))
+        for title in [
+            'キッチンペーパー80枚×2ロール×6',
+            'キッチンペーパー80枚×2ロール 6袋入',
+            'キッチンペーパー80枚×2ロール×6袋×2ケース',
+            'キッチンペーパー80枚×2ロール×6袋 50枚入り',
+            'キッチンペーパー80枚×2ロール×6袋 2ロールおまけ',
+        ]:
+            with self.subTest(title=title):
+                self.assertFalse(q.category_is_suitable('kitchen-paper',title)
+                                 and q.parsed_quantity('kitchen-paper',title) is not None)
+
     def test_kitchen_paper_retail_context_is_not_mistaken_for_accessory(self):
         # Seller descriptions may mention nonwoven paper or storage use;
         # neither identifies the item as a cloth or a storage container.
