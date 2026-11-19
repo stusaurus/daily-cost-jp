@@ -30,7 +30,15 @@ SUPPLEMENTAL_QUERIES = {
     'floor-sheet': ('フローリング ウェットシート 20枚', 'クイックルワイパー 取り替え シート', 'フローリング ドライシート 30枚'),
 }
 TARGET = 5
+# The laundry search entry can display up to 12 verified offers, but the
+# acquisition loop previously stopped after five. Expand only this category;
+# retain the same bounded five-request budget and all existing safety gates.
+LAUNDRY_TARGET = 12
 MAX_REQUESTS = 5
+
+
+def target_for(category_id):
+    return LAUNDRY_TARGET if category_id == 'laundry' else TARGET
 
 # A fixed total-count threshold is not sufficient for products sold as two
 # incompatible specifications. These bounded, specification-specific searches
@@ -74,6 +82,8 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
     items, seen, requests = [], set(), []
     duplicates = 0
 
+    target = target_for(category['id'])
+
     def ranked_count():
         return len(choose_ranked(filter_items(category['id'], items))[1])
 
@@ -104,7 +114,7 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
         record['ranked_total'] = ranked_count()
 
     append_page(category['keyword'], 1)
-    if ranked_count() < TARGET:
+    if ranked_count() < target:
         append_page(category['keyword'], 2)
     baseline = {}
     filter_items(category['id'], items, baseline)
@@ -140,7 +150,7 @@ def acquire(category, fetch_page, normalize_item, choose_ranked, sleep):
             append_page(query, 1, supplementary=True)
     else:
         for query in SUPPLEMENTAL_QUERIES.get(category['id'], ()):
-            if ranked_count() >= TARGET or len(requests) >= MAX_REQUESTS:
+            if ranked_count() >= target or len(requests) >= MAX_REQUESTS:
                 break
             if query != category['keyword'] and not any(r['query'] == query and r['page'] == 1 for r in requests):
                 append_page(query, 1, supplementary=True)
