@@ -71,7 +71,26 @@ class NewCategorySafetyTests(unittest.TestCase):
         # Either reject reason protects against inventing a total sheet count.
         self.assertIsNotNone(
             q.category_rejection('wet-wipes','除菌ウェットティッシュ 80枚x3ケース'))
-        self.assertFalse(q.category_is_suitable('kitchen-paper','キッチンペーパー80枚x3巻'))
+        self.assertFalse(q.category_is_suitable('kitchen-paper','キッチンペーパー80枚 3巻'))
+
+    def test_kitchen_paper_rolls_require_proven_sheet_total(self):
+        for name,total in [
+            ('キッチンペーパー80枚x2ロール',160),
+            ('クッキングペーパー100カットx2ロール',200),
+            ('キッチンタオル80枚x3巻',240),
+        ]:
+            with self.subTest(name=name):
+                self.assertTrue(q.category_is_suitable('kitchen-paper',name),name)
+                parsed=q.parsed_quantity('kitchen-paper',name)
+                self.assertEqual(parsed['metric'],'sheet')
+                self.assertEqual(parsed['quantity'],total)
+        for name in [
+            'キッチンペーパー80枚 2ロール',
+            'キッチンペーパー100カット 3ロール',
+            'キッチンペーパー80枚x2ロールx10袋'
+        ]:
+            with self.subTest(name=name):
+                self.assertFalse(q.category_is_suitable('kitchen-paper',name),name)
 
     def test_rolls_other_uses_and_accessories_rejected(self):
         for cid,bad in [
