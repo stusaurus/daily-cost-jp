@@ -70,7 +70,7 @@ EXCLUDED = {
     'floor-sheet': r'ワイパー本体|モップ本体|ホルダー|収納|フロアタイル|床材|置くだけ|置き敷き|接着剤|大理石|石目|床\s*タイル|補修|ワックスシート',
     'toothpaste': r'歯ブラシ|ハブラシ|替えブラシ|歯間ブラシ|マウスウォッシュ|洗口液|デンタルリンス|携帯容器|チューブホルダー|詰め替え容器|犬用|猫用|ペット用|歯磨きシート',
     'wet-wipes': r'おしりふき|お尻拭き|手口ふき|赤ちゃん|ベビー|ペット|犬用|猫用|フローリング|床|トイレ|便座|キッチン用|台所用|浴室|クリーナー本体|ケース|詰替用ケース|タオル本体',
-    'kitchen-paper': r'ロール|カット|巻|クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|収納|布|フキン|ふきん|台ふき|専用容器|ケース',
+    'kitchen-paper': r'クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|収納|布|フキン|ふきん|台ふき|専用容器|ケース',
     'sink-net': r'排水口(?:カゴ|かご|カバー|ふた|フタ|蓋)|ゴミ受け本体|ごみ受け本体|ストレーナー本体|ブラシ|パイプクリーナー|洗剤|浴室|お風呂|洗面|洗濯機|トイレ|三角コーナー本体|ケース|収納',
 }
 
@@ -83,7 +83,7 @@ COUNT_UNITS = {
     'paper-towel': {'枚': 'sheet'}, 'garbage-bag-45l': {'枚': 'sheet'},
     'mask': {'枚': 'sheet'}, 'toothbrush': {'本': 'piece'}, 'cotton-swab': {'本': 'piece'},
     'floor-sheet': {'枚': 'sheet'},
-    'wet-wipes': {'枚': 'sheet'}, 'kitchen-paper': {'枚': 'sheet'},
+    'wet-wipes': {'枚': 'sheet'}, 'kitchen-paper': {'枚': 'sheet', 'カット': 'sheet'},
     'sink-net': {'枚': 'sheet'},
 }
 
@@ -136,17 +136,25 @@ def category_rejection(category_id, title):
     # Titles such as "80枚 3パック" are not 80 sheets total. Without a
     # multiplication sign, reject rather than invent an incorrect unit price.
     if category_id in ('wet-wipes', 'kitchen-paper', 'sink-net'):
-        has_explicit_sheet_count = bool(re.search(r'\d+\s*枚', text))
+        sheet_term = r'(?:枚|カット)' if category_id == 'kitchen-paper' else r'枚'
+        has_explicit_sheet_count = bool(re.search(rf'\d+\s*{sheet_term}', text))
         outer_packs = re.findall(r'(?<!\d)(?:[2-9]|[1-9]\d+)\s*(?:袋|パック|個|セット|p\b|ケース)', text)
-        # Exact multiplication 80枚 x 3袋 is supported by the shared parser.
-        # "80枚 x 3P", two nested packs, and 80枚 3パック are NOT.
+        # 80枚 x 3袋 and 100カット x 2ロール are countable. But
+        # "80枚 x 3P", two nested packs and "80枚 3パック" are not.
         has_proven_multiplier = bool(re.search(
-            r'\d+\s*枚(?:入|入り)?\s*x\s*\d+(?:袋|パック|個|セット)?(?![\da-z])', text, re.I))
+            rf'\d+\s*{sheet_term}(?:入|入り)?\s*x\s*\d+(?:ロール|巻|袋|パック|個|セット)?(?![\da-z])', text, re.I))
         if not has_explicit_sheet_count:
             return 'missing_sheet_count'
         if (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
                 or re.search(r'\d+\s*ケース', text)):
             return 'multiple_unverified_pack_levels'
+        if (category_id == 'kitchen-paper'
+                and re.search(r'\d+\s*(?:ロール|巻)', text)):
+            # Each roll's stated sheets must have an explicit multiplication.
+            if not re.search(r'\d+\s*(?:枚|カット)\s*x\s*\d+\s*(?:ロール|巻)', text):
+                return 'roll_sheet_count_unconfirmed'
+            if outer_packs:
+                return 'multiple_unverified_pack_levels'
         if outer_packs and not has_proven_multiplier:
             return 'package_multiplier_unconfirmed'
     # A mass-based dentifrice page must not rank millilitres as grams.
