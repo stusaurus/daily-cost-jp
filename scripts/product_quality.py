@@ -70,7 +70,7 @@ EXCLUDED = {
     'floor-sheet': r'ワイパー本体|モップ本体|ホルダー|収納|フロアタイル|床材|置くだけ|置き敷き|接着剤|大理石|石目|床\s*タイル|補修|ワックスシート',
     'toothpaste': r'歯ブラシ|ハブラシ|替えブラシ|歯間ブラシ|マウスウォッシュ|洗口液|デンタルリンス|携帯容器|チューブホルダー|詰め替え容器|犬用|猫用|ペット用|歯磨きシート',
     'wet-wipes': r'おしりふき|お尻拭き|手口ふき|赤ちゃん|ベビー|ペット|犬用|猫用|フローリング|床|トイレ|便座|キッチン用|台所用|浴室|クリーナー本体|ケース|詰替用ケース|タオル本体',
-    'kitchen-paper': r'ロール|カット|クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|収納|布|フキン|ふきん|台ふき|専用容器|ケース',
+    'kitchen-paper': r'ロール|カット|巻|クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|収納|布|フキン|ふきん|台ふき|専用容器|ケース',
     'sink-net': r'排水口(?:カゴ|かご|カバー|ふた|フタ|蓋)|ゴミ受け本体|ごみ受け本体|ストレーナー本体|ブラシ|パイプクリーナー|洗剤|浴室|お風呂|洗面|洗濯機|トイレ|三角コーナー本体|ケース|収納',
 }
 
@@ -137,11 +137,17 @@ def category_rejection(category_id, title):
     # multiplication sign, reject rather than invent an incorrect unit price.
     if category_id in ('wet-wipes', 'kitchen-paper', 'sink-net'):
         has_explicit_sheet_count = bool(re.search(r'\d+\s*枚', text))
-        has_separate_outer_pack = bool(re.search(r'(?<!\d)(?:[2-9]|[1-9]\d+)\s*(?:袋|パック|個|セット)', text))
-        has_proven_multiplier = bool(re.search(r'\d+\s*枚(?:入|入り)?\s*x\s*\d+', text, re.I))
+        outer_packs = re.findall(r'(?<!\d)(?:[2-9]|[1-9]\d+)\s*(?:袋|パック|個|セット|p\b|ケース)', text)
+        # Exact multiplication 80枚 x 3袋 is supported by the shared parser.
+        # "80枚 x 3P", two nested packs, and 80枚 3パック are NOT.
+        has_proven_multiplier = bool(re.search(
+            r'\d+\s*枚(?:入|入り)?\s*x\s*\d+(?:袋|パック|個|セット)?(?![\da-z])', text, re.I))
         if not has_explicit_sheet_count:
             return 'missing_sheet_count'
-        if has_separate_outer_pack and not has_proven_multiplier:
+        if (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
+                or re.search(r'\d+\s*ケース', text)):
+            return 'multiple_unverified_pack_levels'
+        if outer_packs and not has_proven_multiplier:
             return 'package_multiplier_unconfirmed'
     # A mass-based dentifrice page must not rank millilitres as grams.
     evidence=all(re.search(group,text,re.I) for group in REQUIRED[category_id])
