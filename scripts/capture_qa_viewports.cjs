@@ -70,7 +70,15 @@ async function capture(){
       throw Error('Laundry normal-visitor layout/anchor regression '+width+' '+JSON.stringify(normal));
      await page.screenshot({path:`qa-viewports/${width}-laundry-normal-visitor-viewport.png`});
      await page.locator('a[href="#laundry"]:visible').first().click();
-     await page.waitForFunction(()=>location.hash==='#laundry');
+     // Hash changes before animated scrolling settles. Wait for the actual target
+     // to enter the viewport; this still fails if the site never scrolls.
+     await page.waitForFunction(()=>{
+      if(location.hash!=='#laundry')return false;
+      const target=document.querySelector('#laundry');
+      if(!target)return false;
+      const rect=target.getBoundingClientRect();
+      return rect.bottom>0 && rect.top<innerHeight;
+     },null,{timeout:10000});
      const anchor=await page.evaluate(()=>{
       const rect=document.querySelector('#laundry').getBoundingClientRect();
       return {hash:location.hash,top:rect.top,bottom:rect.bottom,viewportHeight:innerHeight};
