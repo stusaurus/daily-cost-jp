@@ -119,6 +119,9 @@ class NewCategorySafetyTests(unittest.TestCase):
                 self.assertEqual(q.category_rejection('sink-net',name),'wrong_use_or_type')
         self.assertTrue(q.category_is_suitable(
             'sink-net','台所 排水口 水切りネット 100枚入り'))
+        self.assertTrue(q.category_is_suitable(
+            'sink-net','水切りネット 浅型 排水口用 100枚入り'))
+
 
     def test_wet_wipe_selectable_type_is_not_fixed(self):
         self.assertFalse(q.category_is_suitable(
@@ -128,6 +131,10 @@ class NewCategorySafetyTests(unittest.TestCase):
             'selectable_type_variant')
         self.assertTrue(q.category_is_suitable(
             'wet-wipes','ノンアルコール 除菌ウェットティッシュ 80枚'))
+        self.assertEqual(q.category_rejection(
+            'wet-wipes','除菌ウェットティッシュ 480枚 WTS-60N WTS-60A'),
+            'selectable_type_variant')
+
 
     def test_quality_requires_matching_price_shipping_and_metric(self):
         goods=[
