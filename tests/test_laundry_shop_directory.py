@@ -39,6 +39,8 @@ class LaundryShopDirectoryTests(unittest.TestCase):
         output = render(groups)
         parsed = BeautifulSoup(output, 'html.parser')
         self.assertEqual(len(parsed.select('.laundry-shop-item')), 3)
+        self.assertEqual(len(parsed.select('.laundry-shop-item details')), 3)
+        self.assertEqual(len(parsed.select('.laundry-shop-item summary')), 3)
         self.assertEqual(len(parsed.select('a[href^="#laundry-rank-"]')), 3)
         self.assertFalse(any(link.get('href', '').startswith('https://') for link in parsed.select('a')))
         self.assertIn('異なる商品を比べた「安い店ランキング」ではありません', output)
