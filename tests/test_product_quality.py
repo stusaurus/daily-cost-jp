@@ -66,6 +66,26 @@ class ProductQualityTests(unittest.TestCase):
             self.assertEqual(quality.category_rejection('garbage-bag-45l', f'ゴミ袋45L100枚【{label}】'), 'restricted_purchase')
         self.assertTrue(quality.category_is_suitable('garbage-bag-45l', '業務用 ゴミ袋45L100枚'))
 
+    def test_laundry_attackzero_three_types_are_not_one_fixed_quantity(self):
+        # Iris Plaza's six-pack listing offers regular, indoor-dry and drum
+        # varieties; their capacities are not identical (1460g/1540g).
+        # A ranking must not silently select 1460g for all three.
+        ambiguous = '【6個セット】アタックZERO 詰替え用 1460g レギュラー 部屋干し ドラム式専用 洗濯洗剤'
+        self.assertEqual(quality.category_rejection('laundry', ambiguous),
+                         'selectable_type_variant')
+        self.assertFalse(quality.category_is_suitable('laundry', ambiguous))
+        valid = [
+            'アタックZERO 部屋干し 詰め替え 1460g×6個',
+            'アタックZERO レギュラー 詰め替え 1540g×6個',
+            'アタックZERO ドラム式専用 詰め替え 1540g×6個',
+        ]
+        for title in valid:
+            with self.subTest(title=title):
+                self.assertTrue(quality.category_is_suitable('laundry', title), title)
+        # One category's variation labels must never reject another category.
+        self.assertIsNone(quality.category_rejection('toilet-paper',
+            'トイレットペーパー レギュラー 部屋干し ドラム式専用 12ロール'))
+
     def test_no_false_negative_for_safe_bulk_cases_and_negative_claims(self):
         for cid,title in [('softener','柔軟剤1350ml×6袋 1ケース'),
                           ('laundry','洗濯洗剤 無漂白剤 1.3kg×4袋（詰替容器スプーンなし）'),
