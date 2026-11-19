@@ -1,6 +1,8 @@
 name: Capture natural desktop and mobile viewports
 on:
   workflow_dispatch:
+  pull_request:
+    paths: ['scripts/capture_qa_viewports.cjs', '.github/workflows/capture-qa-viewports.yml']
   push:
     branches: [main]
     paths: ['scripts/capture_qa_viewports.cjs', '.github/workflows/capture-qa-viewports.yml']
