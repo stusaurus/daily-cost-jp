@@ -158,7 +158,8 @@ def category_rejection(category_id, title):
         if outer_packs and not has_proven_multiplier:
             return 'package_multiplier_unconfirmed'
     if category_id == 'wet-wipes' and (
-            re.search(r'(?:アルコール|ノンアルコール)\s*(?:or|/|・|または|選べる|\|)\s*(?:ノンアルコール|アルコール)', text, re.I)
+            (re.search(r'ノンアルコール', text)
+             and re.search(r'(?<!ノン)アルコール', text))
             or (re.search(r'wts[- ]?60n', text, re.I)
                 and re.search(r'wts[- ]?60a', text, re.I))):
         # A selectable alcohol formula cannot be bound to a fixed offer.
