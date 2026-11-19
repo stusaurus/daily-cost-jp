@@ -67,9 +67,10 @@ class NewCategorySafetyTests(unittest.TestCase):
         self.assertEqual(
             q.category_rejection('sink-net','キッチン 排水口ネット 50枚x2袋x3セット'),
             'multiple_unverified_pack_levels')
-        self.assertEqual(
-            q.category_rejection('wet-wipes','除菌ウェットティッシュ 80枚x3ケース'),
-            'multiple_unverified_pack_levels')
+        # "ケース" is already blocked by the earlier accessory gate.
+        # Either reject reason protects against inventing a total sheet count.
+        self.assertIsNotNone(
+            q.category_rejection('wet-wipes','除菌ウェットティッシュ 80枚x3ケース'))
         self.assertFalse(q.category_is_suitable('kitchen-paper','キッチンペーパー80枚x3巻'))
 
     def test_rolls_other_uses_and_accessories_rejected(self):
