@@ -107,7 +107,7 @@ def category_rejection(category_id, title):
     # currently observed Iris Plaza six-pack offers exactly this choice;
     # quantities can differ between selected types (1460g vs 1540g).
     # A title alone cannot bind the stated price to a specific type/capacity.
-    if (category_id == 'laundry' and re.search(r'アタック\\s*zero', text, re.I)
+    if (category_id == 'laundry' and re.search(r'アタック\s*zero', text, re.I)
             and all(token in text for token in ('レギュラー', '部屋干し', 'ドラム式専用'))):
         return 'selectable_type_variant'
     if re.search(r'ふるさと納税|返礼品', text):
