@@ -60,6 +60,18 @@ class NewCategorySafetyTests(unittest.TestCase):
             with self.subTest(cid=cid):
                 self.assertEqual(q.category_rejection(cid,title),'package_multiplier_unconfirmed')
 
+    def test_shorthand_nested_packs_and_rolled_sheets_fail_closed(self):
+        self.assertEqual(
+            q.category_rejection('wet-wipes','除菌ウェットティッシュ 80枚x3P'),
+            'package_multiplier_unconfirmed')
+        self.assertEqual(
+            q.category_rejection('sink-net','キッチン 排水口ネット 50枚x2袋x3セット'),
+            'multiple_unverified_pack_levels')
+        self.assertEqual(
+            q.category_rejection('wet-wipes','除菌ウェットティッシュ 80枚x3ケース'),
+            'multiple_unverified_pack_levels')
+        self.assertFalse(q.category_is_suitable('kitchen-paper','キッチンペーパー80枚x3巻'))
+
     def test_rolls_other_uses_and_accessories_rejected(self):
         for cid,bad in [
             ('wet-wipes','トイレ用 除菌ウェットティッシュ80枚'),
