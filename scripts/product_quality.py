@@ -71,7 +71,7 @@ EXCLUDED = {
     'toothpaste': r'歯ブラシ|ハブラシ|替えブラシ|歯間ブラシ|マウスウォッシュ|洗口液|デンタルリンス|携帯容器|チューブホルダー|詰め替え容器|犬用|猫用|ペット用|歯磨きシート',
     'wet-wipes': r'おしりふき|お尻拭き|手口ふき|赤ちゃん|ベビー|ペット|犬用|猫用|フローリング|床|トイレ|便座|キッチン用|台所用|浴室|クリーナー本体|ケース|詰替用ケース|タオル本体',
     'kitchen-paper': r'クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|収納|布|フキン|ふきん|台ふき|専用容器|ケース',
-    'sink-net': r'排水口(?:カゴ|かご|カバー|ふた|フタ|蓋)|ゴミ受け本体|ごみ受け本体|ストレーナー本体|ブラシ|パイプクリーナー|洗剤|浴室|お風呂|洗面|洗濯機|トイレ|三角コーナー本体|ケース|収納',
+    'sink-net': r'排水口(?:カゴ|かご|カバー|ふた|フタ|蓋)|ネット(?:用)?ホルダー|ホルダー|スタンド|バスケット|ゴミ受け|ごみ受け|水切り(?:かご|カゴ|ラック|器)|ステンレス鋼|吸盤|排水口フィルターホルダー|ストレーナー本体|ブラシ|パイプクリーナー|洗剤|浴室|お風呂|洗面|洗濯機|トイレ|三角コーナー本体|ケース|収納',
 }
 
 # "ケース販売" is a legitimate bulk package, unlike a case/empty container.
@@ -157,6 +157,10 @@ def category_rejection(category_id, title):
                 return 'multiple_unverified_pack_levels'
         if outer_packs and not has_proven_multiplier:
             return 'package_multiplier_unconfirmed'
+    if category_id == 'wet-wipes' and re.search(
+            r'(?:アルコール|ノンアルコール)\s*(?:or|/|・|または|選べる|\|)\s*(?:ノンアルコール|アルコール)', text, re.I):
+        # A selectable alcohol formula cannot be bound to a fixed offer.
+        return 'selectable_type_variant'
     # A mass-based dentifrice page must not rank millilitres as grams.
     evidence=all(re.search(group,text,re.I) for group in REQUIRED[category_id])
     if category_id=='tissue' and not evidence:
