@@ -51,6 +51,47 @@ async function capture(){
     await page.locator('#back-to-top').click();await page.waitForFunction(()=>scrollY===0);
     await page.locator('#back-to-top').waitFor({state:'hidden'});
     report.last_context=await page.evaluate(()=>({unitText:document.querySelector('#judge-unit')?.textContent,unitHTML:document.querySelector('#judge-unit')?.outerHTML,selected:document.querySelector('#judge-category')?.value,measurementContext:typeof window.dailyCostMeasurementContext}));
+    // Normal visitor regression: operator-test screenshots do not represent organic users.
+    // Never follow affiliate destinations; only exercise the in-page ranking anchor.
+    if(route==='/categories/laundry/' && (width===320 || width===390)){
+     await page.goto(SITE+route.slice(1)+'?test=0',{waitUntil:'networkidle'});
+     await page.evaluate(()=>document.fonts.ready);
+     const normal=await page.evaluate(()=>{
+      const banner=document.querySelector('[data-operator-test],#operator-test-banner,.operator-test-banner');
+      const main=document.querySelector('main');
+      const target=document.querySelector('#laundry');
+      const jump=[...document.querySelectorAll('a[href="#laundry"]')].find(a=>a.getClientRects().length>0);
+      return {documentWidth:document.documentElement.scrollWidth,viewportWidth:innerWidth,
+       bannerVisible:!!banner && banner.getClientRects().length>0,
+       mainExists:!!main,rankingExists:!!target,jumpExists:!!jump,
+       jumpText:jump?.textContent?.trim()||''};
+     });
+     if(normal.documentWidth!==width || !normal.mainExists || !normal.rankingExists || !normal.jumpExists)
+      throw Error('Laundry normal-visitor layout/anchor regression '+width+' '+JSON.stringify(normal));
+     await page.screenshot({path:`qa-viewports/${width}-laundry-normal-visitor-viewport.png`});
+     await page.locator('a[href="#laundry"]:visible').first().click();
+     // Hash changes before animated scrolling settles. Wait for the actual target
+     // to enter the viewport; this still fails if the site never scrolls.
+     await page.waitForFunction(()=>{
+      if(location.hash!=='#laundry')return false;
+      const target=document.querySelector('#laundry');
+      if(!target)return false;
+      const rect=target.getBoundingClientRect();
+      // Require the ranking heading to settle near the viewport top,
+      // not merely touch the bottom edge during smooth scrolling.
+      return rect.bottom>0 && rect.top>=-160 && rect.top<=240;
+     },null,{timeout:10000});
+     const anchor=await page.evaluate(()=>{
+      const rect=document.querySelector('#laundry').getBoundingClientRect();
+      return {hash:location.hash,top:rect.top,bottom:rect.bottom,viewportHeight:innerHeight};
+     });
+     if(anchor.bottom<=0 || anchor.top>240 || anchor.top< -160)
+      throw Error('Laundry ranking anchor not settled near viewport top '+width+' '+JSON.stringify(anchor));
+     await page.screenshot({path:`qa-viewports/${width}-laundry-normal-visitor-ranking-after-link.png`});
+     checks.push({width,route,mode:'normal-visitor',...normal,anchor,status:'PASS'});
+     // Restore the operator-test context for existing test-only interactions.
+     await page.goto(SITE+route.slice(1)+'?test=1',{waitUntil:'networkidle'});
+    }
     const operations=await interactions(page,route);
     checks.push({width,route,...initial,operations,status:'PASS',clickReturnsToTop:true});
   }finally{await context.close();}
