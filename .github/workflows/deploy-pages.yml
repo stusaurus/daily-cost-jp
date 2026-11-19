@@ -20,6 +20,8 @@ on:
       - "scripts/art_direction.py"
       - "scripts/design/**"
       - "scripts/build_pipeline.py"
+      - "scripts/tissue_five_box_choices.py"
+      - "tests/test_tissue_five_box_choices.py"
       - "scripts/laundry_shop_directory.py"
       - "tests/test_laundry_shop_directory.py"
       - "scripts/build_freshness.py"
