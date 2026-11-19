@@ -102,6 +102,14 @@ def category_rejection(category_id, title):
         return 'missing_title'
     if ambiguous_quantity(text):
         return 'selectable_quantity'
+    # Some Attack ZERO offers omit a literal 'choose a type' warning while
+    # enumerating three mutually exclusive formulas in one listing. The
+    # currently observed Iris Plaza six-pack offers exactly this choice;
+    # quantities can differ between selected types (1460g vs 1540g).
+    # A title alone cannot bind the stated price to a specific type/capacity.
+    if (category_id == 'laundry' and re.search(r'アタック\\s*zero', text, re.I)
+            and all(token in text for token in ('レギュラー', '部屋干し', 'ドラム式専用'))):
+        return 'selectable_type_variant'
     if re.search(r'ふるさと納税|返礼品', text):
         return 'donation'
     if re.search(r'法人(?:様)?(?:限定|専用)|個人宅(?:配送|配達)?不可', text):
