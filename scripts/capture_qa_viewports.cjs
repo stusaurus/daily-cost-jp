@@ -69,7 +69,7 @@ async function capture(){
      if(normal.documentWidth!==width || !normal.mainExists || !normal.rankingExists || !normal.jumpExists)
       throw Error('Laundry normal-visitor layout/anchor regression '+width+' '+JSON.stringify(normal));
      await page.screenshot({path:`qa-viewports/${width}-laundry-normal-visitor-viewport.png`});
-     await page.locator('a[href="#laundry"]').filter({visible:true}).first().click();
+     await page.locator('a[href="#laundry"]:visible').first().click();
      await page.waitForFunction(()=>location.hash==='#laundry');
      const anchor=await page.evaluate(()=>{
       const rect=document.querySelector('#laundry').getBoundingClientRect();
