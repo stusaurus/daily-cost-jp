@@ -107,6 +107,28 @@ class NewCategorySafetyTests(unittest.TestCase):
                 row=q.parsed_quantity(cid,bad)
                 self.assertTrue(q.category_rejection(cid,bad) is not None or row is None)
 
+    def test_seller_cannot_pass_bundled_holder_as_sink_net(self):
+        unsafe=[
+            '排水口 水切りネットホルダー ステンレス シンク対応 ネット100枚',
+            '吸盤式 キッチン水切りネットホルダー 100枚付き',
+            'キッチンドレイン 生ごみスタンド 水切りネット100枚付き',
+            'シンク 排水口 ゴミ受け ホルダー ネット100枚',
+        ]
+        for name in unsafe:
+            with self.subTest(name=name):
+                self.assertEqual(q.category_rejection('sink-net',name),'wrong_use_or_type')
+        self.assertTrue(q.category_is_suitable(
+            'sink-net','台所 排水口 水切りネット 100枚入り'))
+
+    def test_wet_wipe_selectable_type_is_not_fixed(self):
+        self.assertFalse(q.category_is_suitable(
+            'wet-wipes','除菌ウェットティッシュ80枚 アルコールorノンアルコール'))
+        self.assertEqual(q.category_rejection('wet-wipes',
+            '除菌ウェットティッシュ80枚 アルコール/ノンアルコール'),
+            'selectable_type_variant')
+        self.assertTrue(q.category_is_suitable(
+            'wet-wipes','ノンアルコール 除菌ウェットティッシュ 80枚'))
+
     def test_quality_requires_matching_price_shipping_and_metric(self):
         goods=[
             ('toothpaste','薬用 歯磨き粉120g','100g',1.2),
