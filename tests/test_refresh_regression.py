@@ -92,7 +92,7 @@ class RefreshRegressionTests(unittest.TestCase):
                 report=json.loads(Path('quality-report.json').read_text())
                 today=json.loads(Path('site/today/data.json').read_text())
                 social=json.loads(Path('site/social/latest.json').read_text())
-                self.assertEqual(len(catalog['categories']),21)
+                self.assertEqual(len(catalog['categories']),len(growth.core.CATEGORIES))
                 self.assertEqual(len(catalog['categories']['tissue']['items']),5 if slot < 3 else 2)
                 self.assertTrue(any(cid=='tissue' and supplementary for cid,_,supplementary in requests))
                 self.assertEqual(report['tissue']['acquisition']['baseline']['ranked'],2)
@@ -122,7 +122,7 @@ class RefreshRegressionTests(unittest.TestCase):
                 path.write_text(replace_product_chips(path.read_text()))
                 errors,stats=gate.validate()
                 self.assertFalse(errors,errors)
-                self.assertEqual(stats['products'],105 if slot < 3 else 102)
+                self.assertEqual(stats['products'],5*len(growth.core.CATEGORIES) - (0 if slot < 3 else 3))
                 previous_urls=urls
 
     def test_stale_or_unverified_recommendations_fail_closed(self):

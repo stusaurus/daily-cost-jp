@@ -1,4 +1,4 @@
-"""Shared, fail-closed eligibility for all 21 unit-price categories.
+"""Shared, fail-closed eligibility for all configured unit-price categories.
 
 Use product titles (not shop names or descriptions) as evidence. Unknown or
 ambiguous products are omitted; a missing candidate is safer than a cheap guess.
@@ -40,6 +40,10 @@ REQUIRED = {
     'toothbrush': (r'歯ブラシ|ハブラシ|はぶらし',),
     'cotton-swab': (r'綿棒', r'衛生|紙軸|抗菌|滅菌|耳そうじ|耳掃除|耳の|メイク|化粧|赤ちゃん|ベビー'),
     'floor-sheet': (r'フローリング|フロア|床掃除|床用|ワイパー', r'シート'),
+    'toothpaste': (r'歯磨き粉|歯みがき粉|歯磨き|歯みがき|ハミガキ|デンタルペースト',),
+    'wet-wipes': (r'ウェット(?:ティッシュ|シート)|ウエット(?:ティッシュ|シート)', r'除菌|アルコール|衛生'),
+    'kitchen-paper': (r'キッチンペーパー|キッチンタオル|クッキングペーパー',),
+    'sink-net': (r'排水口|排水溝|水切り', r'ネット', r'キッチン|台所|シンク|流し台|排水口|排水溝|三角コーナー'),
 }
 
 EXCLUDED = {
@@ -64,6 +68,10 @@ EXCLUDED = {
     'toothbrush': r'電動|替えブラシ|替ブラシ|交換ブラシ|ケース|ホルダー|スタンド|歯磨き粉|犬用|猫用|ペット用',
     'cotton-swab': r'iqos|アイコス|\bglo\b|グロー|ploom|プルーム|電子(?:タバコ|たばこ)|加熱式|たばこ|タバコ|クリーニング|cleaning|工業用|精密機器|耳かき|耳掻き|粘着|ネバ|吸引|合成ゴム|再利用|綿棒入れ|歯ブラシ|ハブラシ|ペット|犬|猫|加湿|給水|吸水芯|フィルター',
     'floor-sheet': r'ワイパー本体|モップ本体|ホルダー|収納|フロアタイル|床材|置くだけ|置き敷き|接着剤|大理石|石目|床\s*タイル|補修|ワックスシート',
+    'toothpaste': r'歯ブラシ|ハブラシ|替えブラシ|歯間ブラシ|マウスウォッシュ|洗口液|デンタルリンス|携帯容器|チューブホルダー|詰め替え容器|犬用|猫用|ペット用|歯磨きシート',
+    'wet-wipes': r'おしりふき|お尻拭き|手口ふき|赤ちゃん|ベビー|ペット|犬用|猫用|フローリング|床|トイレ|便座|キッチン用|台所用|浴室|クリーナー本体|ケース|詰替用ケース|タオル本体',
+    'kitchen-paper': r'クッキングシート|オーブンシート|ワックスペーパー|ベーキングシート|ペーパータオル|ホルダー|スタンド|布(?:巾|製|タオル)|フキン|ふきん|台ふき|専用容器|(?:収納|保管|持ち運び)ケース|ケース(?:のみ|付き|本体)',
+    'sink-net': r'排水口(?:カゴ|かご|カバー|ふた|フタ|蓋)|ネット(?:用)?ホルダー|ホルダー|スタンド|バスケット|ゴミ受け|ごみ受け|水切り(?:かご|カゴ|ラック|器)|ステンレス鋼|吸盤|排水口フィルターホルダー|ストレーナー本体|ブラシ|パイプクリーナー|洗剤|浴室|お風呂|洗面|洗濯機|トイレ|三角コーナー本体|ケース|収納',
 }
 
 # "ケース販売" is a legitimate bulk package, unlike a case/empty container.
@@ -75,6 +83,8 @@ COUNT_UNITS = {
     'paper-towel': {'枚': 'sheet'}, 'garbage-bag-45l': {'枚': 'sheet'},
     'mask': {'枚': 'sheet'}, 'toothbrush': {'本': 'piece'}, 'cotton-swab': {'本': 'piece'},
     'floor-sheet': {'枚': 'sheet'},
+    'wet-wipes': {'枚': 'sheet'}, 'kitchen-paper': {'枚': 'sheet', 'カット': 'sheet'},
+    'sink-net': {'枚': 'sheet'},
 }
 
 
@@ -92,6 +102,43 @@ def explicit_tissue_box_total(title):
     if visible!=[(inner,'個'),(outer,'セット'),(total,'箱')] or min(inner,outer,total)<=0 or inner*outer!=total:
         return None
     return {'metric':'box','quantity':float(total),'confidence':0.99,'evidence':match.group(0)}
+
+
+def explicit_kitchen_paper_sheet_total(title):
+    """Only a fully stated sheet × roll × outer-pack product has a total.
+
+    Reject implicit case sizes and more than one set of sheet/roll evidence.
+    This is the same parser used by both acquisition and publication gates.
+    """
+    text = normalize(title).replace('ロ−ル', 'ロール').replace('ロ－ル', 'ロール')
+    if ambiguous_quantity(title):
+        return None
+    pattern = (r'(?<![\d.])(\d+)\s*(枚|カット)\s*x\s*'
+               r'(\d+)\s*ロール\s*x\s*(\d+)\s*(袋|パック|セット|個)?')
+    matches = list(re.finditer(pattern, text, re.I))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    per, rolls, packs = int(match[1]), int(match[3]), int(match[4])
+    if not all(0 < n <= 10000 for n in (per, rolls, packs)):
+        return None
+    remainder = text[match.end():]
+    if not match[5] and not re.match(r'\s*(?:ケース(?:販売)?|袋|パック|セット|個)', remainder):
+        return None
+    if re.search(r'x\s*\d+', remainder, re.I):
+        return None
+    if len(re.findall(r'\d+\s*(?:枚|カット)', text)) != 1:
+        return None
+    if len(re.findall(r'\d+\s*(?:ロール|巻)', text)) != 1:
+        return None
+    # An extra explicit pack count would create a second possible sale total.
+    if len(re.findall(r'(?<!\d)\d+\s*(?:袋|パック|セット|個)', text)) > 1:
+        return None
+    total = per * rolls * packs
+    if total > 100000:
+        return None
+    return {'metric': 'sheet', 'quantity': float(total),
+            'confidence': 0.99, 'evidence': match.group(0)}
 
 
 def category_rejection(category_id, title):
@@ -122,6 +169,40 @@ def category_rejection(category_id, title):
         return 'mixed_bundle'
     if re.search(EXCLUDED[category_id], text, re.I):
         return 'wrong_use_or_type'
+    # Three new sheet categories measure the number of *individual sheets*.
+    # Titles such as "80枚 3パック" are not 80 sheets total. Without a
+    # multiplication sign, reject rather than invent an incorrect unit price.
+    if category_id in ('wet-wipes', 'kitchen-paper', 'sink-net'):
+        sheet_term = r'(?:枚|カット)' if category_id == 'kitchen-paper' else r'枚'
+        has_explicit_sheet_count = bool(re.search(rf'\d+\s*{sheet_term}', text))
+        outer_packs = re.findall(r'(?<!\d)(?:[2-9]|[1-9]\d+)\s*(?:袋|パック|個|セット|p\b|ケース)', text)
+        # 80枚 x 3袋 and 100カット x 2ロール are countable. But
+        # "80枚 x 3P", two nested packs and "80枚 3パック" are not.
+        has_proven_multiplier = bool(re.search(
+            rf'\d+\s*{sheet_term}(?:入|入り)?\s*x\s*\d+(?:ロール|巻|袋|パック|個|セット)?(?![\da-z])', text, re.I))
+        if not has_explicit_sheet_count:
+            return 'missing_sheet_count'
+        nested = explicit_kitchen_paper_sheet_total(title) if category_id == 'kitchen-paper' else None
+        if not nested and (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
+                or re.search(r'\d+\s*ケース', text)):
+            return 'multiple_unverified_pack_levels'
+        if (category_id == 'kitchen-paper' and not nested
+                and re.search(r'(?:ロール|ロ−ル|巻)', text)):
+            # Each roll's stated sheets must have an explicit multiplication.
+            if not re.search(r'\d+\s*(?:枚|カット)\s*x\s*\d+\s*(?:ロール|ロ−ル|巻)', text):
+                return 'roll_sheet_count_unconfirmed'
+            if outer_packs:
+                return 'multiple_unverified_pack_levels'
+        if outer_packs and not has_proven_multiplier and not nested:
+            return 'package_multiplier_unconfirmed'
+    if category_id == 'wet-wipes' and (
+            (re.search(r'ノンアルコール', text)
+             and re.search(r'(?<!ノン)アルコール', text))
+            or (re.search(r'wts[- ]?60n', text, re.I)
+                and re.search(r'wts[- ]?60a', text, re.I))):
+        # A selectable alcohol formula cannot be bound to a fixed offer.
+        return 'selectable_type_variant'
+    # A mass-based dentifrice page must not rank millilitres as grams.
     evidence=all(re.search(group,text,re.I) for group in REQUIRED[category_id])
     if category_id=='tissue' and not evidence:
         # Literal product type plus explicit pairs and corroborated box total;
@@ -139,7 +220,10 @@ def category_is_suitable(category_id, title):
 def parsed_quantity(category_id, title):
     if category_id in COUNT_UNITS:
         return safer_parse_count_quantity(title, COUNT_UNITS[category_id])
-    return safer_parse_measure_quantity(title, category_id if category_id in ('water', 'coffee') else 'measure')
+    parsed = safer_parse_measure_quantity(title, category_id if category_id in ('water', 'coffee') else 'measure')
+    if category_id == 'toothpaste' and parsed and parsed['metric'] != '100g':
+        return None
+    return parsed
 
 
 def item_rejection(category_id, item):
@@ -327,6 +411,9 @@ def safer_parse_count_quantity(title, allowed_units):
         return None
     if allowed_units==COUNT_UNITS['tissue']:
         explicit=explicit_tissue_box_total(title)
+        if explicit:return explicit
+    if allowed_units==COUNT_UNITS['kitchen-paper']:
+        explicit=explicit_kitchen_paper_sheet_total(title)
         if explicit:return explicit
     units_re = "|".join(re.escape(unit) for unit in allowed_units)
 

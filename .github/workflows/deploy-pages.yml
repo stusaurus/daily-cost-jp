@@ -27,6 +27,7 @@ on:
       - "scripts/build_site.py"
       - "scripts/sale_quantity.py"
       - "scripts/product_quality.py"
+      - "tests/test_new_daily_categories.py"
       - "scripts/step4_automation.py"
       - "scripts/step4_recommendations.py"
       - "scripts/candidate_acquisition.py"
