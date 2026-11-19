@@ -104,6 +104,43 @@ def explicit_tissue_box_total(title):
     return {'metric':'box','quantity':float(total),'confidence':0.99,'evidence':match.group(0)}
 
 
+def explicit_kitchen_paper_sheet_total(title):
+    """Only a fully stated sheet × roll × outer-pack product has a total.
+
+    Reject implicit case sizes and more than one set of sheet/roll evidence.
+    This is the same parser used by both acquisition and publication gates.
+    """
+    text = normalize(title).replace('ロ−ル', 'ロール').replace('ロ－ル', 'ロール')
+    if ambiguous_quantity(title):
+        return None
+    pattern = (r'(?<![\d.])(\d+)\s*(枚|カット)\s*x\s*'
+               r'(\d+)\s*ロール\s*x\s*(\d+)\s*(袋|パック|セット|個)?')
+    matches = list(re.finditer(pattern, text, re.I))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    per, rolls, packs = int(match[1]), int(match[3]), int(match[4])
+    if not all(0 < n <= 10000 for n in (per, rolls, packs)):
+        return None
+    remainder = text[match.end():]
+    if not match[5] and not re.match(r'\s*(?:ケース(?:販売)?|袋|パック|セット|個)', remainder):
+        return None
+    if re.search(r'x\s*\d+', remainder, re.I):
+        return None
+    if len(re.findall(r'\d+\s*(?:枚|カット)', text)) != 1:
+        return None
+    if len(re.findall(r'\d+\s*(?:ロール|巻)', text)) != 1:
+        return None
+    # An extra explicit pack count would create a second possible sale total.
+    if len(re.findall(r'(?<!\d)\d+\s*(?:袋|パック|セット|個)', text)) > 1:
+        return None
+    total = per * rolls * packs
+    if total > 100000:
+        return None
+    return {'metric': 'sheet', 'quantity': float(total),
+            'confidence': 0.99, 'evidence': match.group(0)}
+
+
 def category_rejection(category_id, title):
     if category_id not in REQUIRED:
         return 'unknown_category'
@@ -145,17 +182,18 @@ def category_rejection(category_id, title):
             rf'\d+\s*{sheet_term}(?:入|入り)?\s*x\s*\d+(?:ロール|巻|袋|パック|個|セット)?(?![\da-z])', text, re.I))
         if not has_explicit_sheet_count:
             return 'missing_sheet_count'
-        if (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
+        nested = explicit_kitchen_paper_sheet_total(title) if category_id == 'kitchen-paper' else None
+        if not nested and (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
                 or re.search(r'\d+\s*ケース', text)):
             return 'multiple_unverified_pack_levels'
-        if (category_id == 'kitchen-paper'
-                and re.search(r'(?:ロール|巻)', text)):
+        if (category_id == 'kitchen-paper' and not nested
+                and re.search(r'(?:ロール|ロ−ル|巻)', text)):
             # Each roll's stated sheets must have an explicit multiplication.
-            if not re.search(r'\d+\s*(?:枚|カット)\s*x\s*\d+\s*(?:ロール|巻)', text):
+            if not re.search(r'\d+\s*(?:枚|カット)\s*x\s*\d+\s*(?:ロール|ロ−ル|巻)', text):
                 return 'roll_sheet_count_unconfirmed'
             if outer_packs:
                 return 'multiple_unverified_pack_levels'
-        if outer_packs and not has_proven_multiplier:
+        if outer_packs and not has_proven_multiplier and not nested:
             return 'package_multiplier_unconfirmed'
     if category_id == 'wet-wipes' and (
             (re.search(r'ノンアルコール', text)
@@ -373,6 +411,9 @@ def safer_parse_count_quantity(title, allowed_units):
         return None
     if allowed_units==COUNT_UNITS['tissue']:
         explicit=explicit_tissue_box_total(title)
+        if explicit:return explicit
+    if allowed_units==COUNT_UNITS['kitchen-paper']:
+        explicit=explicit_kitchen_paper_sheet_total(title)
         if explicit:return explicit
     units_re = "|".join(re.escape(unit) for unit in allowed_units)
 
