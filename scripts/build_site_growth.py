@@ -151,7 +151,7 @@ ADDITIONAL_CATEGORIES = [
         "id": "kitchen-paper",
         "name": "キッチンペーパー",
         "emoji": "🍳",
-        "keyword": "キッチンペーパー 80枚 2ロール",
+        "keyword": "キッチンペーパー 100枚×2ロール 送料無料",
         "kind": "count",
         "allowed_units": {"枚": "sheet", "カット": "sheet"},
     },
