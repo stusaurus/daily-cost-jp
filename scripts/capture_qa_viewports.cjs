@@ -77,14 +77,17 @@ async function capture(){
       const target=document.querySelector('#laundry');
       if(!target)return false;
       const rect=target.getBoundingClientRect();
-      return rect.bottom>0 && rect.top<innerHeight;
+      // Require the ranking heading to settle near the viewport top,
+      // not merely touch the bottom edge during smooth scrolling.
+      return rect.bottom>0 && rect.top>=-160 && rect.top<=240;
      },null,{timeout:10000});
      const anchor=await page.evaluate(()=>{
       const rect=document.querySelector('#laundry').getBoundingClientRect();
       return {hash:location.hash,top:rect.top,bottom:rect.bottom,viewportHeight:innerHeight};
      });
-     if(anchor.bottom<=0 || anchor.top>=anchor.viewportHeight)
-      throw Error('Laundry ranking anchor not visible after click '+width+' '+JSON.stringify(anchor));
+     if(anchor.bottom<=0 || anchor.top>240 || anchor.top< -160)
+      throw Error('Laundry ranking anchor not settled near viewport top '+width+' '+JSON.stringify(anchor));
+     await page.screenshot({path:`qa-viewports/${width}-laundry-normal-visitor-ranking-after-link.png`});
      checks.push({width,route,mode:'normal-visitor',...normal,anchor,status:'PASS'});
      // Restore the operator-test context for existing test-only interactions.
      await page.goto(SITE+route.slice(1)+'?test=1',{waitUntil:'networkidle'});
