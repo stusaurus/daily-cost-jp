@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 sys.path.insert(0, str(Path(__file__).parents[1] / 'scripts'))
-from candidate_acquisition import acquire, identity, SUPPLEMENTAL_QUERIES
+from candidate_acquisition import acquire, identity, SUPPLEMENTAL_QUERIES, target_for, MAX_REQUESTS
 from product_quality import filter_items, REQUIRED
 
 
@@ -53,6 +53,55 @@ class CandidateAcquisitionTests(unittest.TestCase):
         self.assertEqual(fetch.call_count,5)
         self.assertEqual(pause.call_count,4)
         self.assertEqual(report['requests'][1]['error'],'TimeoutError')
+
+    def test_laundry_uses_twelve_target_without_changing_others(self):
+        self.assertEqual(target_for('laundry'), 12)
+        self.assertEqual(target_for('tissue'), 5)
+        self.assertEqual(target_for('toilet-paper'), 5)
+        self.assertEqual(target_for('cotton-swab'), 5)
+        self.assertEqual(MAX_REQUESTS, 5)
+
+    def test_laundry_search_continues_after_five_verified_offers(self):
+        def detergent(index):
+            return dict(item_code=f'shop:laundry{index}',
+                        name=f'洗濯洗剤 液体 詰め替え 850g 商品{index}',
+                        shop=f'検証用店{index}', price=1000 + index,
+                        unit_price=(1000 + index) / 8.5,
+                        confidence=.99, metric='100g', postage='送料込み',
+                        url=f'https://item.rakuten.co.jp/shop/laundry{index}/')
+        batches = [
+            [detergent(i) for i in range(5)],
+            [detergent(i) for i in range(5, 8)],
+            [detergent(i) for i in range(8, 10)],
+            [detergent(i) for i in range(10, 12)],
+        ]
+        fetch = Mock(side_effect=batches)
+        def twelve_ranked(rows):
+            return '100g', sorted(rows, key=lambda p:p['unit_price'])[:12]
+        rows, report = acquire({'id':'laundry', 'keyword':'洗濯洗剤 詰め替え'},
+                               fetch, lambda item, category:item, twelve_ranked, Mock())
+        self.assertEqual(report['baseline']['ranked'], 8)
+        self.assertEqual(report['ranked'], 12)
+        self.assertEqual(fetch.call_count, 4)
+        self.assertEqual(len(rows), 12)
+        self.assertEqual(len(filter_items('laundry',rows)), 12)
+        self.assertTrue(all(row['postage']=='送料込み' for row in rows))
+
+    def test_laundry_stops_at_five_requests_even_with_short_supply(self):
+        def detergent(index):
+            return dict(item_code=f'shop:limited{index}',
+                        name=f'洗濯洗剤 液体 詰め替え 850g 商品{index}',
+                        shop='検証用店', price=1000+index,
+                        unit_price=(1000+index)/8.5,
+                        confidence=.99, metric='100g', postage='送料込み',
+                        url=f'https://item.rakuten.co.jp/shop/limited{index}/')
+        fetch=Mock(side_effect=[[detergent(0)], [], [], [], []])
+        rows, report = acquire({'id':'laundry', 'keyword':'洗濯洗剤 詰め替え'},
+                               fetch, lambda item, category:item,
+                               lambda items: ('100g', items[:12]), Mock())
+        self.assertEqual(fetch.call_count, MAX_REQUESTS)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(report['ranked'], 1)
 
     def test_double_is_searched_even_after_five_verified_singles(self):
         def paper(idx, ply):
