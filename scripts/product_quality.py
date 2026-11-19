@@ -149,7 +149,7 @@ def category_rejection(category_id, title):
                 or re.search(r'\d+\s*ケース', text)):
             return 'multiple_unverified_pack_levels'
         if (category_id == 'kitchen-paper'
-                and re.search(r'\d+\s*(?:ロール|巻)', text)):
+                and re.search(r'(?:ロール|巻)', text)):
             # Each roll's stated sheets must have an explicit multiplication.
             if not re.search(r'\d+\s*(?:枚|カット)\s*x\s*\d+\s*(?:ロール|巻)', text):
                 return 'roll_sheet_count_unconfirmed'
