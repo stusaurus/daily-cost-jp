@@ -86,6 +86,7 @@ def render(offers):
             + f'{unit:,.2f}' + '</p><p>' + escaped(short) + '</p>'
             + '<a class="buy-button" href="' + escaped(row['url'], quote=True)
             + '" target="_blank" rel="nofollow sponsored noopener"'
+            + ' data-tissue-five-box-choice="1"'
             + ' data-conversion-source="category" data-category-id="tissue"'
             + ' data-purchase-purpose="small" data-id="' + escaped(row['item_code'], quote=True)
             + '" data-product-name="' + escaped(name, quote=True)
