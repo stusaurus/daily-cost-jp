@@ -136,6 +136,31 @@ class NewCategorySafetyTests(unittest.TestCase):
             'selectable_type_variant')
 
 
+    def test_kitchen_paper_retail_context_is_not_mistaken_for_accessory(self):
+        # Seller descriptions may mention nonwoven paper or storage use;
+        # neither identifies the item as a cloth or a storage container.
+        safe = [
+            'キッチンペーパー 厚手 不織布 80枚×2ロール 食器の収納にも',
+            '大黒工業 キッチンペーパー 80枚×2ロール ケース販売 お徳用'
+        ]
+        for title in safe:
+            with self.subTest(title=title):
+                self.assertTrue(q.category_is_suitable('kitchen-paper',title),title)
+                self.assertEqual(q.parsed_quantity('kitchen-paper',title)['quantity'],160)
+        self.assertFalse(q.category_is_suitable(
+            'kitchen-paper','キッチンペーパーホルダー 80枚×2ロール'))
+
+    def test_selectable_wet_wipe_formulas_with_ampersand_are_excluded(self):
+        for title in [
+            '除菌ウェットティッシュ 80枚 アルコール&ノンアルコール',
+            '除菌ウェットティッシュ 80枚 ノンアルコールorアルコール',
+            '除菌ウェットティッシュ 80枚 アルコール/ノンアルコール'
+        ]:
+            with self.subTest(title=title):
+                self.assertEqual(q.category_rejection('wet-wipes',title),'selectable_type_variant')
+        self.assertTrue(q.category_is_suitable(
+            'wet-wipes','除菌ウェットティッシュ80枚 ノンアルコール'))
+
     def test_quality_requires_matching_price_shipping_and_metric(self):
         goods=[
             ('toothpaste','薬用 歯磨き粉120g','100g',1.2),
