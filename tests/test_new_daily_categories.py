@@ -87,7 +87,7 @@ class NewCategorySafetyTests(unittest.TestCase):
         for name in [
             'キッチンペーパー80枚 2ロール',
             'キッチンペーパー100カット 3ロール',
-            'キッチンペーパー80枚x2ロールx10袋'
+            'キッチンペーパー80枚x2ロール 10袋'
         ]:
             with self.subTest(name=name):
                 self.assertFalse(q.category_is_suitable('kitchen-paper',name),name)
