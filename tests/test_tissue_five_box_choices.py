@@ -73,6 +73,65 @@ class TissueFiveBoxShopTests(unittest.TestCase):
             self.assertEqual(link.get('data-category-id'), 'tissue')
             self.assertTrue(link['href'].startswith('https://item.rakuten.co.jp/'))
 
+    def test_authorized_link_requires_exact_selection_sku_price_and_slot(self):
+        import validate_product_quality as gate
+        data = catalog()
+        choices = select_offers(data['categories']['tissue'])
+        soup = BeautifulSoup(render(choices), 'html.parser')
+        attrs = dict(soup.select_one('.tissue-five-box-item a').attrs)
+        attrs['rel'] = ' '.join(attrs['rel'])
+        self.assertTrue(gate.valid_tissue_five_box_link(
+            attrs, 'categories/tissue/index.html', data))
+        self.assertFalse(gate.valid_tissue_five_box_link(attrs, 'index.html', data))
+        self.assertFalse(gate.valid_tissue_five_box_link(
+            attrs, 'categories/laundry/index.html', data))
+        for key, value in [
+            ('href', 'https://item.rakuten.co.jp/other/cheap/'),
+            ('data-id', 'other:cheap'),
+            ('data-shipping-price', '1'),
+            ('data-unit-price-label', '¥0.01／100組'),
+            ('data-product-name', '別の商品'),
+            ('data-category-id', 'laundry'),
+            ('data-purchase-purpose', 'bulk'),
+            ('data-tissue-five-box-choice', '0'),
+            ('data-conversion-source', 'other'),
+            ('rel', 'noopener'),
+            ('target', '_self'),
+        ]:
+            changed = {**attrs, key: value}
+            with self.subTest(key=key):
+                self.assertFalse(gate.valid_tissue_five_box_link(
+                    changed, 'categories/tissue/index.html', data))
+
+    def test_full_site_gate_accepts_only_complete_reverified_five_box_list(self):
+        from test_step5_product_link_gate import ProductLinkIntegrationTests
+        helper = ProductLinkIntegrationTests('test_active_home_and_three_categories_pass_full_product_gate_without_ranking_mutation')
+        helper.setUp()
+        try:
+            data = catalog()
+            helper.payload['categories']['tissue']['purpose_candidates'] = (
+                data['categories']['tissue']['purpose_candidates'][:3])
+            helper.render()
+            selected = select_offers(helper.payload['categories']['tissue'])
+            self.assertEqual(len(selected), 3)
+            path = helper.root / 'categories/tissue/index.html'
+            original = path.read_text()
+            section = render(selected)
+            path.write_text(original.replace('</main>', section + '</main>'))
+            self.assertEqual(helper.errors(), [])
+            for old, new in [
+                ('data-shipping-price="1050"', 'data-shipping-price="1"'),
+                ('data-tissue-five-box-choice="1"', 'data-tissue-five-box-choice="0"'),
+                ('data-id="testshop1:item1"', 'data-id="other:cheap"'),
+            ]:
+                with self.subTest(old=old):
+                    self.assertIn(old, section)
+                    path.write_text(original.replace('</main>', section.replace(old, new, 1) + '</main>'))
+                    self.assertTrue(any('tissue five-box merchant link not fully verified' in error
+                                        for error in helper.errors()), helper.errors())
+        finally:
+            helper.doCleanups()
+
     def test_injects_once_and_preserves_existing_buy_button(self):
         data = catalog()
         sample = ('<html><head></head><body><main>'
