@@ -25,7 +25,12 @@ class CompletionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, patch('complete_purchase_flow.SITE', Path(tmp)):
             root = Path(tmp)
             (root/'today').mkdir()
-            (root/'data.json').write_text(json.dumps({'updated_at':'2026-10-03T06:00:00+09:00','categories':{}}))
+            payload={'updated_at':'2026-10-03T06:00:00+09:00','categories':{
+                'toilet-paper':{'name':'トイレットペーパー','items':[{
+                    'name':'トイレットペーパー ダブル25m 96ロール',
+                    'price':4206,'unit_price':43.8125,'metric':'roll',
+                    'url':'https://hb.afl.rakuten.co.jp/test'}]}}}
+            (root/'data.json').write_text(json.dumps(payload,ensure_ascii=False))
             (root/'price-observations.json').write_text(json.dumps({'products':{}}))
             for page in (root/'index.html',root/'today/index.html'):
                 page.write_text('<html><head></head><body><main></main></body></html>')
@@ -35,6 +40,10 @@ class CompletionTests(unittest.TestCase):
             self.assertIn(f'purchase-tools.js?v={version}',(root/'index.html').read_text())
             self.assertIn(f'purchase-tools.js?v={version}',(root/'today/index.html').read_text())
             self.assertEqual((root/'assets/purchase-tools.js').read_text(),source)
+            catalog=json.loads((root/'assets/comparison-catalog.json').read_text())
+            self.assertEqual(len(catalog),1)
+            self.assertEqual(catalog[0]['unit_price'][1],17.525)
+            self.assertEqual(catalog[0]['unit_price_display'],'¥17.52')
 
     def test_conditional_and_used_prices_are_rejected_without_removing_generic_coupon_ads(self):
         for condition in ['中古','定期便','初回限定','クーポン利用で']:
