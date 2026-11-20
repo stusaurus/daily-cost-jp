@@ -4,11 +4,11 @@ const { JSDOM } = require('jsdom');
 const fs = require('node:fs');
 const code = fs.readFileSync('scripts/purchase_tools.js','utf8');
 const source = fs.readFileSync('scripts/analytics_runtime.js','utf8');
-async function fixture(blockStorage=false) {
+async function fixture(blockStorage=false, firstUnit=40, firstLabel='¥40.00') {
   const dom=new JSDOM(`<section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><article class="product-card"><div class="product-body"><h3>A</h3><a href="https://hb.afl.rakuten.co.jp/a">楽天</a></div></article><article class="product-card"><div class="product-body"><h3>B</h3><a href="https://hb.afl.rakuten.co.jp/b">楽天</a></div></article>`,{url:'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',runScripts:'outside-only'});
   dom.window.fetch=async(url,options)=>{dom.window.catalogFetchOptions=options;return {ok:true,json:async()=>[
-    {key:'a',category:'tissue',name:'A',url:'https://hb.afl.rakuten.co.jp/a',quantity:'60箱',price:3600,unit:['100組',40],rank:1,updated_at:'2026-10-03T06:00:00+09:00'},
-    {key:'b',category:'tissue',name:'B',url:'https://hb.afl.rakuten.co.jp/b',quantity:'60箱',price:4200,unit:['100組',35],rank:2,updated_at:'2026-10-03T06:00:00+09:00'}]};};
+    {key:'a',category:'tissue',name:'A',url:'https://hb.afl.rakuten.co.jp/a',quantity:'60箱',price:3600,unit:['100組',firstUnit],unit_price_display:firstLabel,rank:1,updated_at:'2026-10-03T06:00:00+09:00'},
+    {key:'b',category:'tissue',name:'B',url:'https://hb.afl.rakuten.co.jp/b',quantity:'60箱',price:4200,unit:['100組',35],unit_price_display:'¥35.00',rank:2,updated_at:'2026-10-03T06:00:00+09:00'}]};};
   if(blockStorage)Object.defineProperty(dom.window,'localStorage',{value:{getItem:()=>null,setItem:()=>{throw Error('quota');}}});
   dom.window.eval(code);await new Promise(resolve=>setImmediate(resolve));return dom;
 }
@@ -37,4 +37,12 @@ test('comparison explains a real total/unit inversion and can be dismissed witho
   Array.from(d.querySelectorAll('#purchase-tool-panel button')).find(b=>b.textContent==='比較・保存の一覧を閉じる').click();
   assert.equal(d.getElementById('purchase-tool-panel').hidden,true);
   assert.match(d.getElementById('show-comparison').textContent,/2/);dom.window.close();
+});
+
+test('comparison uses the generated rounded unit-price label at a half-cent boundary',async()=>{
+  const dom=await fixture(false,17.525,'¥17.52');const d=dom.window.document;
+  d.querySelector('[data-product-tool="compare"]').click();d.getElementById('show-comparison').click();
+  assert.match(d.getElementById('purchase-tool-panel').textContent,/¥17\.52／100組/);
+  assert.doesNotMatch(d.getElementById('purchase-tool-panel').textContent,/¥17\.53／100組/);
+  dom.window.close();
 });
