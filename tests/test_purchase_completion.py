@@ -19,6 +19,33 @@ from diversify_daily_deals import select_diverse
 from build_site import choose_ranked_items
 
 class CompletionTests(unittest.TestCase):
+    def test_all_saved_comparison_units_match_card_display_precision(self):
+        from product_display import format_unit_price
+        from redesign_laboratory import money as card_money
+        from complete_purchase_flow import normalized_table
+        samples = (
+            (5.97, '¥5.97'),
+            (17.525, '¥17.52'),
+            (99.88, '¥99.88'),
+            (100, '¥100.0'),
+            (109.125, '¥109.1'),
+            (1269.9, '¥1,269.9'),
+        )
+        for value, shown in samples:
+            with self.subTest(value=value):
+                self.assertEqual(format_unit_price(value), shown)
+                self.assertEqual(card_money(value), shown)
+        item = {
+            'name': 'トイレットペーパー ダブル25m 96ロール',
+            'price': 30000,
+            'unit_price': 312.5,
+            'metric': 'roll',
+            'url': 'https://hb.afl.rakuten.co.jp/test'
+        }
+        table = normalized_table('toilet-paper', {'items': [item]})
+        self.assertIn('¥125.0', table)
+        self.assertNotIn('¥125.00', table)
+
     def test_generated_purchase_script_is_versioned_to_refresh_revisitors(self):
         import hashlib
         import complete_purchase_flow
