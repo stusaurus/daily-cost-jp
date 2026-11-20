@@ -13,6 +13,8 @@
 .toilet-ply-group{min-width:0;padding:18px;border:1px solid var(--line);background:var(--paper);border-radius:3px;scroll-margin-top:108px}
 .toilet-ply-group h3{font:22px/1.5 var(--serif);font-weight:500;margin:0 0 7px;color:var(--ink)}
 .toilet-ply-group .toilet-ply-desc{font-size:12px;line-height:1.8;margin:0 0 15px;color:var(--muted)}
+.toilet-ply-group .toilet-ply-price-snapshot{font-size:13px;line-height:1.8;margin:0 0 15px;padding:0 0 13px;border-bottom:1px solid var(--line);color:var(--ink)}
+.toilet-ply-price-snapshot strong{font:600 18px/1.55 var(--serif);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .toilet-ply-card-list{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
 .toilet-ply-card{display:grid;grid-template-columns:82px minmax(0,1fr);gap:14px;background:var(--white);border:1px solid var(--line);border-radius:3px;padding:14px;min-width:0}
 .toilet-ply-photo{width:82px;height:82px;background:var(--white);display:flex;align-items:center;justify-content:center;overflow:hidden}
