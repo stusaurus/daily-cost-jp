@@ -46,3 +46,14 @@ test('comparison uses the generated rounded unit-price label at a half-cent boun
   assert.doesNotMatch(d.getElementById('purchase-tool-panel').textContent,/¥17\.53／100組/);
   dom.window.close();
 });
+
+test('comparison keeps card precision above 100 yen and thousands separators',async()=>{
+  for (const [value, label] of [[109.125,'¥109.1'],[1269.9,'¥1,269.9']]) {
+    const dom=await fixture(false,value,label);const d=dom.window.document;
+    d.querySelector('[data-product-tool="compare"]').click();
+    d.getElementById('show-comparison').click();
+    assert.ok(d.getElementById('purchase-tool-panel').textContent.includes(label+'／100組'));
+    assert.equal(d.querySelector('#purchase-tool-panel a').getAttribute('rel'),'nofollow sponsored noopener');
+    dom.window.close();
+  }
+});
