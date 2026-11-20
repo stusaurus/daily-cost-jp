@@ -42,7 +42,7 @@ class CompletionTests(unittest.TestCase):
             self.assertEqual((root/'assets/purchase-tools.js').read_text(),source)
             catalog=json.loads((root/'assets/comparison-catalog.json').read_text())
             self.assertEqual(len(catalog),1)
-            self.assertEqual(catalog[0]['unit_price'][1],17.525)
+            self.assertEqual(catalog[0]['unit'][1],17.525)
             self.assertEqual(catalog[0]['unit_price_display'],'¥17.52')
 
     def test_conditional_and_used_prices_are_rejected_without_removing_generic_coupon_ads(self):
