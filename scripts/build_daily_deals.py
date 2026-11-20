@@ -160,7 +160,12 @@ def build_rows(payload: dict):
     return rows[:5]
 
 
-def render_page(rows: list[dict], now: datetime) -> str:
+def render_page(rows: list[dict], now: datetime, category_count: int | None = None) -> str:
+    category_scope = (
+        f"楽天市場の日用品{category_count}カテゴリ"
+        if isinstance(category_count, int) and category_count > 0
+        else "楽天市場の日用品"
+    )
     date_ja = f"{now.year}年{now.month}月{now.day}日"
     title = f"今日の買い候補{len(rows)}選" if rows else "今日の買い候補"
     empty_notice = '' if rows else '<p>現在、品質条件を満たす買い候補が不足しています。推測の商品は掲載せず、次回更新で再確認します。</p>'
@@ -245,7 +250,7 @@ def render_page(rows: list[dict], now: datetime) -> str:
 </style>
 </head>
 <body>
-<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">📅 毎朝データから自動更新</span><h1>{title}</h1><p class="lead">楽天市場の日用品21カテゴリを送料込み・同一単位で比較。今日の取得データから、差が大きく信頼性の高い候補だけを見やすくまとめています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
+<header><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 今日の買い候補</div><span class="eyebrow">📅 毎朝データから自動更新</span><h1>{title}</h1><p class="lead">{category_scope}を送料込み・同一単位で比較。今日の取得データから、差が大きく信頼性の高い候補だけを見やすくまとめています。</p><div class="updated">{date_ja} {now:%H:%M} 更新</div></div></header>
 <main class="wrap"><div class="method">信頼性優先：単価計算の信頼度が高い商品だけを使い、極端に安すぎる単独データは外れ値として自動除外します。クーポン・ポイントは比較に含めません。</div>{empty_notice}{''.join(cards)}<p class="footnote">※「安い」は当サイトが当日取得できた楽天市場の比較候補内での目安です。市場全体の最安値を保証するものではありません。当サイトは楽天アフィリエイトを利用しています。</p></main>
 </body></html>'''
 
@@ -338,7 +343,8 @@ def main():
     now = datetime.now(ZoneInfo("Asia/Tokyo"))
     TODAY_DIR.mkdir(parents=True, exist_ok=True)
     SOCIAL_DIR.mkdir(parents=True, exist_ok=True)
-    (TODAY_DIR / "index.html").write_text(render_page(rows, now), encoding="utf-8")
+    published_count = sum(bool(c.get("items")) for c in (payload.get("categories") or {}).values())
+    (TODAY_DIR / "index.html").write_text(render_page(rows, now, published_count), encoding="utf-8")
     social = build_social(rows, now, catalog=payload)
     (TODAY_DIR / "data.json").write_text(json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8")
     (SOCIAL_DIR / "latest.json").write_text(json.dumps(social, ensure_ascii=False, indent=2), encoding="utf-8")

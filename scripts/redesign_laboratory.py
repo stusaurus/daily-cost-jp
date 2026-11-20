@@ -59,6 +59,11 @@ def category_metric(cid,item):
     if cid=="toilet-paper":return "重ね数別10m"
     return LABELS.get(item["metric"],item["metric"])
 
+def published_category_count(categories):
+    """Count the same nonempty categories linked from the current catalog."""
+    return sum(bool(category.get('items')) for category in categories.values())
+
+
 def category_links(categories):
     return ''.join(f'<a class="lab-category-link category-page-link" href="{ROOT}categories/{esc(cid)}/" data-conversion-source="category"><span>{esc(c["name"])}</span><small>{esc(category_metric(cid,c["items"][0]))}で比較 ↗</small></a>' for cid,c in categories.items() if c['items'])
 
@@ -211,8 +216,8 @@ def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
 def masthead():
     return f'<a class="lab-skip" href="#lab-content">本文へ移動</a><div class="lab-masthead"><div class="lab-masthead-inner"><a class="lab-brand" href="{ROOT}"><span class="lab-mark" aria-hidden="true">日</span><span>日用品コスパ比較<small>DAILY COST / 暮らしの価格研究所</small></span></a><nav class="lab-nav" aria-label="メインナビゲーション"><a href="{ROOT}categories/">カテゴリから探す</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名で探す ↗</a></nav></div></div>'
 
-def footer():
-    return f'<footer class="lab-footer"><div class="lab-footer-brand">同じものさしで、暮らしの値段を。</div><p>日用品コスパ比較 / 暮らしの価格研究所</p><nav aria-label="フッターナビゲーション"><a href="{ROOT}categories/">21カテゴリの比較</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名から探す</a><a href="{ROOT}guides/tissue-price-per-box/">単価の計算方法</a><a href="{ROOT}trends/">楽天総合ランキング</a></nav><p>当サイトは楽天アフィリエイトを利用しています。リンク経由の購入により運営者に報酬が発生する場合があります。楽天グループ株式会社が運営するサイトではありません。掲載時点の取得データに基づく比較です。価格・在庫・地域別送料は楽天の商品ページで確認してください。</p></footer>'
+def footer(category_count):
+    return f'<footer class="lab-footer"><div class="lab-footer-brand">同じものさしで、暮らしの値段を。</div><p>日用品コスパ比較 / 暮らしの価格研究所</p><nav aria-label="フッターナビゲーション"><a href="{ROOT}categories/">{category_count}カテゴリの比較</a><a href="{ROOT}today/">今日の比較候補</a><a href="{ROOT}products/">商品名から探す</a><a href="{ROOT}guides/tissue-price-per-box/">単価の計算方法</a><a href="{ROOT}trends/">楽天総合ランキング</a></nav><p>当サイトは楽天アフィリエイトを利用しています。リンク経由の購入により運営者に報酬が発生する場合があります。楽天グループ株式会社が運営するサイトではありません。掲載時点の取得データに基づく比較です。価格・在庫・地域別送料は楽天の商品ページで確認してください。</p></footer>'
 
 def published_category_anchor_links(site, category_id):
     """Use only product anchors actually present in the generated category page."""
@@ -242,7 +247,7 @@ def redesign_home(soup,payload,today,site=SITE):
     for selector in ['#home-start','.nav-wrap','#priority-categories','#today-deals-entry','.top-picks','.category-pages-block']:
         for el in soup.select(selector): el.decompose()
     life=life_markup(categories)
-    intro=fragment(f'<section class="lab-section" id="lab-life"><div class="lab-section-head"><div><span class="lab-kicker">01 / FIND YOUR EVERYDAY</span><h2>暮らしから探す</h2></div><p>いつもの日用品に、<br>新しい選び方を。</p></div><div class="lab-life-grid">{life}</div></section><section class="lab-section" id="lab-categories"><div class="lab-section-head"><div><span class="lab-kicker">02 / SAME UNIT, FAIR COMPARISON</span><h2>比べたいものは、何ですか。</h2></div><p>21カテゴリ・送料込みで比較</p></div><div class="lab-category-grid">{category_links(categories)}</div></section>')
+    intro=fragment(f'<section class="lab-section" id="lab-life"><div class="lab-section-head"><div><span class="lab-kicker">01 / FIND YOUR EVERYDAY</span><h2>暮らしから探す</h2></div><p>いつもの日用品に、<br>新しい選び方を。</p></div><div class="lab-life-grid">{life}</div></section><section class="lab-section" id="lab-categories"><div class="lab-section-head"><div><span class="lab-kicker">02 / SAME UNIT, FAIR COMPARISON</span><h2>比べたいものは、何ですか。</h2></div><p>{published_category_count(categories)}カテゴリ・送料込みで比較</p></div><div class="lab-category-grid">{category_links(categories)}</div></section>')
     main.insert(0,intro)
     picks=[]
     for index,deal in enumerate(today.get('items',[]),1):
@@ -444,7 +449,7 @@ def main(site=SITE):
             product_section=soup.select_one('section.category-section')
             if product_section:product_section.insert_after(normalized.extract())
         for footer_el in soup.find_all('footer'):footer_el.decompose()
-        soup.body.append(fragment(footer()))
+        soup.body.append(fragment(footer(published_category_count(payload['categories']))))
         if soup.select_one('#purchase-tools'):
             mobile=fragment(f'<nav class="lab-mobile-nav" aria-label="スマートフォン用ナビゲーション"><a href="{ROOT}categories/">カテゴリ</a><a href="{ROOT}today/">今日の候補</a><a href="#purchase-tools">保存・比較</a></nav>')
         else:mobile=fragment(f'<nav class="lab-mobile-nav" aria-label="スマートフォン用ナビゲーション"><a href="{ROOT}">ホーム</a><a href="{ROOT}categories/">カテゴリ</a><a href="{ROOT}today/">今日の候補</a></nav>')
