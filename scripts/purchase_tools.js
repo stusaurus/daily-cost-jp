@@ -55,7 +55,8 @@
       }
       row.append(node('strong', p.name));
       row.append(node('p', `${p.quantity}・支払総額 ${money(p.price)}（送料込み）`));
-      row.append(node('p', p.unit ? `${money(p.unit[1])}／${p.unit[0]}` : '組数・長さ・重ね数が不明のため条件をそろえた比較対象外'));
+      const unitPrice = p.unit ? (typeof p.unit_price_display === 'string' ? p.unit_price_display : money(p.unit[1])) : '';
+      row.append(node('p', p.unit ? `${unitPrice}／${p.unit[0]}` : '組数・長さ・重ね数が不明のため条件をそろえた比較対象外'));
       row.append(node('p', `取得日時：${p.updated_at.replace('T',' ').slice(0,16)}（日本時間）`));
       const link = node('a', '楽天で最新価格・送料を確認');
       link.href = p.url; link.target = '_blank'; link.rel = 'nofollow sponsored noopener';

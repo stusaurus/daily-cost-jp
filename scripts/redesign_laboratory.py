@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit, parse_qsl, urlencode
 from bs4 import BeautifulSoup
 from comparison_units import comparison_unit, quantity_label, LABELS
-from product_display import clean_display_name
+from product_display import clean_display_name, format_unit_price
 from art_direction import install_art, apply_art
 from step4_recommendations import CATEGORIES as QUANTITY_PURPOSE_CATEGORIES
 
@@ -26,7 +26,7 @@ LIFE = (
 )
 
 def esc(value): return html.escape(str(value), quote=True)
-def money(value): return f'¥{value:,.2f}' if value < 100 else f'¥{value:,.1f}'
+def money(value): return format_unit_price(value)
 def price_markup(value, label):
     # Keep the actual number and unit together in the accessible text.
     return f'<span class="lab-price-value"><small>¥</small>{money(value)[1:]}</span><span class="lab-price-unit">／{esc(label)}</span>'
