@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from comparison_units import comparison_unit, quantity_label, LABELS
 from price_observations import previous, update, identity, stats
-from product_display import clean_display_name
+from product_display import clean_display_name, format_unit_price
 
 SITE = Path('site')
 
@@ -29,7 +29,7 @@ def normalized_table(cid, category):
         groups.setdefault(unit[0], []).append((unit[1], rank, item))
     parts = []
     for label, rows in groups.items():
-        body = ''.join(f'<tr><td><a href="#{cid}-rank-{rank}">{esc(clean_display_name(item["name"]))}</a></td><td><strong>{money(value)}</strong><br>／{esc(label)}</td><td>{esc(quantity_label(item))}<br>{money(item["price"])}<br>送料込み</td></tr>' for value,rank,item in sorted(rows,key=lambda r:r[0]))
+        body = ''.join(f'<tr><td><a href="#{cid}-rank-{rank}">{esc(clean_display_name(item["name"]))}</a></td><td><strong>{format_unit_price(value)}</strong><br>／{esc(label)}</td><td>{esc(quantity_label(item))}<br>{money(item["price"])}<br>送料込み</td></tr>' for value,rank,item in sorted(rows,key=lambda r:r[0]))
         parts.append(f'<div class="comparison-table-wrap" tabindex="0" role="region" aria-label="{esc(label)}単価の比較"><table class="comparison-table"><caption>{esc(label)}あたりの安い順（{len(rows)}商品）</caption><thead><tr><th scope="col">商品</th><th scope="col">条件をそろえた単価</th><th scope="col">数量・支払総額</th></tr></thead><tbody>{body}</tbody></table></div>')
     missing = f'<p>組数・長さ・重ね数を確定できない{unknown}商品は、この表から除外しています。</p>' if unknown else ''
     return '<section class="comparison-tools" id="normalized-comparison"><h2>容量の違いまでそろえて比較</h2><p>箱単価・ロール単価とは順位が変わる場合があります。シングルとダブルは別々に比較します。</p>' + ''.join(parts) + missing + '</section>' if parts else ''
@@ -45,7 +45,7 @@ def main():
             catalog.append({'key':identity(cid,item),'category':cid,'category_name':category['name'],'rank':rank,
                 'name':clean_display_name(item['name']),'url':item['url'],'price':item['price'],'image':item.get('image',''),
                 'quantity':quantity_label(item),'unit':list(unit) if unit else None,
-                'unit_price_display':f'¥{unit[1]:.2f}' if unit else None,
+                'unit_price_display':format_unit_price(unit[1]) if unit else None,
                 'base_unit':[LABELS.get(item['metric'],item['metric']),item['unit_price']],
                 'history':stats(cid,item,history),'updated_at':payload['updated_at']})
     assets = SITE/'assets'; assets.mkdir(exist_ok=True)
