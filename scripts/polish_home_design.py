@@ -73,7 +73,7 @@ START = r'''
     <a href="categories/">
       <span class="home-start-icon">🛒</span>
       <strong>カテゴリから安い順を見る</strong>
-      <small>21カテゴリの単価ランキング</small>
+      <small>日用品の単価ランキング</small>
       <span class="home-start-arrow">→</span>
     </a>
   </div>
