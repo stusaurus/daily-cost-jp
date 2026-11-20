@@ -53,6 +53,11 @@ def promotion_only(label):
     return not re.sub(r'[\s★☆彡!！+＋・＼\\／/、。~〜～:：%％-]', '', rest)
 
 
+def format_unit_price(value):
+    """Match the visible product-card unit-price formatting for every category."""
+    return f'¥{value:,.2f}' if value < 100 else f'¥{value:,.1f}'
+
+
 def clean_display_name(name):
     original = str(name or '').strip()
     text = original
