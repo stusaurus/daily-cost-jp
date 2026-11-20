@@ -55,6 +55,31 @@ class ToiletPlyContractTests(unittest.TestCase):
         self.assertTrue(any("navigation missing" in e for e in
                             audit_page(self.category, changed)))
 
+    def test_price_answer_is_verified_and_tamper_protected(self):
+        cheap = product("シングル", 3)
+        cheap["price"] = 900
+        cheap["unit_price"] = 75
+        self.category["toilet_ply_groups"]["single"] = [
+            cheap, product("シングル", 1),
+        ]
+        page = toilet_ply_compare_panel({
+            "categories": {"toilet-paper": self.category}
+        })
+        self.assertIn("今回確認できたシングル2件", page)
+        self.assertIn("10mあたり ¥15.00", page)
+        self.assertIn("支払総額は ¥900", page)
+        self.assertIn("楽天全店の相場・最安値ではありません", page)
+        self.assertEqual(audit_page(self.category, page), [])
+        for old, new in [
+            ("10mあたり ¥15.00", "10mあたり ¥0.01"),
+            ('data-offer-count="2"', 'data-offer-count="99"'),
+            ("支払総額は ¥900", "支払総額は ¥1"),
+        ]:
+            with self.subTest(old=old):
+                changed = page.replace(old, new, 1)
+                self.assertTrue(any("price answer" in e for e in
+                                    audit_page(self.category, changed)))
+
     def test_final_page_requires_versioned_scoped_css_asset(self):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

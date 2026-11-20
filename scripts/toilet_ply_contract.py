@@ -31,6 +31,28 @@ def audit_page(category, html_text):
         if len(actual) != len(expected):
             errors.append(f"{family}: rendered offer count does not match catalog")
             continue
+        # The leading numeric buying answer is itself a product claim:
+        # require the exact minimum from the same verified category rows.
+        snapshots = section.select(".toilet-ply-price-snapshot")
+        if expected:
+            prices = []
+            for offer in expected:
+                unit = comparison_unit("toilet-paper", offer)
+                if not unit or unit[0] != label:
+                    errors.append(f"{family}: invalid price-answer source")
+                    continue
+                prices.append((unit[1], offer["price"], str(offer.get("item_code", ""))))
+            if len(prices) == len(expected):
+                best_price, best_total, _ = min(prices)
+                message = snapshots[0].get_text(" ", strip=True) if len(snapshots) == 1 else ""
+                if (len(snapshots) != 1
+                        or snapshots[0].get("data-offer-count") != str(len(expected))
+                        or f"10mあたり ¥{best_price:.2f}" not in message
+                        or f"支払総額は ¥{best_total:,}" not in message
+                        or "楽天全店の相場・最安値ではありません" not in message):
+                    errors.append(f"{family}: verified price answer differs from catalog")
+        elif snapshots:
+            errors.append(f"{family}: unexpected price answer without verified offers")
         for n, (card, offer) in enumerate(zip(actual, expected), start=1):
             cta = card.select_one("a.toilet-ply-buy")
             unit = comparison_unit("toilet-paper", offer)
