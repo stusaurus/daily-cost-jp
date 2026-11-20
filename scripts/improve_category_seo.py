@@ -113,15 +113,25 @@ PRIORITY_LINKS = [
     ("toilet-paper", "トイレットペーパーはいくらなら安い？"),
     ("laundry", "洗濯洗剤はどこが安い？"),
 ]
+# Neighboring, already published comparison pages, not claims of GSC popularity.
+RELATED_CATEGORY_LINKS = {
+    "toothpaste": [("toothbrush", "歯ブラシ"), ("mouthwash", "マウスウォッシュ")],
+    "wet-wipes": [("paper-towel", "ペーパータオル"), ("floor-sheet", "フローリングシート")],
+    "kitchen-paper": [("paper-towel", "ペーパータオル"), ("dish", "食器用洗剤")],
+    "sink-net": [("dish", "食器用洗剤"), ("kitchen-paper", "キッチンペーパー")],
+}
 
 def priority_links(current_id: str) -> str:
+    related = current_id in RELATED_CATEGORY_LINKS
+    choices = RELATED_CATEGORY_LINKS.get(current_id, PRIORITY_LINKS)
+    title = "一緒に比較したい日用品" if related else "よく比較されている日用品"
     links = [
         f'<a href="../{slug}/">{html.escape(label)}</a>'
-        for slug, label in PRIORITY_LINKS if slug != current_id
+        for slug, label in choices if slug != current_id
     ]
     if not links:
         return ""
-    return '<nav class="search-priority-links" aria-label="よく比較されている日用品"><strong>よく比較されている日用品</strong>' + "".join(links) + '</nav>'
+    return f'<nav class="search-priority-links" aria-label="{title}"><strong>{title}</strong>' + "".join(links) + '</nav>'
 
 
 def replace_once(text: str, pattern: str, replacement: str) -> str:
