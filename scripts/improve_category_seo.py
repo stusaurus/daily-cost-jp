@@ -199,8 +199,21 @@ def toilet_ply_compare_panel(payload: dict) -> str:
         cards = [card for card in cards if card]
         query = urllib.parse.quote("トイレットペーパー " + label)
         if cards:
+            # Answer the observed "いくらなら安い" intent with only the
+            # cheapest *verified published candidate*, never a market price.
+            best = offers[0]
+            best_unit = comparison_unit("toilet-paper", best)
+            snapshot = (
+                '<p class="toilet-ply-price-snapshot" data-offer-count="'
+                + str(len(cards)) + '">'
+                f'今回確認できた{label}{len(cards)}件の送料込み候補では、'
+                f'最も低い単価が<strong>10mあたり ¥{best_unit[1]:.2f}</strong>。'
+                f'その商品の支払総額は ¥{best["price"]:,}です。'
+                '掲載候補内の数値であり、店頭や楽天全店の相場・最安値ではありません。</p>'
+            )
             content = (
-                '<div class="toilet-ply-card-list">' + ''.join(cards[:2]) + '</div>'
+                snapshot
+                + '<div class="toilet-ply-card-list">' + ''.join(cards[:2]) + '</div>'
                 + (f'<details class="toilet-ply-more"><summary>ほかの{label}候補'
                    f'{len(cards) - 2}件を表示</summary>'
                    '<div class="toilet-ply-card-list">' + ''.join(cards[2:]) + '</div>'
