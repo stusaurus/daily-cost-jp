@@ -22,6 +22,7 @@ class Links(HTMLParser):
         self.external, self.chips = [], []
         self.external_contexts = []
         self.everyday_value_links = []
+        self.tissue_five_box_links = []
         self.display_names, self._name_tag, self._name_parts = [], None, []
 
     def handle_starttag(self, tag, attrs):
@@ -34,6 +35,8 @@ class Links(HTMLParser):
             self.external_contexts.append((a['href'], a.get('data-category-id'), a.get('data-purchase-purpose')))
         if tag == 'a' and a.get('data-purchase-purpose') == 'everyday-value':
             self.everyday_value_links.append(a)
+        if tag == 'a' and a.get('data-tissue-five-box-choice') is not None:
+            self.tissue_five_box_links.append(a)
         if tag == 'button' and 'chip' in a.get('class', '').split():
             self.chips.append(a.get('data-q'))
 
@@ -229,6 +232,43 @@ def valid_everyday_value_link(attrs, rel, payload):
         return False
 
 
+
+def valid_tissue_five_box_link(attrs, rel, payload):
+    """Authorize an extra tissue link only for a fully reverified exact offer.
+
+    Never broaden the general category ranking, Today, home, or purpose slots.
+    The URL and merchant identity must match one of the same, deterministic
+    safe five-box rows used by the renderer, with price and unit-label equality.
+    """
+    if rel != 'categories/tissue/index.html' or not isinstance(attrs, dict):
+        return False
+    if attrs.get('data-tissue-five-box-choice') != '1':
+        return False
+    from tissue_five_box_choices import select_offers
+    category = payload.get('categories', {}).get('tissue')
+    choices = select_offers(category)
+    if not choices:
+        return False
+    if (attrs.get('data-category-id') != 'tissue'
+            or attrs.get('data-purchase-purpose') != 'small'
+            or attrs.get('data-conversion-source') != 'category'
+            or attrs.get('target') != '_blank'
+            or not {'nofollow', 'sponsored', 'noopener'}.issubset(
+                set((attrs.get('rel') or '').split()))):
+        return False
+    for price, per_100, pairs, row in choices:
+        if attrs.get('href') != row['url'] or attrs.get('data-id') != row['item_code']:
+            continue
+        if (attrs.get('data-product-name') != clean_display_name(row['name'])
+                or attrs.get('data-unit-price-label') != f'¥{per_100:,.2f}／100組'):
+            return False
+        try:
+            return Decimal(str(attrs.get('data-shipping-price'))) == Decimal(price)
+        except (InvalidOperation, TypeError, ValueError):
+            return False
+    return False
+
+
 def validate(root=Path('site'), report_path=Path('quality-report.json')):
     payload = json.loads((root / 'data.json').read_text(encoding='utf-8'))
     errors, accepted = validate_catalog(payload)
@@ -284,9 +324,26 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
         # Require the exact selected offer AND matching category/purpose attrs.
         can_render_purpose = rel == 'index.html' or rel in {f'categories/{cid}/index.html' for cid in CATEGORIES}
         category_scope = rel.split('/')[1] if rel.startswith('categories/') else None
-        if any(url not in allowed and not (can_render_purpose and
-               (url, cid, purpose) in purpose_links and (category_scope is None or cid == category_scope))
-               for url, cid, purpose in page.external_contexts):
+        verified_five_box = {
+            (attrs['href'], 'tissue', 'small')
+            for attrs in page.tissue_five_box_links
+            if valid_tissue_five_box_link(attrs, rel, payload)
+        }
+        if page.tissue_five_box_links:
+            # Require every card to identify a distinct safe offer. A duplicated,
+            # mispriced, wrong-category or arbitrary injected link is invalid.
+            from tissue_five_box_choices import select_offers
+            expected = select_offers(payload.get('categories', {}).get('tissue'))
+            if (rel != 'categories/tissue/index.html'
+                    or len(page.tissue_five_box_links) != len(expected)
+                    or len(verified_five_box) != len(expected)):
+                errors.append(f'{rel}: tissue five-box merchant link not fully verified')
+        if any(url not in allowed and not (
+                can_render_purpose and
+                (url, cid, purpose) in purpose_links and (category_scope is None or cid == category_scope)
+               ) and not (
+                rel == 'categories/tissue/index.html' and (url, cid, purpose) in verified_five_box
+               ) for url, cid, purpose in page.external_contexts):
             errors.append(f'{rel}: rendered Rakuten link outside verified selection')
         if len(page.everyday_value_links) > 1 or any(
                 not valid_everyday_value_link(attrs, rel, payload)

@@ -50,6 +50,7 @@ STEPS = (
     'verified_shop_comparison',
     'build_laundry_cost_page',
     'buying_decision_summary',
+    'tissue_five_box_choices',
     'laundry_shop_directory',
     'add_a8_matsukiyo',
     'add_a8_lenet',
