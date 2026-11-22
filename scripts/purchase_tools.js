@@ -9,6 +9,7 @@
   let catalog = [];
   const status = document.getElementById('purchase-tool-status');
   const panel = document.getElementById('purchase-tool-panel');
+  const isLaundryPage = window.location.pathname === ROOT + 'categories/laundry/';
   if (!panel || !status) return;
   try {
     const raw = JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -16,6 +17,20 @@
   } catch (_) { status.textContent = '保存を読み込めません。このタブでは比較を使えます。'; }
   const money = n => '¥' + Number(n).toLocaleString('ja-JP', {minimumFractionDigits:2,maximumFractionDigits:2});
   function node(tag, text) { const el = document.createElement(tag); if (text) el.textContent = text; return el; }
+  // Keep the selected-offer action visible while the laundry visitor scans long cards.
+  // Other categories retain their existing comparison experience during this pilot.
+  const quickCompare = isLaundryPage ? node('button', '選んだ洗剤を比較する') : null;
+  if (quickCompare) {
+    quickCompare.id = 'laundry-compare-shortcut';
+    quickCompare.type = 'button';
+    quickCompare.hidden = true;
+    quickCompare.setAttribute('aria-label', '選択した洗濯洗剤の比較を見る');
+    quickCompare.addEventListener('click', () => {
+      mode = 'comparison'; measure('purchase_comparison_open'); show();
+      panel.scrollIntoView?.({behavior:'auto',block:'start'});
+    });
+    document.body.append(quickCompare);
+  }
   function persist() {
     try { localStorage.setItem(KEY, JSON.stringify([...saved])); return true; }
     catch (_) { status.textContent = '保存できませんでした。ブラウザの保存設定を確認してください。比較はこのタブ内で使えます。'; return false; }
@@ -29,6 +44,10 @@
     });
     document.getElementById('show-saved').textContent = `保存した商品を見る（${saved.size}）`;
     document.getElementById('show-comparison').textContent = `比較を見る（${selected.size}）`;
+    if (quickCompare) {
+      quickCompare.textContent = `選んだ洗剤を比較する（${selected.size}件）`;
+      quickCompare.hidden = selected.size === 0 || (!panel.hidden && mode === 'comparison');
+    }
   }
   function show() {
     panel.replaceChildren(); panel.hidden = false;
@@ -36,6 +55,7 @@
     panel.append(node('h3', mode === 'saved' ? '保存した商品' : '選んだ商品の比較'));
     const rows = catalog.filter(p => set.has(p.key));
     if (!set.size) panel.append(node('p', '商品カードから保存・比較する商品を選んでください。'));
+    if (isLaundryPage && mode === 'comparison' && rows.length === 1) panel.append(node('p', 'もう1商品選ぶと、同じ比較単位の洗剤を単価順に比べられます。用途・濃縮度にもご注意ください。'));
     if (rows.length !== set.size) panel.append(node('p', '現在の掲載候補にない保存商品があります。以前の価格・リンクでは購入を案内しません。'));
     if (mode === 'comparison' && rows.length > 1) {
       const first = rows[0];
@@ -70,7 +90,8 @@
     }); panel.append(list);
     const clear = node('button','この一覧を空にする');clear.type = 'button';
     clear.addEventListener('click',()=>{set.clear();if(mode==='saved')persist();sync();show();});panel.append(clear);
-    const close=node('button','比較・保存の一覧を閉じる');close.type='button';close.addEventListener('click',()=>{panel.hidden=true;});panel.append(close);
+    const close=node('button','比較・保存の一覧を閉じる');close.type='button';close.addEventListener('click',()=>{panel.hidden=true;sync();});panel.append(close);
+    sync();
   }
   document.getElementById('show-saved').addEventListener('click',()=>{mode='saved';measure('purchase_saved_open');show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
   document.getElementById('show-comparison').addEventListener('click',()=>{mode='comparison';measure('purchase_comparison_open');show();panel.scrollIntoView?.({behavior:'auto',block:'start'});});
