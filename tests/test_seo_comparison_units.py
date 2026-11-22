@@ -181,6 +181,44 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             self.assertIn('id="category-seo-schema"', html_page)
             self.assertIn("トイレットペーパーはいくらなら安い", html_page)
 
+    def test_laundry_search_snippet_describes_actual_verified_comparison(self):
+        from improve_category_seo import SEARCH_TARGETS, render_search_copy
+        target = SEARCH_TARGETS["laundry"]
+        self.assertIn("単価ランキング", target["title"])
+        self.assertIn("掲載店比較", target["title"])
+        self.assertIn("安い店は？", target["title"])
+        description = render_search_copy(target["description"], "100g")
+        self.assertIn("送料込み100gあたりの単価", description)
+        self.assertIn("セット個数", description)
+        self.assertIn("支払総額", description)
+        self.assertIn("1回の使用量", description)
+        self.assertNotIn("{comparison_unit}", description)
+
+    def test_laundry_generated_metadata_matches_unit_without_touching_ranking(self):
+        import improve_category_seo as module
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            path = root / "categories" / "laundry" / "index.html"
+            path.parent.mkdir(parents=True)
+            path.write_text(
+                '<html><head><title>Before</title>'
+                '<meta name="description" content="Before"></head>'
+                '<body><main class="container"><h1>Before</h1>'
+                '<p class="lead">Before</p>'
+                '<section data-fixture="ranking">¥120／100g</section>'
+                '<section class="related-categories"></section></main></body></html>',
+                encoding="utf-8",
+            )
+            payload = {"categories": {"laundry": {"metric": "100g"}}}
+            with patch.object(module, "SITE_DIR", root):
+                self.assertTrue(module.enhance_page("laundry", "洗濯洗剤", "🧴", "洗濯洗剤", payload))
+            page = path.read_text(encoding="utf-8")
+            self.assertIn("洗濯洗剤の安い店は？楽天送料込み単価ランキングと掲載店比較", page)
+            self.assertIn("送料込み100gあたりの単価", page)
+            self.assertIn('data-fixture="ranking">¥120／100g', page)
+            self.assertEqual(page.count('<link rel="canonical"'), 0)
+            self.assertEqual(page.count('id="category-seo-schema"'), 1)
+
     def test_other_categories_and_unknown_metrics_are_unchanged(self):
         for metric, expected in (("100g", "100g"), ("100ml", "100ml"), ("unknown", "同じ単位")):
             self.assertEqual(metric_label("laundry", {"categories": {"laundry": {"metric": metric}}}), expected)
