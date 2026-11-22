@@ -50,7 +50,9 @@ class LiveReleaseContractTests(unittest.TestCase):
                          "REDIRECTED")
 
     def test_javascript_does_not_require_html_canonical(self):
-        spec = CHECKS[4]
+        spec = next(item for item in CHECKS
+                    if item["path"].endswith("/pack-rice-planner.js")
+                    and item["marker"] == "calculateWithStock")
         self.assertEqual(assess(spec, "function calculateWithStock(){}")["status"], "PASS")
 
     def test_kyo_two_player_progressive_filter_has_independent_live_proof(self):
@@ -83,6 +85,31 @@ class LiveReleaseContractTests(unittest.TestCase):
         self.assertEqual(assess(pet_page, self.html(pet_page))["status"], "FEATURE_MISSING")
         self.assertEqual(assess(pet_page, self.html(pet_page, pet_page["marker"]))["status"],
                          "PASS")
+
+    def test_food_guide_requires_either_unpriced_fallback_or_verified_offer_planner(self):
+        guide = next(x for x in CHECKS if x["site"] == "food"
+                     and x.get("alternateMarkers"))
+        self.assertTrue(guide["required"])
+        self.assertTrue(guide["allow_noindex"])
+        for version in ('data-rice-quantity-only', 'data-rice-planner'):
+            with self.subTest(version=version):
+                result = assess(guide, self.html(guide, version, robots="noindex,follow"))
+                self.assertEqual(result["status"], "PASS")
+                self.assertEqual(result["matchedMarker"], version)
+        result = assess(guide, self.html(guide, robots="noindex,follow"))
+        self.assertEqual(result["status"], "FEATURE_MISSING")
+        self.assertIsNone(result["matchedMarker"])
+
+    def test_baby_size_choices_and_food_fallback_js_must_be_shipped(self):
+        baby = next(x for x in CHECKS if x["site"] == "baby"
+                    and x["marker"] == 'data-purchase-size-choice="7"')
+        food_js = next(x for x in CHECKS if x["site"] == "food"
+                       and x["path"].endswith("pack-rice-quantity-only.js"))
+        self.assertTrue(baby["required"])
+        self.assertEqual(assess(baby, self.html(baby, baby["marker"]))["status"], "PASS")
+        self.assertEqual(assess(baby, self.html(baby))["status"], "FEATURE_MISSING")
+        self.assertEqual(assess(food_js, "function countOnly(daily,days,stock){}")["status"], "PASS")
+        self.assertEqual(assess(food_js, "old version")["status"], "FEATURE_MISSING")
 
     def test_report_keeps_missing_critical_and_conditional_distinct(self):
         report = make_report([
