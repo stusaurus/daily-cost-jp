@@ -15,6 +15,10 @@ def money(x): return f'¥{x:,.2f}'
 
 STYLE = '''<style id="comparison-tools-style">
 .comparison-table-wrap{overflow-x:auto;margin:12px 0;max-width:100%}.comparison-table{width:100%;border-collapse:collapse;font-size:14px;min-width:340px}.comparison-table th,.comparison-table td{padding:12px 8px;text-align:left;border-bottom:1px solid #ddd;vertical-align:top}.comparison-table td:first-child{max-width:220px;overflow-wrap:anywhere}.comparison-table th{background:#fff5ed}.comparison-table strong{white-space:nowrap;color:#9d281f}.comparison-table caption{text-align:left;font-weight:700;padding:10px 0}.product-tools{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.product-tools button,.comparison-tools button{min-height:44px;padding:10px 12px;border:1px solid #b9b0a8;border-radius:9px;background:#fff;color:#342f2c;font:inherit;cursor:pointer}.product-tools button[aria-pressed="true"]{background:#fff0d9;border-color:#9d281f}.comparison-tools{margin:14px 0;padding:16px;background:#fffaf6;border:1px solid #dfcdbf;border-radius:14px}.comparison-tools h2{margin-top:0;font-size:20px}.comparison-tools a{display:inline-block;padding:12px;min-height:44px}.comparison-tools li{padding:12px 0;border-bottom:1px solid #ddd;overflow-wrap:anywhere}.comparison-tools [hidden]{display:none}.comparison-tools button:focus-visible,.product-tools button:focus-visible{outline:3px solid #22663a;outline-offset:2px}.history-fact{font-size:13px;line-height:1.6;color:#444}.comparison-panel-actions{display:flex;flex-wrap:wrap;gap:8px}.product-name-short{font-size:14px;line-height:1.5}
+#laundry-compare-shortcut{position:fixed;right:16px;bottom:20px;z-index:20;min-height:48px;max-width:calc(100vw - 32px);padding:12px 20px;border:0;border-radius:999px;background:#9d281f;color:#fff;box-shadow:0 5px 20px #342f2c44;font:inherit;font-weight:700;cursor:pointer}
+#laundry-compare-shortcut[hidden]{display:none}
+#laundry-compare-shortcut:focus-visible{outline:3px solid #22663a;outline-offset:3px}
+@media(max-width:768px){#laundry-compare-shortcut{left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));max-width:none;width:calc(100% - 24px)}}
 </style>'''
 
 
