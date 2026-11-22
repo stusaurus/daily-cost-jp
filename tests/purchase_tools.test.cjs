@@ -4,8 +4,8 @@ const { JSDOM } = require('jsdom');
 const fs = require('node:fs');
 const code = fs.readFileSync('scripts/purchase_tools.js','utf8');
 const source = fs.readFileSync('scripts/analytics_runtime.js','utf8');
-async function fixture(blockStorage=false, firstUnit=40, firstLabel='¥40.00') {
-  const dom=new JSDOM(`<section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><article class="product-card"><div class="product-body"><h3>A</h3><a href="https://hb.afl.rakuten.co.jp/a">楽天</a></div></article><article class="product-card"><div class="product-body"><h3>B</h3><a href="https://hb.afl.rakuten.co.jp/b">楽天</a></div></article>`,{url:'https://stusaurus.github.io/daily-cost-jp/categories/tissue/',runScripts:'outside-only'});
+async function fixture(blockStorage=false, firstUnit=40, firstLabel='¥40.00', category='tissue') {
+  const dom=new JSDOM(`<section id="purchase-tools"><button id="show-saved"></button><button id="show-comparison"></button><p id="purchase-tool-status"></p><div id="purchase-tool-panel" hidden></div></section><article class="product-card"><div class="product-body"><h3>A</h3><a href="https://hb.afl.rakuten.co.jp/a">楽天</a></div></article><article class="product-card"><div class="product-body"><h3>B</h3><a href="https://hb.afl.rakuten.co.jp/b">楽天</a></div></article>`,{url:`https://stusaurus.github.io/daily-cost-jp/categories/${category}/`,runScripts:'outside-only'});
   dom.window.fetch=async(url,options)=>{dom.window.catalogFetchOptions=options;return {ok:true,json:async()=>[
     {key:'a',category:'tissue',name:'A',url:'https://hb.afl.rakuten.co.jp/a',quantity:'60箱',price:3600,unit:['100組',firstUnit],unit_price_display:firstLabel,rank:1,updated_at:'2026-10-03T06:00:00+09:00'},
     {key:'b',category:'tissue',name:'B',url:'https://hb.afl.rakuten.co.jp/b',quantity:'60箱',price:4200,unit:['100組',35],unit_price_display:'¥35.00',rank:2,updated_at:'2026-10-03T06:00:00+09:00'}]};};
@@ -56,4 +56,33 @@ test('comparison keeps card precision above 100 yen and thousands separators',as
     assert.equal(d.querySelector('#purchase-tool-panel a').getAttribute('rel'),'nofollow sponsored noopener');
     dom.window.close();
   }
+});
+
+test('laundry comparison offers a visible mobile shortcut only after choosing a product',async()=>{
+  const dom=await fixture(false,40,'¥40.00','laundry');
+  const d=dom.window.document;
+  const quick=d.getElementById('laundry-compare-shortcut');
+  assert.ok(quick,'laundry page must have an accessible comparison action');
+  assert.equal(quick.hidden,true,'action must not obscure reading before any selection');
+  const originalLink=d.querySelector('.product-card a').href;
+  d.querySelector('[data-product-tool="compare"]').click();
+  assert.equal(quick.hidden,false);
+  assert.match(quick.textContent,/1件/);
+  quick.click();
+  const panel=d.getElementById('purchase-tool-panel');
+  assert.equal(panel.hidden,false);
+  assert.equal(quick.hidden,true,'the shortcut should hide while comparison is open');
+  assert.match(panel.textContent,/もう1商品選ぶと/);
+  assert.equal(d.querySelector('.product-card a').href,originalLink,'verified Rakuten links stay unchanged');
+  assert.equal(d.querySelector('#purchase-tool-panel a').getAttribute('rel'),'nofollow sponsored noopener');
+  Array.from(panel.querySelectorAll('button')).find(b=>b.textContent==='比較・保存の一覧を閉じる').click();
+  assert.equal(quick.hidden,false,'closing comparison preserves the selected offer');
+  d.querySelector('[data-product-tool="compare"]').click();
+  assert.equal(quick.hidden,true,'shortcut disappears when no offers remain');
+  dom.window.close();
+});
+test('non-laundry pages keep the existing comparison controls without the shortcut',async()=>{
+  const dom=await fixture();
+  assert.equal(dom.window.document.getElementById('laundry-compare-shortcut'),null);
+  dom.window.close();
 });
