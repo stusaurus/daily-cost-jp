@@ -184,14 +184,14 @@ class SeoComparisonUnitsTests(unittest.TestCase):
     def test_laundry_search_snippet_describes_actual_verified_comparison(self):
         from improve_category_seo import SEARCH_TARGETS, render_search_copy
         target = SEARCH_TARGETS["laundry"]
-        self.assertIn("100g単価", target["title"])
-        self.assertIn("詰め替え", target["title"])
-        self.assertNotIn("安い店は？", target["title"])
+        self.assertIn("単価ランキング", target["title"])
+        self.assertIn("掲載店比較", target["title"])
+        self.assertIn("安い店は？", target["title"])
         description = render_search_copy(target["description"], "100g")
-        self.assertIn("送料込み100g単価", description)
+        self.assertIn("送料込み100gあたりの単価", description)
         self.assertIn("セット個数", description)
         self.assertIn("支払総額", description)
-        self.assertIn("1回使用量", description)
+        self.assertIn("1回の使用量", description)
         self.assertNotIn("{comparison_unit}", description)
 
     def test_laundry_generated_metadata_matches_unit_without_touching_ranking(self):
@@ -213,8 +213,8 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             with patch.object(module, "SITE_DIR", root):
                 self.assertTrue(module.enhance_page("laundry", "洗濯洗剤", "🧴", "洗濯洗剤", payload))
             page = path.read_text(encoding="utf-8")
-            self.assertIn("洗濯洗剤の価格比較｜送料込み100g単価・詰め替えの総額", page)
-            self.assertIn("送料込み100g単価", page)
+            self.assertIn("洗濯洗剤の安い店は？楽天送料込み単価ランキングと掲載店比較", page)
+            self.assertIn("送料込み100gあたりの単価", page)
             self.assertIn('data-fixture="ranking">¥120／100g', page)
             self.assertEqual(page.count('<link rel="canonical"'), 0)
             self.assertEqual(page.count('id="category-seo-schema"'), 1)
