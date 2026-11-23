@@ -86,11 +86,11 @@ class SeoComparisonUnitsTests(unittest.TestCase):
                 self.assertTrue(module.enhance_page("tissue", "ティッシュ", "📦", "ティッシュペーパー", payload))
             page = path.read_text(encoding="utf-8")
             self.assertNotIn('water-related-tool-style', page)
-            self.assertIn("ティッシュの楽天送料込み価格を100組あたりで比較", page)
-            self.assertIn("組数が違う商品を100組あたりで値段比較", page)
+            self.assertIn("ティッシュの楽天掲載商品を100組あたりで比較", page)
+            self.assertIn("送料込み100組あたりで値段比較", page)
             self.assertIn('data-fixture="ranking">¥44.16／100組', page)
             self.assertNotIn("1箱あたりで比較", page)
-            self.assertIn("ティッシュはどこが安い？今日の楽天送料込み価格・値段比較", page)
+            self.assertIn("ティッシュの値段比較｜5箱セット・まとめ買いの送料込み単価", page)
             self.assertIn('id="category-seo-schema"', page)
 
     def test_toilet_guide_keeps_ply_separation_and_normalized_length(self):
