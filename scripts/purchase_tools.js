@@ -45,7 +45,7 @@
     document.getElementById('show-saved').textContent = `保存した商品を見る（${saved.size}）`;
     document.getElementById('show-comparison').textContent = `比較を見る（${selected.size}）`;
     if (quickCompare) {
-      quickCompare.textContent = `選んだ洗剤を比較する（${selected.size}件）`;
+      quickCompare.textContent = selected.size === 1 ? '選んだ洗剤を確認する（1件）' : `選んだ洗剤を比較する（${selected.size}件）`;
       quickCompare.hidden = selected.size === 0 || (!panel.hidden && mode === 'comparison');
     }
   }
@@ -113,7 +113,7 @@
           let added=false;
           if(set.has(p.key))set.delete(p.key);
           else {if(set.size>=(kind==='save'?50:4)){status.textContent=kind==='save'?'保存は50商品までです。':'一度に比較できるのは4商品までです。';return;}set.add(p.key);added=true;}
-          const ok=kind==='save'?persist():true;if(ok&&added)measure(kind==='save'?'purchase_save_add':'purchase_compare_add');sync();if(ok)status.textContent=kind==='save'?'保存一覧を更新しました。':'比較候補を更新しました。「比較を見る」で確認できます。';
+          const ok=kind==='save'?persist():true;if(ok&&added)measure(kind==='save'?'purchase_save_add':'purchase_compare_add');sync();if(ok)status.textContent=kind==='save'?'保存一覧を更新しました。':(isLaundryPage ? (added ? `比較候補に追加しました（${selected.size}件）。画面下の「${selected.size===1?'選んだ洗剤を確認する':'選んだ洗剤を比較する'}」から確認できます。` : `比較候補から外しました（${selected.size}件）。`) : '比較候補を更新しました。「比較を見る」で確認できます。');
           if(!panel.hidden)show();
         });tools.append(button);
       });body.append(tools);
