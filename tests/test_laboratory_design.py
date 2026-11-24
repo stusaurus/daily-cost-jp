@@ -67,6 +67,36 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertTrue(display_name(long).endswith('…'))
         self.assertLessEqual(len(display_name(long)),76)
 
+    def test_mask_quantity_choices_use_real_anchors_and_single_listing_totals(self):
+        from redesign_laboratory import mask_quantity_choices
+        def item(key, count, price, **overrides):
+            return dict(name=f'不織布マスク {count}枚', metric='sheet',
+                        price=price, unit_price=price/count, confidence=.99,
+                        postage='送料込み', item_code='shop:'+key,
+                        url='https://item.rakuten.co.jp/shop/'+key+'/', **overrides)
+        rows = [item('small',30,500), item('medium',60,750),
+                item('large',120,950), item('hidden',120,800)]
+        # A valid offer that is absent from the actual page must not be selected.
+        bad = item('wrong',100,900)
+        bad['item_code'] = 'shop:other'
+        rows.append(bad)
+        soup = BeautifulSoup(''.join(
+            f'<article class="product-card" id="mask-rank-{i}"><a class="buy-button" href="{r["url"]}">楽天</a></article>'
+            for i,r in enumerate([rows[2], rows[0], rows[1], bad],1)), 'html.parser')
+        result = BeautifulSoup(mask_quantity_choices(soup, {'items':rows}), 'html.parser')
+        cards = result.select('.lab-buy-mode-card')
+        self.assertEqual(len(cards),3)
+        self.assertEqual([c.a['href'] for c in cards], ['#mask-rank-2','#mask-rank-3','#mask-rank-1'])
+        self.assertIn('支払総額 ¥500',cards[0].text)
+        self.assertIn('支払総額 ¥750',cards[1].text)
+        self.assertIn('支払総額 ¥950',cards[2].text)
+        self.assertIn('必要枚数との差 20枚',cards[2].text)
+        self.assertIn('複数注文の送料は計算せず',result.text)
+        self.assertIn('サイズ・形・用途',result.text)
+        empty = BeautifulSoup(mask_quantity_choices(soup, {'items':[rows[0]]}), 'html.parser')
+        self.assertIsNone(empty.select('.lab-buy-mode-card')[2].a)
+        self.assertIn('確認済み商品はありません',empty.select('.lab-buy-mode-card')[2].text)
+
     def test_priority_categories_never_render_legacy_purpose_claims(self):
         from step4_recommendations import CATEGORIES
         for cid in CATEGORIES:

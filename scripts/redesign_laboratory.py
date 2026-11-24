@@ -202,6 +202,56 @@ def buying_modes_markup(cid, category):
         '</section>'
     )
 
+def mask_quantity_choices(soup, category):
+    """Compare one listing's verified total; never assume multi-order shipping."""
+    from product_quality import filter_items, parsed_quantity
+    from step4_recommendations import destination_matches
+
+    rows = category.get('items', [])
+    if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
+        rows = []
+    anchors = {}
+    for card in soup.select('article.product-card[id]'):
+        link = card.select_one('a.buy-button[href]')
+        if link:
+            anchors[link['href']] = card['id']
+    eligible = []
+    for item in filter_items('mask', rows):
+        qty = parsed_quantity('mask', item['name'])
+        if not qty or qty['metric'] != 'sheet' or not destination_matches(item):
+            continue
+        if item['url'] not in anchors:
+            continue
+        count = qty['quantity']
+        if count <= 0 or count != int(count):
+            continue
+        eligible.append((item['price'], int(count), item))
+    cards = []
+    for required in (30, 50, 100):
+        candidates = sorted(
+            (r for r in eligible if r[1] >= required),
+            key=lambda r: (r[0], r[1], r[2]['url']),
+        )
+        content = '<p>今回の掲載候補に、必要枚数を満たす確認済み商品はありません。</p>'
+        if candidates:
+            price, count, item = candidates[0]
+            content = (
+                f'<h3>{esc(clean_display_name(item["name"]))}</h3>'
+                f'<p class="lab-buy-mode-meta">{count:,}枚入り ・ 支払総額 ¥{int(price):,}（送料込み）</p>'
+                f'<p>1枚 {money(price / count)} ・ 必要枚数との差 {count - required:,}枚</p>'
+                f'<a class="category-page-link" href="#{esc(anchors[item["url"]])}">掲載商品の詳細を見る →</a>'
+            )
+        cards.append(f'<article class="lab-buy-mode-card"><h3>{required}枚以上必要な場合</h3>{content}</article>')
+    return (
+        '<section id="mask-quantity-choices" class="lab-buy-modes" aria-labelledby="mask-quantity-title">'
+        '<h2 id="mask-quantity-title">必要枚数から支払総額を比較</h2>'
+        '<p>現在の掲載候補のうち、1商品（1販売単位）で必要枚数を満たすものから支払総額が低い候補を表示します。'
+        '複数注文の送料は計算せず、楽天全店の最安値や在庫を保証しません。</p>'
+        '<div class="lab-buy-mode-grid">' + ''.join(cards) + '</div>'
+        '<p>マスクのサイズ・形・用途が合うことを商品詳細で必ず確認してください。枚数・価格だけで性能は比較できません。</p></section>'
+    )
+
+
 def card_markup(cid, category, item, rank, anchor, reason='送料込み'):
     unit = comparison_unit(cid,item)
     label, value = unit if unit else (LABELS.get(item['metric'],item['metric']),item['unit_price'])
@@ -418,6 +468,10 @@ def main(site=SITE):
                     answer.insert_after(mode_section)
                 elif category_section:
                     category_section.insert_before(mode_section)
+        if page_cid == 'mask' and not soup.select_one('#mask-quantity-choices'):
+            ranking = soup.select_one('section.category-section#mask')
+            if ranking:
+                ranking.insert_before(fragment(mask_quantity_choices(soup, payload['categories']['mask'])).section)
         # Secondary units become the main number; the actual catalog remains intact.
         for image in soup.select('.deal-image img'):
             original=image.get('src','');image['src']=photo_url(original);image['width']='420';image['height']='420'
