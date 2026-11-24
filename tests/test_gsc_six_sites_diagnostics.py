@@ -43,6 +43,18 @@ class DiagnosticsTests(unittest.TestCase):
         self.first_name, self.first_site = g.base.SITES[0]
         self.windows = g.base.date_windows(dt.date(2026, 10, 18))
 
+    def test_pet_material_and_size_entries_are_inspected(self):
+        paths = g.TARGET_PATHS["ペット用品"]
+        expected = {
+            "/categories/pet-sheets/regular/", "/categories/pet-sheets/wide/",
+            "/categories/pet-sheets/super-wide/", "/categories/cat-litter/paper/",
+            "/categories/cat-litter/okara/", "/categories/cat-litter/wood/",
+            "/categories/cat-litter/mineral/",
+        }
+        self.assertTrue(expected.issubset(paths))
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertTrue({"/", "/categories/pet-sheets/", "/categories/cat-litter/", "/categories/dog-food/"}.issubset(paths))
+
     def test_exact_six_site_targets(self):
         self.assertEqual(set(g.TARGET_PATHS), {name for name, _ in g.base.SITES})
         for paths in g.TARGET_PATHS.values():
