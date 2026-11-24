@@ -76,7 +76,9 @@ def sitemap_evidence(session, site):
 TARGET_PATHS = {
     "日用品": ("/categories/laundry/", "/categories/tissue/", "/categories/toilet-paper/", "/tools/laundry-cost-per-wash/"),
     "ベビー用品": ("/", "/diapers/pants/m/", "/guides/toddler-meals/"),
-    "ペット用品": ("/", "/categories/pet-sheets/", "/categories/cat-litter/", "/categories/dog-food/"),
+    "ペット用品": ("/", "/categories/pet-sheets/", "/categories/cat-litter/", "/categories/dog-food/",
+             "/categories/pet-sheets/regular/", "/categories/pet-sheets/wide/", "/categories/pet-sheets/super-wide/",
+             "/categories/cat-litter/paper/", "/categories/cat-litter/okara/", "/categories/cat-litter/wood/", "/categories/cat-litter/mineral/"),
     "食品": ("/", "/categories/rice/", "/categories/pack-rice/", "/guides/pack-rice-24-servings-cost/",
            "/guides/family-meal-delivery-budget/", "/guides/water-server-vs-bottled-water/"),
     "ボードゲーム": ("/", "/scenes/two-player/", "/scenes/children/", "/games/ito/", "/games/codenames-duet/"),
