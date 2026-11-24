@@ -202,6 +202,59 @@ def buying_modes_markup(cid, category):
         '</section>'
     )
 
+def softener_wash_calculator(soup, category):
+    """Only verified, visible offers; dose is supplied by the visitor from the label."""
+    from product_quality import filter_items, parsed_quantity
+    from step4_recommendations import destination_matches
+    from math import isfinite
+
+    rows = category.get('items', [])
+    if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
+        return ''
+    visible = {a['href'] for a in soup.select('article.product-card a.buy-button[href]')}
+    options = []
+    for item in filter_items('softener', rows):
+        qty = parsed_quantity('softener', item['name'])
+        if not qty or qty['metric'] not in ('100g', '100ml'):
+            continue
+        if item['url'] not in visible or not destination_matches(item):
+            continue
+        amount = qty['quantity'] * 100
+        price = float(item['price'])
+        if not isfinite(amount) or amount <= 0 or not price.is_integer():
+            continue
+        unit = 'g' if qty['metric'] == '100g' else 'ml'
+        options.append(
+            f'<option value="{len(options)+1}" data-amount="{amount:g}" data-unit="{unit}" data-price="{int(price)}">'
+            f'{esc(clean_display_name(item["name"]))} ・ {amount:g}{unit} ・ ¥{int(price):,}</option>'
+        )
+    if not options:
+        return ''
+    fields = []
+    for slot in ('a', 'b'):
+        fields.append(
+            f'<div class="lab-buy-mode-card" data-softener-row="{slot}">'
+            f'<h3>商品{slot.upper()}</h3>'
+            f'<label for="softener-{slot}-offer">掲載商品を選択</label>'
+            f'<select id="softener-{slot}-offer" data-softener-offer>'
+            '<option value="">商品を選んでください</option>' + ''.join(options) + '</select>'
+            f'<label for="softener-{slot}-dose" data-softener-dose-label>1回の使用量（商品ラベルを確認）</label>'
+            f'<input id="softener-{slot}-dose" data-softener-dose type="number" min="0.01" step="any" inputmode="decimal" disabled>'
+            '<p data-softener-result aria-live="polite">商品と使用量を入力してください。</p></div>'
+        )
+    return (
+        '<section id="softener-wash-calculator" class="lab-buy-modes" aria-labelledby="softener-wash-title">'
+        '<h2 id="softener-wash-title">柔軟剤の洗濯1回あたりの費用を比較</h2>'
+        '<p>同じ洗濯物の量に対して、各商品のラベルに記載された使用量を入力してください。'
+        '使用量は自動推定しません。gとmlの換算は行いません。</p>'
+        '<div class="softener-wash-grid">' + ''.join(fields) + '</div>'
+        '<p id="softener-wash-difference" role="status"></p>'
+        '<p>送料込み掲載価格 ÷ 総容量 × 1回の使用量で計算する概算です。'
+        '購入時の支払総額とは異なります。香り・仕上がり・用途の違いは比較していません。</p>'
+        '<noscript><p>計算機の利用にはJavaScriptが必要です。</p></noscript></section>'
+    )
+
+
 def mask_quantity_choices(soup, category):
     """Compare one listing's verified total; never assume multi-order shipping."""
     from product_quality import filter_items, parsed_quantity
@@ -390,6 +443,7 @@ def main(site=SITE):
     # Independent, versioned category stylesheet. The shared laboratory stylesheet
     # keeps its STEP3 fixed-recipe fingerprint and remains unchanged.
     (site/'assets/toilet-paper.css').write_text(Path('scripts/design/toilet-paper.css').read_text(encoding='utf-8'),encoding='utf-8')
+    (site/'assets/softener.css').write_text(Path('scripts/design/softener.css').read_text(encoding='utf-8'),encoding='utf-8')
     (site/'assets/favicon.svg').write_text(Path('scripts/design/favicon.svg').read_text(),encoding='utf-8')
     install_art(site)
     for path in site.rglob('*.html'):
@@ -410,6 +464,11 @@ def main(site=SITE):
             ply_version=hashlib.sha256(ply_css.read_bytes()).hexdigest()[:12]
             link=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/toilet-paper.css?v='+ply_version)
             link['data-toilet-ply-design']='v1'
+            soup.head.append(link)
+        if path==site/'categories/softener/index.html':
+            softener_version=hashlib.sha256((site/'assets/softener.css').read_bytes()).hexdigest()[:12]
+            link=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/softener.css?v='+softener_version)
+            link['data-softener-design']='v1'
             soup.head.append(link)
         if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
@@ -468,6 +527,12 @@ def main(site=SITE):
                     answer.insert_after(mode_section)
                 elif category_section:
                     category_section.insert_before(mode_section)
+        if page_cid == 'softener' and not soup.select_one('#softener-wash-calculator'):
+            ranking = soup.select_one('section.category-section#softener')
+            if ranking:
+                calculator = softener_wash_calculator(soup, payload['categories']['softener'])
+                if calculator:
+                    ranking.insert_before(fragment(calculator).section)
         if page_cid == 'mask' and not soup.select_one('#mask-quantity-choices'):
             ranking = soup.select_one('section.category-section#mask')
             if ranking:
