@@ -97,6 +97,31 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertIsNone(empty.select('.lab-buy-mode-card')[2].a)
         self.assertIn('確認済み商品はありません',empty.select('.lab-buy-mode-card')[2].text)
 
+    def test_softener_calculator_uses_verified_visible_prices_and_explicit_units(self):
+        from redesign_laboratory import softener_wash_calculator
+        def item(key, name, metric, price, unit_price):
+            return dict(name=name, metric=metric, price=price, unit_price=unit_price,
+                        confidence=.99, postage='送料込み', item_code='shop:'+key,
+                        url='https://item.rakuten.co.jp/shop/'+key+'/')
+        a = item('a', '柔軟剤 詰め替え 1000ml', '100ml', 500, 50)
+        b = item('b', '柔軟剤 詰め替え 600g', '100g', 480, 80)
+        hidden = item('hidden', '柔軟剤 詰め替え 500ml', '100ml', 450, 90)
+        wrong = item('wrong', '柔軟剤 詰め替え 800ml', '100ml', 560, 70)
+        wrong['item_code'] = 'shop:other'
+        soup = BeautifulSoup(''.join(
+            f'<article class="product-card"><a class="buy-button" href="{r["url"]}">楽天</a></article>'
+            for r in (a,b,wrong)), 'html.parser')
+        result = BeautifulSoup(softener_wash_calculator(soup, {'items':[a,b,hidden,wrong]}), 'html.parser')
+        self.assertEqual(len(result.select('[data-softener-row]')),2)
+        for select in result.select('select'):
+            opts = select.select('option[data-price]')
+            self.assertEqual([(o['data-amount'],o['data-unit'],o['data-price']) for o in opts],
+                             [('1000','ml','500'),('600','g','480')])
+        self.assertTrue(all(x.has_attr('disabled') for x in result.select('input')))
+        self.assertIn('使用量は自動推定しません', result.text)
+        self.assertIn('gとmlの換算は行いません', result.text)
+        self.assertEqual(softener_wash_calculator(soup, {'items':[hidden,wrong]}), '')
+
     def test_priority_categories_never_render_legacy_purpose_claims(self):
         from step4_recommendations import CATEGORIES
         for cid in CATEGORIES:
