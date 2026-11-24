@@ -97,6 +97,28 @@ class LaboratoryDesignTests(unittest.TestCase):
         self.assertIsNone(empty.select('.lab-buy-mode-card')[2].a)
         self.assertIn('確認済み商品はありません',empty.select('.lab-buy-mode-card')[2].text)
 
+    def test_softener_styles_are_category_scoped_and_versioned(self):
+        import hashlib
+        from redesign_laboratory import main
+        with tempfile.TemporaryDirectory() as tmp:
+            site = Path(tmp)
+            (site/'today').mkdir()
+            (site/'today/data.json').write_text('{"items":[]}')
+            (site/'data.json').write_text(json.dumps({'updated_at':'2026-11-24','categories':{}}))
+            for cid in ('softener','mask'):
+                page = site/'categories'/cid/'index.html'
+                page.parent.mkdir(parents=True)
+                page.write_text('<html><head><title>test</title></head><body><main></main></body></html>')
+            main(site)
+            css = (site/'assets/softener.css').read_bytes()
+            self.assertEqual(css, Path('scripts/design/softener.css').read_bytes())
+            version = hashlib.sha256(css).hexdigest()[:12]
+            softener = BeautifulSoup((site/'categories/softener/index.html').read_text(),'html.parser')
+            mask = BeautifulSoup((site/'categories/mask/index.html').read_text(),'html.parser')
+            self.assertEqual(softener.select_one('[data-softener-design]')['href'],
+                             '/daily-cost-jp/assets/softener.css?v='+version)
+            self.assertIsNone(mask.select_one('[data-softener-design]'))
+
     def test_softener_calculator_uses_verified_visible_prices_and_explicit_units(self):
         from redesign_laboratory import softener_wash_calculator
         def item(key, name, metric, price, unit_price):
