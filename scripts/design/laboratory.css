@@ -265,12 +265,3 @@ summary{min-height:44px;padding:10px 0;cursor:pointer}.lab-archive-category{marg
 
 /* STEP3 home-ranking-link-tap-v1: restore the existing 44px interaction area. */
 #home-ranking-hero .home-rank-all{display:inline-flex;align-items:center;min-height:44px}
-
-/* Softener per-wash calculator: keep long product names inside each column. */
-.softener-wash-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.softener-wash-grid .lab-buy-mode-card{min-width:0;display:block;overflow-wrap:anywhere}
-.softener-wash-grid label{display:block;margin:12px 0 4px;font-weight:600}
-.softener-wash-grid select,.softener-wash-grid input{display:block;width:100%;max-width:100%;min-width:0}
-.softener-wash-grid [data-softener-result]{margin:12px 0 0;font-weight:600}
-#softener-wash-difference{margin:16px 0;font-weight:700}
-@media(max-width:600px){.softener-wash-grid{grid-template-columns:minmax(0,1fr)}}
