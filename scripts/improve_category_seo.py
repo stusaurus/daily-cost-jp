@@ -67,6 +67,14 @@ SEARCH_TARGETS = {
         "heading": "ティッシュはどこが安い？価格を比べるポイント",
         "intent_note": "「ティッシュ どこが安い」「ティッシュ 値段比較」で探すときは、箱数だけでなく1箱の組数を確認し、100組あたりの価格にそろえると、200組や250組の商品も比較しやすくなります。",
     },
+    "garbage-bag-45l": {
+        "title": "45Lゴミ袋の値段比較｜50枚・100枚とまとめ買いの1枚単価",
+        "h1": "45Lゴミ袋の価格比較｜枚数・送料込み総額",
+        "lead": "45Lゴミ袋の楽天掲載候補を送料込み1枚単価で比較。50枚・100枚など必要な枚数と支払総額を確認し、厚さや自治体の指定袋の条件に合う商品を選びましょう。",
+        "description": "45Lゴミ袋の楽天掲載候補を送料込み1枚単価で比較。50枚・100枚・まとめ買いの比較方法と、厚さ・指定袋の確認ポイントを紹介。販売枚数は商品ごとに確認してください。",
+        "heading": "45Lゴミ袋は50枚・100枚・まとめ買いのどれが安い？",
+        "intent_note": "1枚単価だけでなく必要枚数と支払総額を比較します。厚さ（mm）、材質、袋の寸法、自治体指定袋の条件も確認し、同じ用途で使える商品同士を比べてください。",
+    },
     "toothpaste": {
         "title": "歯磨き粉の値段比較｜送料込み100g単価と支払総額",
         "h1": "歯磨き粉はいくらなら安い？100g単価で比較",
@@ -353,6 +361,29 @@ def relevant_water_cost_route(category_id: str) -> str:
     )
 
 
+def garbage_bag_purchase_guide(category_id: str) -> str:
+    if category_id != "garbage-bag-45l":
+        return ""
+    links = []
+    for quantity in (50, 100):
+        query = urllib.parse.quote(f"ゴミ袋 45L {quantity}枚")
+        links.append(f'<li><a href="../../products/?q={query}">45L・{quantity}枚入りを商品名で検索</a></li>')
+    return (
+        '<div class="garbage-bag-purchase-guide">'
+        '<h3>必要な枚数で支払額を比べる</h3>'
+        '<p>例えば50枚を週3枚使うと16週間分と2枚、100枚なら33週間分と1枚使えます。'
+        '購入数量を決めるときは、単価と保管場所の両方を考えましょう。</p>'
+        '<p>計算例（実売価格ではありません）：50枚800円なら1枚16円、'
+        '100枚1,400円なら1枚14円。50枚だけ必要なら前者の支払額が低くなります。'
+        '同じ用途で使える袋か確認してから比較してください。</p>'
+        '<ul>' + "".join(links) + '</ul>'
+        '<p>検索結果には異なる枚数やサイズの商品が含まれる場合があります。'
+        '商品ページで合計枚数、45L、厚さ、送料を再確認してください。'
+        '自治体指定袋が必要な場合は自治体の案内を優先してください。</p>'
+        '</div>'
+    )
+
+
 def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
     q = urllib.parse.quote(name)
     safe_name, safe_alias, safe_label = html.escape(name), html.escape(alias), html.escape(label)
@@ -372,6 +403,7 @@ def seo_section(category_id: str, name: str, alias: str, label: str) -> str:
   </ul>
   <a class="category-search-cta" href="../../products/?q={q}">商品名を指定して楽天の送料込み価格を検索 →</a>
   {relevant_water_cost_route(category_id)}
+  {garbage_bag_purchase_guide(category_id)}
 </section>
 """
 
@@ -388,6 +420,10 @@ PRIORITY_FAQS = {
     "laundry": [
         ("洗濯洗剤はどこが安いか、どう比較しますか？", "本体・詰め替え・大容量で総額が違うため、このページでは{comparison_unit}あたりの単価で比較します。濃縮タイプは1回の使用量も確認すると実際のコストを判断しやすくなります。"),
         ("洗濯洗剤の安い店を探すときの注意点は？", "表示価格だけでなく容量とセット数、送料を確認します。このページでは楽天市場で送料込みと確認できた商品を同じ単位に換算して比較しています。"),
+    ],
+    "garbage-bag-45l": [
+        ("45Lゴミ袋は50枚と100枚のどちらがお得ですか？", "送料込み支払総額を合計枚数で割って1枚単価を比較します。必要な枚数、保管場所、厚さなどの条件も確認してください。"),
+        ("45Lならどのゴミ袋でも同じですか？", "容量が同じでも厚さ・材質・寸法が異なります。厚さだけで強度は判断できません。自治体指定袋が必要な場合は自治体の案内に従ってください。"),
     ],
     "toothpaste": [
         ("歯磨き粉のgとmlはそのまま比較できますか？", "できません。体積と質量は同じ数値ではないため、このランキングは内容量がgで明記された商品の100g単価に限定しています。"),
