@@ -103,6 +103,26 @@ class FourCategorySearchGuidanceTests(unittest.TestCase):
                     self.assertTrue(seo.enhance_page(cid, name, emoji, alias, payload))
                     self.assertEqual(p.read_text(encoding="utf-8"), new)
 
+    def test_garbage_bag_guide_specific_and_safe(self):
+        cid = "garbage-bag-45l"
+        name, _, alias = seo.CATEGORIES[cid]
+        guide = seo.seo_section(cid, name, alias, "1枚")
+        faq = seo.faq_section(cid, name, "1枚")
+        self.assertIn("50枚800円", guide)
+        self.assertIn("100枚1,400円", guide)
+        self.assertIn("実売価格ではありません", guide)
+        self.assertIn("1枚16円", guide)
+        self.assertIn("1枚14円", guide)
+        self.assertIn("自治体指定袋", guide + faq)
+        self.assertIn("厚さ", guide + faq)
+        for quantity in (50, 100):
+            query = seo.urllib.parse.quote(f"ゴミ袋 45L {quantity}枚")
+            self.assertIn(f'href="../../products/?q={query}"', guide)
+        self.assertIn("異なる枚数やサイズ", guide)
+        self.assertEqual(seo.garbage_bag_purchase_guide("tissue"), "")
+        self.assertIn("50枚・100枚", seo.SEARCH_TARGETS[cid]["title"])
+        self.assertEqual(faq.count("<details>"), 5)
+
     def test_unknown_toothpaste_metric_is_not_guessed(self):
         self.assertEqual(seo.metric_label("toothpaste", {
             "categories": {"toothpaste": {"metric": "unknown"}}
