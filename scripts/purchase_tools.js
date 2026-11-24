@@ -1,5 +1,51 @@
 /* Saved IDs are resolved against the current catalog; stale prices/links are never reused. */
 (() => {
+  const softener = document.getElementById('softener-wash-calculator');
+  if (softener) {
+    const rows = [...softener.querySelectorAll('[data-softener-row]')];
+    const difference = softener.querySelector('#softener-wash-difference');
+    const yen = n => '¥' + n.toLocaleString('ja-JP', {minimumFractionDigits:2,maximumFractionDigits:2});
+    function updateRow(row) {
+      const select = row.querySelector('[data-softener-offer]');
+      const dose = row.querySelector('[data-softener-dose]');
+      const result = row.querySelector('[data-softener-result]');
+      const option = select.selectedOptions[0];
+      const amount = Number(option?.dataset.amount), price = Number(option?.dataset.price);
+      const used = Number(dose.value);
+      if (!select.value || !['g','ml'].includes(option?.dataset.unit) ||
+          !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(price) || price <= 0 ||
+          !dose.value || !Number.isFinite(used) || used < 0.01 || used > amount) {
+        result.textContent = '商品と有効な使用量（総容量以下）を入力してください。';
+        return null;
+      }
+      const cost = price / amount * used;
+      result.textContent = '1回あたり 約' + yen(cost) + ' ・ 約' + Math.floor(amount / used).toLocaleString('ja-JP') + '回分';
+      return cost;
+    }
+    function update() {
+      const costs = rows.map(updateRow);
+      difference.textContent = costs.length === 2 && costs.every(c => c !== null)
+        ? (Math.abs(costs[0] - costs[1]) < 0.005 ? '表示精度ではほぼ同じ費用です。'
+          : '商品' + (costs[0] < costs[1] ? 'A' : 'B') + 'の方が1回あたり約' + yen(Math.abs(costs[0]-costs[1])) + '低い計算です。')
+        : '';
+    }
+    rows.forEach(row => {
+      const select = row.querySelector('[data-softener-offer]');
+      const dose = row.querySelector('[data-softener-dose]');
+      const label = row.querySelector('[data-softener-dose-label]');
+      function reset() {
+        const option = select.selectedOptions[0];
+        const unit = option?.dataset.unit;
+        dose.value = '';
+        dose.disabled = !select.value || !['g','ml'].includes(unit);
+        label.textContent = dose.disabled ? '1回の使用量（商品ラベルを確認）' : '1回の使用量（' + unit + '・商品ラベルを確認）';
+        update();
+      }
+      select.addEventListener('change', reset);
+      dose.addEventListener('input', update);
+      reset();
+    });
+  }
   const ROOT = '/daily-cost-jp/';
   function measure(name) { if (typeof window.gtag === 'function') window.gtag('event',name,{}); }
   const KEY = 'daily_cost_saved_products_v1';
