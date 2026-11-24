@@ -443,6 +443,7 @@ def main(site=SITE):
     # Independent, versioned category stylesheet. The shared laboratory stylesheet
     # keeps its STEP3 fixed-recipe fingerprint and remains unchanged.
     (site/'assets/toilet-paper.css').write_text(Path('scripts/design/toilet-paper.css').read_text(encoding='utf-8'),encoding='utf-8')
+    (site/'assets/softener.css').write_text(Path('scripts/design/softener.css').read_text(encoding='utf-8'),encoding='utf-8')
     (site/'assets/favicon.svg').write_text(Path('scripts/design/favicon.svg').read_text(),encoding='utf-8')
     install_art(site)
     for path in site.rglob('*.html'):
@@ -463,6 +464,11 @@ def main(site=SITE):
             ply_version=hashlib.sha256(ply_css.read_bytes()).hexdigest()[:12]
             link=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/toilet-paper.css?v='+ply_version)
             link['data-toilet-ply-design']='v1'
+            soup.head.append(link)
+        if path==site/'categories/softener/index.html':
+            softener_version=hashlib.sha256((site/'assets/softener.css').read_bytes()).hexdigest()[:12]
+            link=soup.new_tag('link',rel='stylesheet',href=ROOT+'assets/softener.css?v='+softener_version)
+            link['data-softener-design']='v1'
             soup.head.append(link)
         if not soup.select_one('link[rel=icon]'):soup.head.append(soup.new_tag('link',rel='icon',type='image/svg+xml',href=ROOT+'assets/favicon.svg'))
         soup.body.insert(0,fragment(masthead()))
