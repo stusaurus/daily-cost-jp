@@ -9,6 +9,7 @@ from urllib.request import HTTPRedirectHandler, build_opener
 
 API = "https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch"
 VC_HOST = "ck.jp.ap.valuecommerce.com"
+REQUEST_INTERVAL = 2.5
 
 
 class YahooUnavailable(Exception):
@@ -71,24 +72,38 @@ class YahooShopping:
         self._prefix, self._sid, self._pid = affiliate_config(affiliate_id)
         self._opener = build_opener(NoRedirect())
         self._last_request = float("-inf")
+        self._cache = {}
 
-    def search(self, *, jan=None, query=None, results=50):
+    def search(self, *, jan=None, query=None, results=50, shipping=None):
         filters = {"jan_code": jan} if jan else {"query": query}
         params = dict(filters, appid=self._app_id, affiliate_type="vc",
                       affiliate_id=self._prefix, in_stock="true", condition="new",
                       sort="+price", results=results)
-        time.sleep(max(0, 1.1 - (time.monotonic() - self._last_request)))
-        self._last_request = time.monotonic()
-        try:
-            with self._opener.open(f"{API}?{urlencode(params)}", timeout=12) as response:
-                payload = json.loads(response.read(3_000_000))
-        except HTTPError as error:
-            raise YahooUnavailable(f"http_{error.code}") from None
-        except (URLError, OSError, ValueError, HTTPException):
-            raise YahooUnavailable("network_or_response") from None
+        if shipping:
+            params["shipping"] = shipping
+        key = jan, query, results, shipping
+        if key in self._cache:
+            return self._cache[key]
+        for attempt in range(2):
+            time.sleep(max(0, REQUEST_INTERVAL - (time.monotonic() - self._last_request)))
+            self._last_request = time.monotonic()
+            try:
+                with self._opener.open(f"{API}?{urlencode(params)}", timeout=12) as response:
+                    payload = json.loads(response.read(3_000_000))
+                break
+            except HTTPError as error:
+                retry_after = error.headers.get("Retry-After", "") if error.headers else ""
+                wait = int(retry_after) if retry_after.isascii() and retry_after.isdigit() and len(retry_after) < 5 else 55
+                if error.code != 429 or attempt or wait > 60:
+                    raise YahooUnavailable(f"http_{error.code}") from None
+                time.sleep(max(wait, REQUEST_INTERVAL))
+            except (URLError, OSError, ValueError, HTTPException):
+                raise YahooUnavailable("network_or_response") from None
+
         hits = payload.get("hits") if isinstance(payload, dict) else None
         if not isinstance(hits, list) or any(not isinstance(hit, dict) for hit in hits):
             raise YahooUnavailable("response_schema")
+        self._cache[key] = hits
         return hits
 
     def affiliate_link(self, hit):

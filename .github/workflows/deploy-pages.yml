@@ -182,7 +182,7 @@ jobs:
     name: Verify published desktop and mobile design
     needs: deploy
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 16
     continue-on-error: true
     permissions:
       contents: read
