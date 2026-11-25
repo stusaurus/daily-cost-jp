@@ -216,7 +216,7 @@
       if (url.origin !== location.origin || !url.pathname.startsWith(ROOT)) return;
       const entry = link.dataset.marketplaceEntry;
       const categoryId = link.dataset.categoryId;
-      if (['home', 'directory', 'category'].includes(entry) && /^[a-z][a-z-]*$/.test(categoryId || '')
+      if (['home', 'directory', 'category'].includes(entry) && /^[a-z][a-z0-9-]*$/.test(categoryId || '')
           && url.pathname === ROOT + 'categories/' + categoryId + '/' && url.hash === '#marketplace-comparison') {
         window.gtag('event', 'marketplace_compare_click', {
           ...(window.dailyCostTrafficContext || {}),

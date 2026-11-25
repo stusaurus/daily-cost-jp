@@ -74,6 +74,22 @@ test('trend search then typed/Enter search resets source only on new results',()
   assert.equal(p.affiliate()[2][2].conversion_source,'product_search');
   assert.equal(p.affiliate()[2][2].search_term,undefined);
 });
+test('comparison links track category slugs containing digits and validate the destination', () => {
+  const slug = 'garbage-bag-45l';
+  const target = '/daily-cost-jp/categories/' + slug + '/#marketplace-comparison';
+  const matching = `<a id="matching" href="${target}" data-marketplace-entry="home" data-category-id="${slug}">比較</a>`;
+  const mismatched = `<a id="mismatched" href="${target}" data-marketplace-entry="home" data-category-id="water">別カテゴリ</a>`;
+  const p = page('?test=1', matching + mismatched);
+  p.click('#mismatched');
+  p.click('#matching');
+  const events = p.events.filter(row => row[1] === 'marketplace_compare_click');
+  assert.equal(events.length, 1);
+  assert.equal(events[0][2].category_id, slug);
+  assert.equal(events[0][2].entry_point, 'home');
+  assert.equal(events[0][2].operator_test, '1');
+  assert.equal(p.affiliate().length, 0);
+  p.w.close();
+});
 test('ordinary home navigation does not invent product-search attribution',()=>{
   const p=page('products/', '<a href="../">home</a>'); p.click('a');
   assert.equal(p.w.sessionStorage.getItem('daily_cost_feature_navigation_v1'),null);
