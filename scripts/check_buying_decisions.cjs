@@ -74,22 +74,29 @@ async function verifySoftener(browser,type,base,catalog,width,output){
     const dose=row=>row.locator('[data-softener-dose]');
     const result=row=>row.locator('[data-softener-result]');
     const options=await select(a).locator('option[data-price]').evaluateAll(opts=>opts.map(o=>({
-      value:o.value,price:Number(o.dataset.price),amount:Number(o.dataset.amount),
+      value:o.value,card:o.dataset.sourceCard,price:Number(o.dataset.price),amount:Number(o.dataset.amount),
       unit:o.dataset.unit,text:o.textContent
     })));
     assert(options.length>0,'no verified offers');
     const cards=await page.locator('article.product-card').evaluateAll(nodes=>nodes.map(card=>({
-      url:card.querySelector('a.buy-button')?.getAttribute('href'),
+      id:card.id,url:card.querySelector('a.buy-button')?.getAttribute('href'),
       name:card.querySelector('h3')?.getAttribute('title'),
       price:Number(card.querySelector('a.buy-button')?.dataset.shippingPrice)
     })));
     for(const opt of options){
       assert(['g','ml'].includes(opt.unit)&&opt.price>0&&opt.amount>0);
-      const name=opt.text.split(' ・ ').slice(0,-2).join(' ・ ');
-      assert(cards.some(c=>c.name===name&&c.price===opt.price&&raw.some(r=>
-        r.url===c.url&&Number(r.price)===opt.price&&r.postage==='送料込み'&&
-        r.metric==='100'+opt.unit&&Math.abs(Number(r.price)/Number(r.unit_price)*100-opt.amount)<0.1)),
-        'calculator option does not match a visible verified offer: '+name);
+      // The rendered product name may have display-only campaign cleanup.
+      // Bind to the exact card and raw merchant URL instead, checking the
+      // accepted catalog's independent price/quantity arithmetic.
+      assert(opt.card&&/^softener-rank-\d+$/.test(opt.card),'missing source card identity');
+      const matches=cards.filter(c=>c.id===opt.card);
+      assert.equal(matches.length,1,'source card must be unique');
+      const c=matches[0];
+      assert.equal(c.price,opt.price,'source card price mismatch');
+      const offers=raw.filter(r=>r.url===c.url&&Number(r.price)===opt.price&&
+        r.postage==='送料込み'&&r.metric==='100'+opt.unit);
+      assert(offers.some(r=>Math.abs(Number(r.price)/Number(r.unit_price)*100-opt.amount)
+        <=Math.max(0.01,opt.amount*0.000101)), 'source catalog quantity mismatch: '+opt.card);
     }
     assert(await dose(a).isDisabled());
     assert(await dose(b).isDisabled());
