@@ -67,6 +67,14 @@ class MarketplaceTest(unittest.TestCase):
         self.assertIsNone(rakuten_offer("laundry", rakuten(sale_quantity_label="2000g×2個"), PRODUCT))
         self.assertIsNone(rakuten_offer("laundry", rakuten(item_code="examplestore:10000009"), PRODUCT))
 
+    def test_softener_requires_the_same_pack_and_volume(self):
+        product = PRODUCTS["softener"][0]
+        name = f"P&G さらさ 柔軟剤 つめかえ用 1350ml×6袋 {product.jan}"
+        self.assertEqual(package_quantity("softener", name, product), 6)
+        self.assertIsNone(package_quantity("softener", name.replace("1350ml", "1350g"), product))
+        self.assertIsNone(package_quantity("softener", name + "×2箱", product))
+        self.assertIsNone(package_quantity("softener", name.replace("柔軟剤", "洗濯洗剤"), product))
+
     def test_yahoo_item_and_affiliate_identity(self):
         client = MockYahoo()
         for data in (yahoo(janCode="4901301466235"), yahoo(inStock=False), yahoo(condition="used"),
@@ -117,7 +125,7 @@ class MarketplaceTest(unittest.TestCase):
             result = apply(site, client=MockYahoo(), now=NOW)
             self.assertEqual(result["categories"]["laundry"]["comparable"], 1)
             rendered = page.read_text()
-            self.assertIn("Yahoo!ショッピングが¥300安い", rendered)
+            self.assertIn("Yahoo!ショッピングが安い（差額 ¥300）", rendered)
             self.assertIn("¥115.0 / 100g", rendered)
             self.assertIn("楽天 &lt;店&gt;", rendered)
             self.assertIn("Webサービス by Yahoo! JAPAN", rendered.split("<footer>", 1)[1])
