@@ -75,6 +75,23 @@ class MarketplaceTest(unittest.TestCase):
         self.assertIsNone(package_quantity("softener", name + "×2箱", product))
         self.assertIsNone(package_quantity("softener", name.replace("柔軟剤", "洗濯洗剤"), product))
 
+    def test_dish_refill_requires_the_orange_variant_and_exact_capacity(self):
+        product = PRODUCTS["dish"][0]
+        title = f"キュキュット 食器用洗剤 オレンジの香り 詰替え用 1380mL×2個 {product.jan}"
+        self.assertEqual(package_quantity("dish", title, product), 2)
+        self.assertIsNone(package_quantity("dish", title.replace("1380mL", "770mL"), product))
+        self.assertIsNone(package_quantity("dish", title.replace("オレンジ", "マスカット"), product))
+        self.assertIsNone(package_quantity("dish", title + " マスカットも選べる", product))
+        self.assertIsNone(package_quantity("dish", title + " 本体同梱", product))
+
+    def test_toilet_refill_rejects_other_fragrances_and_body_bottle(self):
+        product = PRODUCTS["toilet-cleaner"][0]
+        title = f"トイレマジックリン 消臭・洗浄スプレー エレガントローズの香り つめかえ用 300mL {product.jan}"
+        self.assertEqual(package_quantity("toilet-cleaner", title, product), 1)
+        self.assertEqual(package_quantity("toilet-cleaner", title + "×2袋", product), 2)
+        self.assertIsNone(package_quantity("toilet-cleaner", title + " 本体（別容量）", product))
+        self.assertIsNone(package_quantity("toilet-cleaner", title.replace("ローズ", "シトラス"), product))
+
     def test_yahoo_item_and_affiliate_identity(self):
         client = MockYahoo()
         for data in (yahoo(janCode="4901301466235"), yahoo(inStock=False), yahoo(condition="used"),
