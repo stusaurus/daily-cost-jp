@@ -113,6 +113,14 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(package_quantity("water", title, water), 12)
         self.assertEqual(package_quantity("water", title.replace("×2箱（12本）", "×12本"), water), 12)
         self.assertIsNone(package_quantity("water", title.replace("12本", "24本"), water))
+        crystal = PRODUCTS["water"][1]
+        title = "クリスタルガイザー エコボトル 正規輸入品 500ml×48本"
+        self.assertEqual(package_quantity("water", title, crystal), 48)
+        self.assertIsNone(package_quantity("water", title.replace("正規輸入品", "並行輸入"), crystal))
+        body = PRODUCTS["body-soap"][0]
+        title = "花王 ビオレu ボディウォッシュ 業務用 10L"
+        self.assertEqual(package_quantity("body-soap", title, body), 1)
+        self.assertIsNone(package_quantity("body-soap", title + " 泡タイプ", body))
         kitchen = PRODUCTS["kitchen-paper"][0]
         title = "花王 シェフ キッチンペーパー たっぷり吸収 M 100枚×2ロール×6袋"
         self.assertEqual(package_quantity("kitchen-paper", title, kitchen), 6)

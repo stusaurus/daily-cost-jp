@@ -124,7 +124,7 @@ def package_quantity(category, title, product):
     """Require independent title evidence for variant, per-unit size and pack."""
     text = normalize(title).lower()
     rejection = category_rejection(category, text)
-    if rejection == "missing_category_evidence" and category in ("tissue", "toothbrush", "toilet-paper"):
+    if rejection == "missing_category_evidence" and category in ("body-soap", "tissue", "toothbrush", "toilet-paper"):
         rejection = category_rejection(category, product.label + " " + text)
     if (not valid_jan(product.jan) or AMBIGUOUS.search(text)
             or rejection

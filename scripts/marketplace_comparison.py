@@ -39,6 +39,9 @@ PRODUCTS = {
         Product("4986919990020", "温泉水99 1.9L ペットボトル", 1900, "ml",
                 (r"温泉水\s*99", r"ペットボトル"), r"炭酸|硬水|蛇口",
                 rakuten_evidence=(("onsensui99:10000186", "/onsensui99/2lx12_cook"),), bottles_per_case=6),
+        Product("9000009987990", "クリスタルガイザー エコボトル 正規輸入品", 500, "ml",
+                (r"クリスタルガイザー", r"エコボトル", r"正規輸入品"), r"並行輸入|ラベルレス|オランチャ",
+                rakuten_evidence=(("kenkocom:11316966", "/kenkocom/e300670h"),)),
         Product("4571461292779", "水想い ナチュラルミネラルウォーター ラベルレス", 2000, "ml",
                 (r"水想い", r"ラベルレス", r"天然水|ナチュラルミネラルウォーター"), r"炭酸|硬水",
                 rakuten_items=("mizuomoi:10000004",)),
@@ -81,6 +84,10 @@ PRODUCTS = {
                 rakuten_items=("tokitomecosme:10003569",)),
     ),
     "body-soap": (
+        Product("4901301033109", "花王 ビオレu ボディウォッシュ 液体 業務用", 10000, "ml",
+                (r"ビオレ\s*u", r"ボディ[ー]?(?:ソープ|ウ[ォオ]ッシュ)"), r"泡で出|泡タイプ|無香料|本体",
+                rakuten_evidence=(("daily-shop:10000218", "/daily-shop/10000218"),
+                                   ("potch7:10002491", "/potch7/10002491"))),
         Product("4901301342898", "ビオレu 泡で出てくるボディウォッシュ 詰め替え", 480, "ml",
                 (r"ビオレ\s*u", r"泡で出てくる", r"ボディ", REFILL),
                 r"本体|しっとりすべすべタイプ|香りが選べる|おまけ",
@@ -322,7 +329,8 @@ def render(category, groups, updated, rakuten_updated):
         scale, factor, unit = price_unit(category, product)
         quantity = product.display_amount
         if product.unit in ("g", "ml"):
-            quantity += f" × {count}個"
+            packs = "本" if category == "water" else "個"
+            quantity += f" × {count}{packs}"
         elif product.kitchen_rolls:
             quantity = f"× {count}パック"
         elif product.amount == 1:
