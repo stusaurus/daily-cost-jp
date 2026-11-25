@@ -1,23 +1,39 @@
-"""Read-only connection check with aggregate output and no tracker requests."""
-import os
+"""Verify credentialed API responses and exact pairs without visiting ad links."""
+import argparse
 from collections import Counter
+import json
+import os
+from pathlib import Path
 
+from marketplace_comparison import PRODUCTS, select
 from yahoo_shopping import YahooShopping, YahooUnavailable
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--catalog", type=Path, required=True)
+    args = parser.parse_args()
+    catalog = json.loads(args.catalog.read_text(encoding="utf-8"))
     try:
         client = YahooShopping(os.getenv("YAHOO_APP_ID", ""), os.getenv("YAHOO_AFFILIATE_ID", ""))
-        for jan in ("4901301440815", "4901301466235", "4987176304834"):
-            hits = client.search(jan=jan)
-            shipping = Counter(str(hit.get("shipping", {}).get("code")) for hit in hits
-                               if isinstance(hit.get("shipping"), dict))
-            print(f"JAN {jan}: hits={len(hits)} exact_jan={sum(hit.get('janCode') == jan for hit in hits)} "
-                  f"verified_ad_links={sum(bool(client.affiliate_link(hit)) for hit in hits)} "
-                  f"taxable_true={sum(isinstance(hit.get('priceLabel'), dict) and hit['priceLabel'].get('taxable') is True for hit in hits)} "
-                  f"shipping_free={shipping['2']} shipping_conditional={shipping['3']}", flush=True)
-            if any(client.affiliate_link(hit) for hit in hits):
-                return 0
+        verified = 0
+        for products in PRODUCTS.values():
+            for product in products:
+                hits = client.search(jan=product.jan)
+                links = sum(bool(client.affiliate_link(hit)) for hit in hits if hit.get("janCode") == product.jan)
+                shipping = Counter(str(hit["shipping"].get("code")) for hit in hits
+                                   if isinstance(hit.get("shipping"), dict))
+                verified += links
+                print(f"JAN {product.jan}: hits={len(hits)} verified_ad_links={links} "
+                      f"shipping_free={shipping['2']} shipping_conditional={shipping['3']}", flush=True)
+        for category in PRODUCTS:
+            rows = catalog["categories"].get(category, {}).get("items", [])
+            groups, candidates = select(category, rows, client)
+            comparable = sum(all(offer.total is not None for offer in offers) for _, _, offers in groups)
+            print(f"{category}: matched_pairs={len(groups)} comparable_totals={comparable} "
+                  f"counts={json.dumps(candidates, sort_keys=True)}", flush=True)
+        if verified:
+            return 0
         print("Yahoo connection succeeded but no verified ValueCommerce link was found.")
     except YahooUnavailable as error:
         print(f"Yahoo verification unavailable: {error}")

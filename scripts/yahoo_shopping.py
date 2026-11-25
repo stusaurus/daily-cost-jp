@@ -2,6 +2,7 @@
 import json
 import re
 import time
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, unquote, urlencode, urlsplit, urlunsplit
 from urllib.request import HTTPRedirectHandler, build_opener
@@ -83,7 +84,7 @@ class YahooShopping:
                 payload = json.loads(response.read(3_000_000))
         except HTTPError as error:
             raise YahooUnavailable(f"http_{error.code}") from None
-        except (URLError, OSError, ValueError, UnicodeError):
+        except (URLError, OSError, ValueError, HTTPException):
             raise YahooUnavailable("network_or_response") from None
         hits = payload.get("hits") if isinstance(payload, dict) else None
         if not isinstance(hits, list) or any(not isinstance(hit, dict) for hit in hits):
@@ -97,9 +98,9 @@ class YahooShopping:
                 or url.path != "/servlet/referral"):
             return None
         params = parse_qs(url.query, keep_blank_values=True)
-        target, = params.get("vc_url", [""]) if len(params.get("vc_url", [])) == 1 else [""]
+        targets = params.get("vc_url", [])
         if (params.get("sid") != [self._sid] or params.get("pid") != [self._pid]
-                or not product_target(target, hit.get("code"))
+                or len(targets) != 1 or not product_target(targets[0], hit.get("code"))
                 or self._app_id in unquote(value)):
             return None
         # The official example uses HTTP. Publish its HTTPS equivalent.

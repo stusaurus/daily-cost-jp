@@ -190,7 +190,7 @@
     } catch (_) { return false; }
   }
   function sourceFor(link) {
-    if (link.matches('[data-exact-rakuten]')) return 'same_product_compare';
+    if (link.matches('[data-exact-rakuten], [data-marketplace=rakuten]')) return 'same_product_compare';
     if (link.matches('.product-result-link')) return resultSource;
     const direct = navigationSource(link);
     if (direct) return direct;
@@ -233,7 +233,22 @@
     if (event.type === 'auxclick' && event.button !== 1) return;
     const target = event.target.closest ? event.target : event.target.parentElement;
     const link = target?.closest('a[href]');
-    if (!link || !isRakuten(link)) return;
+    if (!link) return;
+    const rakuten = isRakuten(link);
+    const marketplace = link.closest('#marketplace-comparison') && link.dataset.marketplace;
+    const yahoo = marketplace === 'yahoo'
+      && link.protocol === 'https:' && link.hostname === 'ck.jp.ap.valuecommerce.com'
+      && link.pathname === '/servlet/referral';
+    if ((marketplace === 'rakuten' && rakuten) || yahoo) {
+      const name = yahoo ? 'marketplace_yahoo_click' : 'marketplace_rakuten_click';
+      window.gtag('event', name, {
+        ...(window.dailyCostTrafficContext || {}),
+        category_id: link.dataset.categoryId,
+        conversion_source: 'same_product_compare',
+        transport_type: 'beacon'
+      });
+    }
+    if (!rakuten) return;
     const card = link.closest('.product-card, .deal-card, .card, .lab-buy-mode-card');
     const category = link.dataset.categoryId || link.closest('.category-section')?.id || location.pathname.match(/\/categories\/([^/]+)/)?.[1] || '';
     window.gtag('event', 'affiliate_click', {

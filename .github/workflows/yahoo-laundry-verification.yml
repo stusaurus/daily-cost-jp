@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/yahoo-laundry-verification.yml'
       - 'scripts/yahoo_shopping*.py'
+      - 'scripts/marketplace_*.py'
   workflow_dispatch:
 
 permissions:
@@ -23,4 +24,7 @@ jobs:
         env:
           YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
           YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
-        run: python scripts/yahoo_shopping_probe.py
+        run: |
+          curl --fail --silent --show-error --max-time 20 \
+            https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/rakuten-marketplace-catalog.json"
+          python scripts/yahoo_shopping_probe.py --catalog "$RUNNER_TEMP/rakuten-marketplace-catalog.json"
