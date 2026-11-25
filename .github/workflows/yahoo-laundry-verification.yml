@@ -1,4 +1,4 @@
-name: Verify Yahoo Shopping laundry integration
+name: Verify Yahoo Shopping marketplace comparisons
 
 on:
   pull_request:

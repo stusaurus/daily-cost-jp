@@ -2,7 +2,6 @@
 import html
 import json
 import os
-import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -27,6 +26,10 @@ PRODUCTS = {
         Product("4987176304834", "さらさ 液体洗剤 詰め替え", 1490, "g",
                 (r"さらさ", REFILL, r"洗(?:濯|たく)(?:用)?洗剤|衣(?:料|類)用洗剤|洗剤ジェル"),
                 r"柔軟剤(?!不使用|なし|不要)|部屋干し専用"),
+    ),
+    "softener": (
+        Product("4987176184566", "さらさ 柔軟剤 詰め替え", 1350, "ml",
+                (r"さらさ", REFILL, r"柔軟剤"), r"洗(?:濯|たく)(?:用)?洗剤|洗剤ジェル"),
     ),
 }
 
@@ -123,7 +126,7 @@ def render(category, groups, updated, rakuten_updated):
             note = "掲載候補の購入総額は同じです。"
         else:
             name = "楽天市場" if rakuten.total < yahoo.total else "Yahoo!ショッピング"
-            note = f"掲載候補では{name}が{yen(abs(rakuten.total - yahoo.total))}安い"
+            note = f"{name}が安い（差額 {yen(abs(rakuten.total - yahoo.total))}）"
         entries.append(
             f'<article class="marketplace-product" data-jan="{product.jan}" data-pack="{count}"'
             f' data-unit-amount="{product.amount}" data-unit="{product.unit}">'
@@ -135,7 +138,7 @@ def render(category, groups, updated, rakuten_updated):
     return (
         f'<section {MARKER} aria-labelledby="marketplace-title">'
         '<h2 id="marketplace-title">楽天市場とYahoo!ショッピングを比較</h2>'
-        '<p>容量・個数・商品規格が一致した候補を比較しています。</p>'
+        '<p>容量・個数・商品規格が一致した掲載候補を比較しています。</p>'
         '<div class="marketplace-products">' + "".join(entries) + '</div>'
         '<p class="marketplace-footnote">税込。送料は取得時点の表示です。地域別送料・在庫は購入前にご確認ください。'
         'クーポン・ポイントは計算に含めていません。</p>'
@@ -178,7 +181,7 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
         # Yahoo credit at the bottom of each page that uses Yahoo data.
         if markup.count('</footer>') != 1 or markup.count('</head>') != 1:
             raise ValueError("marketplace page structure changed")
-        anchor = ANCHOR if ANCHOR in markup else '<div class="lab-category-top">'
+        anchor = ANCHOR if ANCHOR in markup else f'<section class="category-section" id="{category}">'
         if markup.count(anchor) != 1:
             raise ValueError("marketplace section anchor changed")
         markup = markup.replace(anchor, section + "\n" + anchor, 1)

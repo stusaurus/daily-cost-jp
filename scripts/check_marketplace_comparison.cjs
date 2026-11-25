@@ -4,7 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { chromium, webkit } = require('playwright');
 
-const categoryIds = (process.env.MARKETPLACE_QA_CATEGORIES || 'laundry').split(',');
+const categoryIds = (process.env.MARKETPLACE_QA_CATEGORIES || 'laundry,softener').split(',');
 const requireComparison = process.env.MARKETPLACE_QA_REQUIRED === '1';
 const VC_HOST = 'ck.jp.ap.valuecommerce.com';
 const prefix = '/daily-cost-jp/';
