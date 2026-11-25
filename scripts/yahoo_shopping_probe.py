@@ -26,15 +26,21 @@ def main():
                 verified += links
                 print(f"JAN {product.jan}: hits={len(hits)} verified_ad_links={links} "
                       f"shipping_free={shipping['2']} shipping_conditional={shipping['3']}", flush=True)
+        missing_comparable = []
         for category in PRODUCTS:
             rows = catalog["categories"].get(category, {}).get("items", [])
             groups, candidates = select(category, rows, client)
             comparable = sum(all(offer.total is not None for offer in offers) for _, _, offers in groups)
+            if not comparable:
+                missing_comparable.append(category)
             print(f"{category}: matched_pairs={len(groups)} comparable_totals={comparable} "
                   f"counts={json.dumps(candidates, sort_keys=True)}", flush=True)
-        if verified:
+        if not verified:
+            print("Yahoo connection succeeded but no verified ValueCommerce link was found.")
+        elif missing_comparable:
+            print("Missing comparable totals:", ", ".join(missing_comparable))
+        else:
             return 0
-        print("Yahoo connection succeeded but no verified ValueCommerce link was found.")
     except YahooUnavailable as error:
         print(f"Yahoo verification unavailable: {error}")
     return 1

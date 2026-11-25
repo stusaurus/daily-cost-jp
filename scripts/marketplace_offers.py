@@ -10,7 +10,7 @@ from yahoo_shopping import safe_url
 
 PACK_COUNT = re.compile(r"(?<![\d.])(\d+)\s*(?:個|袋|本|パック|セット|箱|ケース)")
 MULTIPLIER = re.compile(r"x\s*(\d+)(?![\d.])", re.I)
-CAPACITY = re.compile(r"(?<![\w.])([\d]+(?:\.\d+)?)\s*(kg|ml|g|l)(?![a-z])", re.ASCII)
+CAPACITY = re.compile(r"(?<![\w.])([\d]+(?:\.\d+)?)\s*(kg|ml|g|l)(?=x\s*\d|[^a-z]|$)", re.ASCII)
 AMBIGUOUS = re.compile(
     r"選べ|組み合わせ|おまけ|増量品|お試し|サンプル|アソート|混合|"
     r"(?:新旧|旧品|旧パッケージ)|(?:本体|ボトル)(?:付き|付|セット)|"

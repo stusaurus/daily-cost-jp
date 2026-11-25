@@ -22,6 +22,7 @@ on:
       - "scripts/build_pipeline.py"
       - "scripts/marketplace_comparison.py"
       - "scripts/marketplace_offers.py"
+      - "scripts/check_marketplace_comparison.cjs"
       - "scripts/yahoo_shopping.py"
       - "scripts/tissue_five_box_choices.py"
       - "tests/test_tissue_five_box_choices.py"
@@ -215,6 +216,8 @@ jobs:
           npm ci --ignore-scripts
           npx playwright install --with-deps chromium webkit
           BUYING_DECISION_BASE_URL=https://stusaurus.github.io/daily-cost-jp/ BUYING_DECISION_QA_DIR=published-design-reports/buying-decisions node scripts/check_buying_decisions.cjs
+      - name: Verify published marketplace comparison where offers are available
+        run: MARKETPLACE_QA_BASE_URL=https://stusaurus.github.io/daily-cost-jp/ node scripts/check_marketplace_comparison.cjs
       - name: Audit the actual public pages
         run: |
           mkdir -p published-design-reports

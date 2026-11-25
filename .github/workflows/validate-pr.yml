@@ -51,6 +51,8 @@ jobs:
         run: |
           npx playwright install --with-deps chromium webkit
           node scripts/check_buying_decisions.cjs
+      - name: Verify cross-marketplace purchase choices with real API data
+        run: node scripts/check_marketplace_comparison.cjs
       - name: Exercise approved active display on an unpublished real-data copy
         run: |
           python scripts/prepare_buying_decision_qa.py site audit-results/buying-decisions-active
