@@ -219,12 +219,18 @@ async function verifyPage(page, base, width, category, catalog) {
   }
   assert(comparable > 0, 'display requires a pair with confirmed purchase totals');
   assert(await section.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'comparison overflow');
-  const totals = await articles[0].locator('.marketplace-totals dd').all();
-  const totalBoxes = await Promise.all(totals.map(total => total.boundingBox()));
+  // Measure both columns in one browser frame. Independent remote calls can
+  // see different scroll offsets during the anchor transition.
+  const coordinates = elements => elements.map(element => {
+    const {x, y} = element.getBoundingClientRect();
+    return {x, y};
+  });
+  const totalBoxes = await articles[0].locator('.marketplace-totals dd').evaluateAll(coordinates);
+  assert.equal(totalBoxes.length, 2);
   assert(totalBoxes[1].x > totalBoxes[0].x && Math.abs(totalBoxes[0].y - totalBoxes[1].y) <= 1,
-    'both purchase totals are next to one another at every viewport');
+    `both purchase totals must share a row at ${width}px (${category})`);
   const cards = await articles[0].locator('.marketplace-offer').all();
-  const cardBoxes = await Promise.all(cards.map(card => card.boundingBox()));
+  const cardBoxes = await articles[0].locator('.marketplace-offer').evaluateAll(coordinates);
   assert(width <= 540 ? cardBoxes[1].y > cardBoxes[0].y : cardBoxes[1].x > cardBoxes[0].x,
     'stack on mobile and compare side by side on desktop');
   for (const [index, marketplace] of ['rakuten', 'yahoo'].entries()) {
@@ -261,7 +267,7 @@ async function main() {
     assert.deepEqual(Object.keys(coverage).sort(), Object.keys(categories).sort());
     const configured = Object.keys(coverage).filter(category => coverage[category].status !== 'not_configured');
     const categoryIds = requestedCategories || configured;
-    for (const engine of [chromium, webkit]) {
+    const checks = await Promise.allSettled([chromium, webkit].map(async engine => {
       const browser = await engine.launch({ headless: true });
       try {
         for (const width of [320, 390, 1440]) {
@@ -290,7 +296,9 @@ async function main() {
       } finally {
         await browser.close();
       }
-    }
+    }));
+    const failure = checks.find(result => result.status === 'rejected');
+    if (failure) throw failure.reason;
   } finally {
     local?.server.close();
   }
