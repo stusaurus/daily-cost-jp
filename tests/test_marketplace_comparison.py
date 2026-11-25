@@ -9,7 +9,7 @@ from urllib.parse import quote, urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from marketplace_comparison import ANCHOR, PRODUCTS, apply, select
+from marketplace_comparison import ANCHOR, MAIN, NAV_MARKER, PRODUCTS, apply, select
 from marketplace_offers import package_quantity, rakuten_offer, yahoo_offer
 from yahoo_shopping import YahooShopping, YahooUnavailable, affiliate_config
 
@@ -122,15 +122,24 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(groups, [])
 
     def test_build_keeps_catalog_and_legacy_html_on_outage(self):
-        original = "<html><head></head><body>" + ANCHOR + '<h2>楽天の比較</h2></section><footer>既存フッター</footer></body></html>'
+        original = ("<html><head></head><body>" + MAIN + ANCHOR
+                    + '<h2>楽天の比較</h2></section></main><footer>既存フッター</footer></body></html>')
+        landing = "<html><head></head><body>" + MAIN + "</main></body></html>"
         with TemporaryDirectory() as directory:
             site = Path(directory)
             page = site / "categories/laundry/index.html"
             page.parent.mkdir(parents=True)
             page.write_text(original)
+            home = site / "index.html"
+            directory_page = site / "categories/index.html"
+            for entry in (home, directory_page):
+                entry.write_text(landing)
             data = site / "data.json"
             data.write_text(json.dumps({"updated_at": NOW.isoformat(),
-                                        "categories": {"laundry": {"items": [rakuten()]}}}))
+                                        "categories": {
+                                            "laundry": {"name": "洗濯洗剤", "items": [rakuten()]},
+                                            "dish": {"name": "食器用洗剤", "items": []},
+                                        }}))
             before = data.read_bytes()
             for client, now, expected in (
                 (MockYahoo(fails=True), NOW, "http_503"),
@@ -139,6 +148,8 @@ class MarketplaceTest(unittest.TestCase):
             ):
                 self.assertEqual(apply(site, client=client, now=now)["status"], expected)
                 self.assertEqual(page.read_text(), original)
+                self.assertEqual(home.read_text(), landing)
+                self.assertEqual(directory_page.read_text(), landing)
             result = apply(site, client=MockYahoo(), now=NOW)
             self.assertEqual(result["categories"]["laundry"]["comparable"], 1)
             rendered = page.read_text()
@@ -148,8 +159,19 @@ class MarketplaceTest(unittest.TestCase):
             self.assertIn("Webサービス by Yahoo! JAPAN", rendered.split("<footer>", 1)[1])
             self.assertNotIn("private-app-id", rendered)
             self.assertEqual(data.read_bytes(), before)
+            self.assertIn('href="#marketplace-comparison" data-marketplace-entry="category"', rendered)
+            entry_pages = {}
+            for path, entry_point in ((home, "home"), (directory_page, "directory")):
+                text = path.read_text()
+                entry_pages[path] = text
+                self.assertEqual(text.count(NAV_MARKER), 1)
+                self.assertIn(f'href="/daily-cost-jp/categories/laundry/#marketplace-comparison" '
+                              f'data-marketplace-entry="{entry_point}"', text)
+                self.assertNotIn("/categories/dish/", text)
             apply(site, client=MockYahoo(), now=NOW)
             self.assertEqual(page.read_text(), rendered)
+            for path, text in entry_pages.items():
+                self.assertEqual(path.read_text(), text)
 
 
 if __name__ == "__main__":

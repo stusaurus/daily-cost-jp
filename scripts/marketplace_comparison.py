@@ -10,6 +10,9 @@ from marketplace_offers import Product, cheapest_offer, rakuten_offer, yahoo_off
 from yahoo_shopping import YahooShopping, YahooUnavailable
 
 MARKER = 'id="marketplace-comparison"'
+MAIN = '<main class="container" id="lab-content">'
+NAV_MARKER = 'id="marketplace-navigation"'
+FRAGMENT = "#marketplace-comparison"
 ANCHOR = '<section class="purchase-answer lab-answer" id="buying-answer">'
 CREDIT = """<!-- Begin Yahoo! JAPAN Web Services Attribution Snippet -->
 <span style="margin:15px 15px 15px 15px"><a href="https://developer.yahoo.co.jp/sitemap/">Webサービス by Yahoo! JAPAN</a></span>
@@ -43,6 +46,14 @@ PRODUCTS = {
     ),
 }
 
+NAV_CSS = """<style id="marketplace-navigation-style">
+#marketplace-navigation{margin:18px 0;padding:12px 15px;border:1px solid #cadfd6;border-radius:10px;background:#f1f8f5;color:#173c31}
+#marketplace-navigation h2{margin:0 0 6px;font-size:16px;line-height:1.5}
+.marketplace-navigation-links{display:flex;flex-wrap:wrap;gap:6px 10px}
+.marketplace-navigation-link{display:inline-flex;align-items:center;min-height:44px;padding:6px 10px;
+  border:1px solid #457d68;border-radius:6px;background:white;color:#104b3b;text-decoration:none;font-weight:650;font-size:14px}
+.marketplace-navigation-link:hover{text-decoration:underline;background:#e4f2eb;color:#104b3b}
+</style>"""
 CSS = """<style id="marketplace-comparison-style">
 #marketplace-comparison{padding:clamp(14px,3vw,26px);margin:24px 0;border:1px solid #cadfd6;border-radius:18px;background:#f1f8f5;color:#173c31}
 #marketplace-comparison h2{margin:0 0 8px;font-size:clamp(21px,3vw,27px);line-height:1.35}
@@ -157,6 +168,33 @@ def render(category, groups, updated, rakuten_updated):
     )
 
 
+def navigation(entry_point, categories):
+    links = []
+    for category, name in categories:
+        destination = (FRAGMENT if entry_point == "category"
+                       else f"/daily-cost-jp/categories/{category}/{FRAGMENT}")
+        label = "楽天市場とYahoo!ショッピングを比較する ↓" if entry_point == "category" else name
+        links.append(
+            f'<a class="marketplace-navigation-link" href="{html.escape(destination)}"'
+            f' data-marketplace-entry="{entry_point}" data-category-id="{html.escape(category)}">'
+            f'{html.escape(label)}</a>'
+        )
+    heading = '<h2>楽天市場とYahoo!ショッピングを比較</h2>' if entry_point != "category" else ""
+    return (
+        f'<nav {NAV_MARKER} aria-label="楽天市場とYahoo!ショッピングの比較">'
+        + heading + '<div class="marketplace-navigation-links">' + "".join(links) + '</div></nav>'
+    )
+
+
+def insert_navigation(markup, entry_point, categories):
+    if NAV_MARKER in markup:
+        return markup
+    if markup.count(MAIN) != 1 or markup.count("</head>") != 1:
+        raise ValueError("marketplace navigation anchor changed")
+    return (markup.replace(MAIN, MAIN + "\n" + navigation(entry_point, categories), 1)
+            .replace("</head>", NAV_CSS + "\n</head>", 1))
+
+
 def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
     now = now or datetime.now(timezone.utc)
     try:
@@ -182,6 +220,8 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
         # Do not apply a partial market snapshot to this build.
         return {"status": str(error), "categories": {}}
 
+    available = [(category, catalog["categories"][category]["name"]) for category in sections]
+    pages = {}
     for category, section in sections.items():
         page = site / "categories" / category / "index.html"
         markup = page.read_text(encoding="utf-8")
@@ -197,6 +237,12 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
         markup = markup.replace(anchor, section + "\n" + anchor, 1)
         markup = markup.replace('</footer>', CREDIT + '\n</footer>', 1)
         markup = markup.replace('</head>', CSS + '\n</head>', 1)
+        pages[page] = insert_navigation(markup, "category", [(category, "")])
+    if available:
+        for path, entry_point in (("index.html", "home"), ("categories/index.html", "directory")):
+            page = site / path
+            pages[page] = insert_navigation(page.read_text(encoding="utf-8"), entry_point, available)
+    for page, markup in pages.items():
         temp = page.with_suffix('.tmp')
         temp.write_text(markup, encoding="utf-8")
         temp.replace(page)

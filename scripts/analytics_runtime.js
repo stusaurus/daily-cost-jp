@@ -214,6 +214,18 @@
     try {
       const url = new URL(link.href, location.href);
       if (url.origin !== location.origin || !url.pathname.startsWith(ROOT)) return;
+      const entry = link.dataset.marketplaceEntry;
+      const categoryId = link.dataset.categoryId;
+      if (['home', 'directory', 'category'].includes(entry) && /^[a-z][a-z-]*$/.test(categoryId || '')
+          && url.pathname === ROOT + 'categories/' + categoryId + '/' && url.hash === '#marketplace-comparison') {
+        window.gtag('event', 'marketplace_compare_click', {
+          ...(window.dailyCostTrafficContext || {}),
+          category_id: categoryId,
+          entry_point: entry,
+          conversion_source: 'same_product_compare',
+          transport_type: 'beacon'
+        });
+      }
       const source = navigationSource(link);
       if (url.pathname === location.pathname && url.search === location.search && url.hash) {
         const section = document.getElementById(decodeURIComponent(url.hash.slice(1)))?.closest('.category-section');
