@@ -1,0 +1,73 @@
+name: Audit marketplace supply across all categories
+on:
+  push:
+    branches: [qa/marketplace-all-category-baseline-20261126]
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Measure Yahoo category samples and JAN availability
+        env:
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
+          PYTHONPATH: scripts
+        run: |
+          curl -fsS --max-time 20 https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/catalog.json"
+          python - <<'PY'
+          import json, os, re
+          from pathlib import Path
+          from urllib.parse import parse_qs, urlsplit
+          from marketplace_offers import known_shipping, valid_jan
+          from product_quality import category_is_suitable
+          from sale_quantity import normalize
+          from yahoo_shopping import YahooShopping, YahooUnavailable
+          catalog = json.loads((Path(os.environ['RUNNER_TEMP'])/'catalog.json').read_text())
+          def jans(text):
+              return {x for x in re.findall(r'(?<!\d)\d{13}(?!\d)',normalize(text)) if valid_jan(x)}
+          def offer_jans(row):
+              target=parse_qs(urlsplit(row['url']).query).get('pc',[''])[0]
+              return jans(row['name']) or jans(urlsplit(target).path)
+          def shipping(hit):
+              shipping=hit.get('shipping')
+              return isinstance(shipping,dict) and shipping.get('code')==2 and known_shipping(
+                  ' '.join(str(hit.get(k) or '') for k in ('name','description','headLine')))
+          def public_hit(hit):
+              return [hit.get('name','')[:130], hit.get('price'), shipping(hit)]
+          try:
+              client=YahooShopping(os.getenv('YAHOO_APP_ID',''),os.getenv('YAHOO_AFFILIATE_ID',''))
+              print('Snapshot',catalog['updated_at'],flush=True)
+              for cid,category in catalog['categories'].items():
+                  rows=category['items']
+                  query=category['name'].split('（')[0].split('・')[0]
+                  if cid=='coffee': query='コーヒー豆'
+                  if cid=='water': query='ミネラルウォーター'
+                  if cid=='garbage-bag-45l': query='ゴミ袋 45L'
+                  hits=client.search(query=query)
+                  eligible=[h for h in hits if category_is_suitable(cid,h.get('name',''))
+                            and h.get('inStock') is True and client.affiliate_link(h)]
+                  baseline={'id':cid,'rakuten':len(rows),'yahoo':len(hits),'yahoo_screened':len(eligible),
+                            'yahoo_shipping':sum(shipping(h) for h in eligible),
+                            'rakuten_ids':len({j for r in rows for j in offer_jans(r)})}
+                  print('BASE',json.dumps(baseline,ensure_ascii=False),flush=True)
+                  checked={}
+                  for row in rows:
+                      for jan in sorted(offer_jans(row)):
+                          if jan not in checked:
+                              checked[jan]=[h for h in client.search(jan=jan) if h.get('janCode')==jan
+                                             and h.get('inStock') is True and client.affiliate_link(h)]
+                          exact=checked[jan]
+                          if exact:
+                              cheapest=sorted(exact,key=lambda h:(not shipping(h),h.get('price') or 0))
+                              print('CANDIDATE',json.dumps({'id':cid,'jan':jan,'rakuten':row['name'][:150],
+                                  'quantity':row.get('sale_quantity_label'),'item':row.get('item_code'),
+                                  'yahoo_total':len(exact),'offers':[public_hit(h) for h in cheapest[:10]]},ensure_ascii=False),flush=True)
+          except YahooUnavailable as e:
+              print('Yahoo!',e,flush=True)
+              raise SystemExit(1)
+          PY
