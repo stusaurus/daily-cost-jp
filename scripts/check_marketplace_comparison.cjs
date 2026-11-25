@@ -55,10 +55,13 @@ async function checkOffer(card, marketplace, group, catalog) {
     const match = catalog.find(entry => entry.item_code === item && entry.url === url.href);
     assert(match, 'Rakuten link must be an approved catalogue offer');
     assert.equal(price, match.price);
-    const destination = new URL(url.searchParams.get('pc'));
-    const listedJans = match.name.normalize('NFKC').match(/(?<!\d)\d{13}(?!\d)/g) || [];
-    const merchantSkuJans = destination.pathname.match(/(?<!\d)\d{13}(?!\d)/g) || [];
-    assert(listedJans.includes(group.jan) || merchantSkuJans.includes(group.jan), 'Rakuten JAN evidence');
+    const evidence = [
+      match.name.normalize('NFKC'),
+      new URL(url.searchParams.get('pc')).pathname,
+    ].flatMap(value => value.match(/(?<!\d)\d{13}(?!\d)/g) || []);
+    const validJans = evidence.filter(code => [...code].reverse()
+      .reduce((sum, digit, index) => sum + Number(digit) * (index % 2 ? 3 : 1), 0) % 10 === 0);
+    assert(validJans.every(jan => jan === group.jan), 'Rakuten JAN evidence cannot conflict');
   } else {
     assert.equal(url.hostname, VC_HOST);
     assert.equal(url.pathname, '/servlet/referral');
@@ -216,6 +219,10 @@ async function verifyPage(page, base, width, category, catalog) {
   }
   assert(comparable > 0, 'display requires a pair with confirmed purchase totals');
   assert(await section.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'comparison overflow');
+  const totals = await articles[0].locator('.marketplace-totals dd').all();
+  const totalBoxes = await Promise.all(totals.map(total => total.boundingBox()));
+  assert(totalBoxes[1].x > totalBoxes[0].x && totalBoxes[0].y === totalBoxes[1].y,
+    'both purchase totals are next to one another at every viewport');
   const cards = await articles[0].locator('.marketplace-offer').all();
   const cardBoxes = await Promise.all(cards.map(card => card.boundingBox()));
   assert(width <= 540 ? cardBoxes[1].y > cardBoxes[0].y : cardBoxes[1].x > cardBoxes[0].x,

@@ -74,12 +74,14 @@ class YahooShopping:
         self._last_request = float("-inf")
         self._cache = {}
 
-    def search(self, *, jan=None, query=None, results=50):
+    def search(self, *, jan=None, query=None, results=50, shipping=None):
         filters = {"jan_code": jan} if jan else {"query": query}
         params = dict(filters, appid=self._app_id, affiliate_type="vc",
                       affiliate_id=self._prefix, in_stock="true", condition="new",
                       sort="+price", results=results)
-        key = jan, query, results
+        if shipping:
+            params["shipping"] = shipping
+        key = jan, query, results, shipping
         if key in self._cache:
             return self._cache[key]
         for attempt in range(2):

@@ -10,7 +10,7 @@ from urllib.parse import quote, urlencode
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from marketplace_comparison import ANCHOR, MAIN, NAV_MARKER, PRODUCTS, apply, select
-from marketplace_offers import package_quantity, rakuten_offer, yahoo_offer
+from marketplace_offers import package_quantity, price_unit, rakuten_offer, yahoo_offer
 from yahoo_shopping import YahooShopping, YahooUnavailable, affiliate_config
 
 PRODUCT = PRODUCTS["laundry"][0]
@@ -44,7 +44,7 @@ class MockYahoo(YahooShopping):
         self.hits = [yahoo()] if hits is None else hits
         self.fails = fails
 
-    def search(self, *, jan):
+    def search(self, *, jan, shipping=None):
         if self.fails:
             raise YahooUnavailable("http_503")
         return self.hits if jan == PRODUCT.jan else []
@@ -91,6 +91,34 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(package_quantity("toilet-cleaner", title + "×2袋", product), 2)
         self.assertIsNone(package_quantity("toilet-cleaner", title + " 本体（別容量）", product))
         self.assertIsNone(package_quantity("toilet-cleaner", title.replace("ローズ", "シトラス"), product))
+
+    def test_counted_packs_require_total_length_and_matching_sheet_count(self):
+        roll = PRODUCTS["toilet-paper"][0]
+        title = "スコッティ フラワーパック 3倍長持ち トイレットペーパー ダブル 75m×12ロール"
+        self.assertEqual(package_quantity("toilet-paper", title, roll), 1)
+        self.assertIsNone(package_quantity("toilet-paper", title.replace("75m", "50m"), roll))
+        self.assertIsNone(package_quantity("toilet-paper", title + "×2個×3箱", roll))
+        self.assertEqual(price_unit("toilet-paper", roll), (10, 75, "10m"))
+        tissue = PRODUCTS["tissue"][0]
+        title = "スコッティ ティッシュ 200組 400枚 5箱×12パック 計60箱"
+        self.assertEqual(package_quantity("tissue", title, tissue), 12)
+        self.assertIsNone(package_quantity("tissue", title.replace("60箱", "48箱"), tissue))
+        self.assertIsNone(package_quantity("tissue", title.replace("400枚", "320枚"), tissue))
+        self.assertEqual(price_unit("tissue", tissue), (100, 200, "100組"))
+        self.assertEqual(price_unit("water", PRODUCTS["water"][0]), (1000, 1, "1L"))
+
+    def test_verified_merchant_record_requires_matching_urls_and_independent_quantity(self):
+        tissue = PRODUCTS["tissue"][0]
+        pc = "https://item.rakuten.co.jp/kyoto23/10001789/"
+        mobile = "http://m.rakuten.co.jp/kyoto23/i/10001789/"
+        url = "https://hb.afl.rakuten.co.jp/hgc/path/?" + urlencode({"pc": pc, "m": mobile})
+        row = rakuten(category_id="tissue", item_code="kyoto23:10001789", url=url,
+                      sale_quantity_label="5箱×12パック",
+                      name="スコッティ ティッシュ 200組 400枚 5箱×12パック")
+        self.assertEqual(rakuten_offer("tissue", row, tissue)[0], 12)
+        self.assertIsNone(rakuten_offer("tissue", row | {"url": url.replace("10001789%2F", "10001788%2F", 1)}, tissue))
+        self.assertIsNone(rakuten_offer("tissue", row | {"name": row["name"] + " 4901301440815"}, tissue))
+        self.assertIsNone(rakuten_offer("tissue", row | {"sale_quantity_label": "5箱×6パック"}, tissue))
 
     def test_yahoo_item_and_affiliate_identity(self):
         client = MockYahoo()
@@ -152,6 +180,10 @@ class MarketplaceTest(unittest.TestCase):
                 self.assertEqual(directory_page.read_text(), landing)
             result = apply(site, client=MockYahoo(), now=NOW)
             self.assertEqual(result["categories"]["laundry"]["comparable"], 1)
+            published = json.loads((site / "marketplace-coverage.json").read_text())
+            self.assertEqual(set(published["categories"]), {"laundry", "dish"})
+            self.assertEqual(published["categories"]["laundry"]["yahoo_results"], 1)
+            self.assertEqual(published["categories"]["dish"]["status"], "no_rakuten_match")
             rendered = page.read_text()
             self.assertIn("Yahoo!ショッピングが安い（差額 ¥300）", rendered)
             self.assertIn("¥115.0 / 100g", rendered)

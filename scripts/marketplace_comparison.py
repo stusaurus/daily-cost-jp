@@ -25,12 +25,12 @@ PRODUCTS = {
         Product("4901750227401", "スコッティ フラワーパック 3倍長持ち ダブル", 12, "ロール",
                 (r"スコッティ", r"フラワーパック", r"3倍", r"ダブル"), r"シングル|2倍|4倍",
                 rakuten_items=("rakuten24:11044376",), roll_length_m=75),
-        Product("4902727005237", "丸富製紙 ワンタッチコアレス シングル", 6, "ロール",
+        Product("4902727005237", "丸富製紙 ワンタッチコアレス トイレットペーパー シングル", 6, "ロール",
                 (r"ワンタッチ", r"コアレス|芯なし", r"シングル"), r"ダブル|細芯",
                 rakuten_items=("ec-try:10001076",), roll_length_m=150),
     ),
     "tissue": (
-        Product("4901750417352", "スコッティ ティシュー ホワイト 1箱200組", 5, "箱",
+        Product("4901750417352", "スコッティ ティッシュペーパー ホワイト 1箱200組", 5, "箱",
                 (r"スコッティ|scottie", r"ティッ?シュ|ティシュー"), r"フラワー|カシミヤ|ウェルネス|法人限定",
                 tissue_pairs=200, rakuten_evidence=(("kyoto23:10001789", "/kyoto23/10001789"),
                                                     ("irisplaza-r:10109543", "/irisplaza-r/7162877"))),
@@ -108,6 +108,11 @@ PRODUCTS = {
                 r"並行輸入|トライアル|ミニ|タングスクレーパー付",
                 rakuten_evidence=(("kenkocom:10267503", "/kenkocom/p317450h"),
                                    ("alpha-net:10000004", "/alpha-net/020-prf-0013"))),
+    ),
+    "paper-towel": (
+        Product("4970570444213", "イットコライトタオル L200 ハード 中判 200枚", 200, "枚",
+                (r"イットコライトタオル", r"l\s*200", r"ハード"), r"小判|ダブル|ソフト",
+                rakuten_items=("ec-try:10001150",)),
     ),
     "garbage-bag-45l": (
         Product("4562345603538", "サンキョウプラテック KN-53 45L 半透明 0.015mm厚", 10, "枚",
@@ -226,12 +231,28 @@ def select(category, listings, client, *, include=PRODUCTS):
         if not rakuten:
             continue
         hits = client.search(jan=product.jan)
-        for hit in hits:
-            result = yahoo_offer(category, hit, product, client.affiliate_link)
-            if result:
-                count, offer = result
-                yahoo[count].append(offer)
-        diagnostic[product.jan] = {"api_hits": len(hits), "rakuten_sizes": sorted(rakuten),
+        seen = set()
+
+        def collect(rows, *, additional=False):
+            for hit in rows:
+                code = hit.get("code")
+                if not isinstance(code, str) or (additional and code in seen):
+                    continue
+                seen.add(code)
+                result = yahoo_offer(category, hit, product, client.affiliate_link)
+                if result:
+                    count, offer = result
+                    yahoo[count].append(offer)
+
+        collect(hits)
+        needs_total = any(any(offer.total is not None for offer in offers)
+                          and not any(offer.total is not None for offer in yahoo.get(count, ()))
+                          for count, offers in rakuten.items())
+        if len(hits) == 50 and needs_total:
+            # Small single packs can fill the first 50 results. A shipping
+            # filter can expose additional sellers with comparable totals.
+            collect(client.search(jan=product.jan, shipping="free"), additional=True)
+        diagnostic[product.jan] = {"api_hits": len(seen), "rakuten_sizes": sorted(rakuten),
                                    "yahoo_sizes": sorted(yahoo)}
         for count in sorted(rakuten.keys() & yahoo.keys()):
             products.append((product, count, (cheapest_offer(rakuten[count]), cheapest_offer(yahoo[count]))))

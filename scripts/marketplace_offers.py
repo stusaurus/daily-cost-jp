@@ -15,6 +15,8 @@ MULTIPLIER = re.compile(r"x\s*(\d+)(?![\d.])", re.I)
 CAPACITY = re.compile(r"(?<![\w.])([\d]+(?:\.\d+)?)\s*(kg|ml|g|l)(?=x\s*\d|[^a-z]|$)", re.ASCII)
 AMBIGUOUS = re.compile(
     r"選べ|組み合わせ|おまけ|増量品|お試し|サンプル|アソート|混合|"
+    r"(?:法人|企業|事業者).{0,8}(?:専用販売|限定販売|注文限定|注文のみ)|"
+    r"\d+[\d,.]*円(?:\(税込\))?(?:以上|から).{0,12}(?:注文可能|購入可能|注文受付)|"
     r"(?:新旧|旧品|旧パッケージ)|(?:本体|ボトル)(?:付き|付|セット)|"
     r"(?:個|袋|本|パック)\s*[+＋＆&]|[+＋＆&]\s*\d+\s*(?:個|袋|本|パック)"
 )
@@ -119,8 +121,11 @@ def count_pack(text, product):
 def package_quantity(category, title, product):
     """Require independent title evidence for variant, per-unit size and pack."""
     text = normalize(title).lower()
+    rejection = category_rejection(category, text)
+    if rejection == "missing_category_evidence" and category in ("tissue", "toothbrush", "toilet-paper"):
+        rejection = category_rejection(category, product.label + " " + text)
     if (not valid_jan(product.jan) or AMBIGUOUS.search(text)
-            or category_rejection(category, text)
+            or rejection
             or any(not re.search(pattern, text) for pattern in product.required)
             or (product.excluded and re.search(product.excluded, text))):
         return None
@@ -131,12 +136,18 @@ def package_quantity(category, title, product):
             return None
         text = re.sub(rf"(?<![\d.]){product.roll_length_m}\s*m\s*x\s*(?=\d+\s*ロール)", "", text)
     if product.tissue_pairs:
-        text = re.sub(r"\d+\s*組\s*/\s*箱", lambda m: m[0].split("/")[0], text)
         pairs = {int(n) for n in re.findall(r"(\d+)\s*組", text)}
-        if pairs != {product.tissue_pairs}:
+        sheets = {int(n) for n in re.findall(r"(\d+)\s*枚", text)}
+        if pairs != {product.tissue_pairs} or sheets - {product.tissue_pairs * 2}:
             return None
+        text = re.sub(r"\d+\s*(?:組(?:\s*/\s*箱)?|枚)", "", text)
     if product.unit not in MEASURE_UNITS:
+        if category == "garbage-bag-45l":
+            text = re.sub(r"\d+\s*x\s*\d+\s*cm|\d+\s*l(?=[^a-z]|$)", "", text)
         text = re.sub(r"(?<=\d)\s*冊(?=\s|[)\]】]|$)", "袋", text)
+        # A one-case offer may state the two quantities without a multiplication sign.
+        text = re.sub(r"(\d+\s*枚)\s*(?:入り?|シングル)?\s*1\s*ケース\s*\[(\d+\s*パック)入(?:り)?\]",
+                      r"\1x\2", text)
         return count_pack(text, product)
     sizes = set()
     dimension = {"kg": "g", "g": "g", "l": "ml", "ml": "ml"}
