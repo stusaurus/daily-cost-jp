@@ -1,0 +1,70 @@
+name: Verify a published Yahoo affiliate redirect
+on:
+  push:
+    branches: [qa/yahoo-affiliate-redirect-20261125]
+
+permissions:
+  contents: read
+
+jobs:
+  public-link:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - name: Check one public redirect without a purchase
+        run: |
+          node - <<'JS'
+          const { chromium } = require('playwright');
+          const { JSDOM } = require('jsdom');
+          const landingPage = 'https://stusaurus.github.io/daily-cost-jp/categories/softener/';
+          const allowedHost = host => host === 'app.yahoo.co.jp' ||
+            /(^|\.)(shopping\.yahoo\.co\.jp|lohaco\.yahoo\.co\.jp|valuecommerce\.com|valuecommerce\.ne\.jp)$/.test(host);
+          (async () => {
+            const response = await fetch(landingPage);
+            if (!response.ok) throw Error('public category did not load');
+            const html = new JSDOM(await response.text());
+            const href = html.window.document.querySelector('#marketplace-comparison [data-marketplace=yahoo]')?.href;
+            if (!href) throw Error('public comparison link missing');
+            const expected = new URL(new URL(href).searchParams.get('vc_url'));
+            const isTarget = url => url.hostname === expected.hostname && url.pathname === expected.pathname;
+            const browser = await chromium.launch();
+            try {
+              const page = await browser.newPage();
+              await page.route('**/*', route => {
+                const r = route.request();
+                const u = new URL(r.url());
+                const trackingPost = r.method() === 'POST' && /\.valuecommerce\.(com|ne\.jp)$/.test(u.hostname);
+                return u.protocol === 'https:' && allowedHost(u.hostname) &&
+                  (r.method() === 'GET' || r.method() === 'HEAD' || trackingPost) ? route.continue() : route.abort();
+              });
+              page.on('response', result => {
+                if (result.request().isNavigationRequest()) {
+                  const u = new URL(result.url());
+                  console.log(JSON.stringify({host: u.hostname, status: result.status(), expectedProduct: isTarget(u)}));
+                }
+              });
+              const landed = page.waitForResponse(
+                result => result.request().isNavigationRequest() && isTarget(new URL(result.url())) && result.ok(),
+                {timeout: 55000}
+              );
+              await Promise.all([
+                landed,
+                page.goto(href, {referer: landingPage, waitUntil: 'commit', timeout: 48000})
+              ]);
+              console.log('Verified one public Yahoo affiliate redirect to the exact product with HTTP 200.');
+            } finally {
+              await browser.close();
+            }
+          })().catch(err => {
+            console.log('Verification stopped:', err.name, err.message.match(/net::[A-Z_0-9]+/)?.[0] || '');
+            process.exitCode = 1;
+          });
+          JS
