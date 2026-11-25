@@ -20,7 +20,7 @@ jobs:
         run: |
           curl -fsS --max-time 20 https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/catalog.json"
           python - <<'PY'
-          import json, os, re
+          import json, os, re, time
           from pathlib import Path
           from urllib.parse import parse_qs, urlsplit
           from marketplace_offers import known_shipping, valid_jan
@@ -41,6 +41,14 @@ jobs:
               return [hit.get('name','')[:130], hit.get('price'), shipping(hit)]
           try:
               client=YahooShopping(os.getenv('YAHOO_APP_ID',''),os.getenv('YAHOO_AFFILIATE_ID',''))
+              def lookup(**kw):
+                  time.sleep(2.5)
+                  try:
+                      return client.search(**kw)
+                  except YahooUnavailable as error:
+                      if str(error) != 'http_429': raise
+                      time.sleep(55)
+                      return client.search(**kw)
               print('Snapshot',catalog['updated_at'],flush=True)
               for cid,category in catalog['categories'].items():
                   rows=category['items']
@@ -48,7 +56,7 @@ jobs:
                   if cid=='coffee': query='コーヒー豆'
                   if cid=='water': query='ミネラルウォーター'
                   if cid=='garbage-bag-45l': query='ゴミ袋 45L'
-                  hits=client.search(query=query)
+                  hits=lookup(query=query)
                   eligible=[h for h in hits if category_is_suitable(cid,h.get('name',''))
                             and h.get('inStock') is True and client.affiliate_link(h)]
                   baseline={'id':cid,'rakuten':len(rows),'yahoo':len(hits),'yahoo_screened':len(eligible),
@@ -59,14 +67,14 @@ jobs:
                   for row in rows:
                       for jan in sorted(offer_jans(row)):
                           if jan not in checked:
-                              checked[jan]=[h for h in client.search(jan=jan) if h.get('janCode')==jan
+                              checked[jan]=[h for h in lookup(jan=jan) if h.get('janCode')==jan
                                              and h.get('inStock') is True and client.affiliate_link(h)]
                           exact=checked[jan]
                           if exact:
                               cheapest=sorted(exact,key=lambda h:(not shipping(h),h.get('price') or 0))
                               print('CANDIDATE',json.dumps({'id':cid,'jan':jan,'rakuten':row['name'][:150],
                                   'quantity':row.get('sale_quantity_label'),'item':row.get('item_code'),
-                                  'yahoo_total':len(exact),'offers':[public_hit(h) for h in cheapest[:10]]},ensure_ascii=False),flush=True)
+                                  'yahoo_total':len(exact),'offers':[public_hit(h) for h in cheapest[:7]]},ensure_ascii=False),flush=True)
           except YahooUnavailable as e:
               print('Yahoo!',e,flush=True)
               raise SystemExit(1)
