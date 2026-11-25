@@ -23,42 +23,45 @@ jobs:
         run: |
           node - <<'JS'
           const { chromium } = require('playwright');
-          const { JSDOM } = require('jsdom');
-          const landingPage = 'https://stusaurus.github.io/daily-cost-jp/categories/softener/';
-          const allowedHost = host => host === 'app.yahoo.co.jp' ||
+          const category = 'https://stusaurus.github.io/daily-cost-jp/categories/softener/?test=1';
+          const allowed = host => ['stusaurus.github.io', 'app.yahoo.co.jp', 'a.imgvc.com'].includes(host) ||
             /(^|\.)(shopping\.yahoo\.co\.jp|lohaco\.yahoo\.co\.jp|valuecommerce\.com|valuecommerce\.ne\.jp)$/.test(host);
           (async () => {
-            const response = await fetch(landingPage);
-            if (!response.ok) throw Error('public category did not load');
-            const html = new JSDOM(await response.text());
-            const href = html.window.document.querySelector('#marketplace-comparison [data-marketplace=yahoo]')?.href;
-            if (!href) throw Error('public comparison link missing');
-            const expected = new URL(new URL(href).searchParams.get('vc_url'));
-            const isTarget = url => url.hostname === expected.hostname && url.pathname === expected.pathname;
             const browser = await chromium.launch();
             try {
-              const page = await browser.newPage();
-              await page.route('**/*', route => {
-                const r = route.request();
-                const u = new URL(r.url());
-                const trackingPost = r.method() === 'POST' && /\.valuecommerce\.(com|ne\.jp)$/.test(u.hostname);
-                return u.protocol === 'https:' && allowedHost(u.hostname) &&
-                  (r.method() === 'GET' || r.method() === 'HEAD' || trackingPost) ? route.continue() : route.abort();
+              const context = await browser.newContext();
+              await context.route('**/*', route => {
+                const request = route.request();
+                const u = new URL(request.url());
+                const clickPost = request.method() === 'POST' && /\.valuecommerce\.(com|ne\.jp)$/.test(u.hostname);
+                if (u.protocol === 'https:' && allowed(u.hostname) &&
+                    (request.method() === 'GET' || request.method() === 'HEAD' || clickPost)) return route.continue();
+                return route.abort();
               });
-              page.on('response', result => {
+              const page = await context.newPage();
+              await page.goto(category, {waitUntil:'domcontentloaded', timeout:25000});
+              const link = page.locator('#marketplace-comparison [data-marketplace=yahoo]').first();
+              const href = await link.getAttribute('href', {timeout:10000});
+              if (!href) throw Error('public comparison link missing');
+              const expected = new URL(new URL(href).searchParams.get('vc_url'));
+              const target = url => url.hostname === expected.hostname && url.pathname === expected.pathname;
+              context.on('response', result => {
                 if (result.request().isNavigationRequest()) {
-                  const u = new URL(result.url());
-                  console.log(JSON.stringify({host: u.hostname, status: result.status(), expectedProduct: isTarget(u)}));
+                  const url = new URL(result.url());
+                  console.log(JSON.stringify({host: url.hostname, status: result.status(), expectedProduct: target(url)}));
                 }
               });
-              const landed = page.waitForResponse(
-                result => result.request().isNavigationRequest() && isTarget(new URL(result.url())) && result.ok(),
-                {timeout: 55000}
-              );
-              await Promise.all([
-                landed,
-                page.goto(href, {referer: landingPage, waitUntil: 'commit', timeout: 48000})
-              ]);
+              context.on('requestfailed', request => {
+                const u = new URL(request.url());
+                if (request.isNavigationRequest() || allowed(u.hostname)) {
+                  console.log('request_failed', u.hostname, request.resourceType(), request.failure()?.errorText);
+                }
+              });
+              const landed = context.waitForEvent('response', {
+                predicate: result => result.request().isNavigationRequest() && target(new URL(result.url())) && result.ok(),
+                timeout: 105000,
+              });
+              await Promise.all([landed, link.click({timeout:12000})]);
               console.log('Verified one public Yahoo affiliate redirect to the exact product with HTTP 200.');
             } finally {
               await browser.close();
