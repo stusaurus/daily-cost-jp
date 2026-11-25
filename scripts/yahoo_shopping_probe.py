@@ -26,12 +26,13 @@ def main():
                 verified += links
                 print(f"JAN {product.jan}: hits={len(hits)} verified_ad_links={links} "
                       f"shipping_free={shipping['2']} shipping_conditional={shipping['3']}", flush=True)
+        baseline = {"laundry", "softener", "dish", "toilet-cleaner"}
         missing_comparable = []
         for category in PRODUCTS:
             rows = catalog["categories"].get(category, {}).get("items", [])
             groups, candidates = select(category, rows, client)
             comparable = sum(all(offer.total is not None for offer in offers) for _, _, offers in groups)
-            if not comparable:
+            if category in baseline and not comparable:
                 missing_comparable.append(category)
             print(f"{category}: matched_pairs={len(groups)} comparable_totals={comparable} "
                   f"counts={json.dumps(candidates, sort_keys=True)}", flush=True)

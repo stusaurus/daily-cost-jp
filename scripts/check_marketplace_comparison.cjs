@@ -4,7 +4,7 @@ const http = require('node:http');
 const path = require('node:path');
 const { chromium, webkit } = require('playwright');
 
-const categoryIds = (process.env.MARKETPLACE_QA_CATEGORIES || 'laundry,softener,dish,toilet-cleaner').split(',');
+const requestedCategories = process.env.MARKETPLACE_QA_CATEGORIES?.split(',');
 const requireComparison = process.env.MARKETPLACE_QA_REQUIRED === '1';
 const VC_HOST = 'ck.jp.ap.valuecommerce.com';
 const prefix = '/daily-cost-jp/';
@@ -55,7 +55,10 @@ async function checkOffer(card, marketplace, group, catalog) {
     const match = catalog.find(entry => entry.item_code === item && entry.url === url.href);
     assert(match, 'Rakuten link must be an approved catalogue offer');
     assert.equal(price, match.price);
-    assert(match.name.includes(group.jan), 'Rakuten JAN evidence in published catalogue');
+    const destination = new URL(url.searchParams.get('pc'));
+    const listedJans = match.name.normalize('NFKC').match(/(?<!\d)\d{13}(?!\d)/g) || [];
+    const merchantSkuJans = destination.pathname.match(/(?<!\d)\d{13}(?!\d)/g) || [];
+    assert(listedJans.includes(group.jan) || merchantSkuJans.includes(group.jan), 'Rakuten JAN evidence');
   } else {
     assert.equal(url.hostname, VC_HOST);
     assert.equal(url.pathname, '/servlet/referral');
@@ -78,9 +81,9 @@ async function checkOffer(card, marketplace, group, catalog) {
   }
   const total = yen(values[2]);
   assert.equal(total, price + yen(values[1]), 'purchase total');
-  assert(values[3].endsWith(` / 100${group.unit}`));
+  assert(values[3].endsWith(` / ${group.priceUnit}`));
   const unitPrice = Number(values[3].split(' ')[0].slice(1).replaceAll(',', ''));
-  assert(Math.abs(unitPrice - total * 100 / (group.pack * group.amount)) <= 0.051, 'unit price');
+  assert(Math.abs(unitPrice - total * group.scale / (group.pack * group.amount * group.factor)) <= 0.051, 'unit price');
   return total;
 }
 
@@ -124,8 +127,8 @@ async function verifyDirectory(page, base, available, entry) {
   const links = nav.locator('a[data-marketplace-entry]');
   const linked = await links.evaluateAll(items => items.map(link => link.dataset.categoryId));
   assert.equal(await nav.count(), linked.length ? 1 : 0);
-  const scoped = process.env.MARKETPLACE_QA_CATEGORIES
-    ? linked.filter(id => categoryIds.includes(id))
+  const scoped = requestedCategories
+    ? linked.filter(id => requestedCategories.includes(id))
     : linked;
   assert.deepEqual(scoped.sort(), available.slice().sort());
   for (const link of await links.all()) {
@@ -176,8 +179,14 @@ async function verifyPage(page, base, width, category, catalog) {
     const group = await article.evaluate(el => ({
       jan: el.dataset.jan, pack: Number(el.dataset.pack),
       amount: Number(el.dataset.unitAmount), unit: el.dataset.unit,
+      scale: Number(el.dataset.priceScale), factor: Number(el.dataset.priceFactor),
+      priceUnit: el.dataset.priceUnit,
     }));
-    assert(/^\d{13}$/.test(group.jan) && group.amount > 0 && group.pack > 0 && /^(g|ml)$/.test(group.unit));
+    assert(/^\d{13}$/.test(group.jan) && group.amount > 0 && group.pack > 0);
+    assert(group.factor > 0 && group.scale > 0);
+    const expectedUnit = { water: '1L', 'toilet-paper': '10m', tissue: '100組' }[category]
+      || (/^(g|ml)$/.test(group.unit) ? '100' + group.unit : '1' + group.unit);
+    assert.equal(group.priceUnit, expectedUnit);
     const key = `${group.jan}/${group.pack}`;
     assert(!identities.has(key), 'duplicate package');
     identities.add(key);
@@ -185,6 +194,14 @@ async function verifyPage(page, base, width, category, catalog) {
     assert.equal(cards.length, 2);
     const rakuten = await checkOffer(cards[0], 'rakuten', group, catalog);
     const yahoo = await checkOffer(cards[1], 'yahoo', group, catalog);
+    const summary = article.locator('.marketplace-totals dd');
+    const totals = await summary.allTextContents();
+    assert.deepEqual(totals, [rakuten, yahoo].map(total => total === null
+      ? '送料要確認' : '¥' + total.toLocaleString('en-US')));
+    if (rakuten !== null && yahoo !== null && rakuten !== yahoo) {
+      assert.equal(await article.locator('.marketplace-leading-total dd').textContent(),
+        '¥' + Math.min(rakuten, yahoo).toLocaleString('en-US'));
+    }
     const note = await article.locator('p > strong').textContent();
     if (rakuten === null || yahoo === null) {
       assert.match(note, /送料が未確定/);
@@ -231,6 +248,12 @@ async function main() {
     const response = await fetch(base + 'data.json');
     assert.equal(response.status, 200);
     const { categories } = await response.json();
+    const coverageResponse = await fetch(base + 'marketplace-coverage.json');
+    assert.equal(coverageResponse.status, 200);
+    const { categories: coverage } = await coverageResponse.json();
+    assert.deepEqual(Object.keys(coverage).sort(), Object.keys(categories).sort());
+    const configured = Object.keys(coverage).filter(category => coverage[category].status !== 'not_configured');
+    const categoryIds = requestedCategories || configured;
     for (const engine of [chromium, webkit]) {
       const browser = await engine.launch({ headless: true });
       try {
@@ -240,6 +263,7 @@ async function main() {
             const page = await browser.newPage({ viewport: { width, height: 900 } });
             try {
               const result = await verifyPage(page, base, width, category, categories[category].items);
+              assert.equal(result.comparable || 0, coverage[category].comparable, 'coverage must match rendered pairs');
               if (result.comparable > 0) available.push(category);
               console.log(JSON.stringify({ browser: engine.name(), width, category, ...result }));
             } finally {
