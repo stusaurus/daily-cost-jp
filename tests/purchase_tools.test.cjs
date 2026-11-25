@@ -86,3 +86,25 @@ test('non-laundry pages keep the existing comparison controls without the shortc
   assert.equal(dom.window.document.getElementById('laundry-compare-shortcut'),null);
   dom.window.close();
 });
+
+ test('softener calculator uses separate labeled doses, resets on selection and rejects invalid values',()=>{
+  const row = slot => '<div data-softener-row="'+slot+'"><select data-softener-offer><option value="">選択</option><option value="1" data-unit="ml" data-amount="1000" data-price="500">A</option><option value="2" data-unit="g" data-amount="600" data-price="480">B</option></select><label data-softener-dose-label></label><input type="number" data-softener-dose><p data-softener-result></p></div>';
+  const dom = new JSDOM('<section id="softener-wash-calculator">'+row('a')+row('b')+'<p id="softener-wash-difference"></p></section>',{url:'https://stusaurus.github.io/daily-cost-jp/categories/softener/',runScripts:'outside-only'});
+  const d = dom.window.document;
+  dom.window.eval(code);
+  const [a,b] = d.querySelectorAll('[data-softener-row]');
+  function choose(r,v){const el=r.querySelector('select');el.value=v;el.dispatchEvent(new dom.window.Event('change'));}
+  function dose(r,v){const el=r.querySelector('input');el.value=v;el.dispatchEvent(new dom.window.Event('input'));}
+  assert.equal(a.querySelector('input').disabled,true);
+  choose(a,'1');choose(b,'2');dose(a,'20');dose(b,'10');
+  assert.match(a.querySelector('[data-softener-dose-label]').textContent,/ml/);
+  assert.match(b.querySelector('[data-softener-dose-label]').textContent,/g/);
+  assert.match(a.querySelector('[data-softener-result]').textContent,/¥10\.00.*50回分/);
+  assert.match(b.querySelector('[data-softener-result]').textContent,/¥8\.00.*60回分/);
+  assert.match(d.querySelector('#softener-wash-difference').textContent,/商品B.*¥2\.00/);
+  dose(b,'601');assert.equal(d.querySelector('#softener-wash-difference').textContent,'');
+  dose(b,'0');assert.match(b.querySelector('[data-softener-result]').textContent,/有効な使用量/);
+  choose(a,'2');assert.equal(a.querySelector('input').value,'');
+  assert.match(a.querySelector('[data-softener-dose-label]').textContent,/g/);
+  dom.window.close();
+});
