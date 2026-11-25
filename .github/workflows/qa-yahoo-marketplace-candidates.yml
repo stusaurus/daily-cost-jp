@@ -1,0 +1,55 @@
+name: Probe Yahoo Marketplace expansion candidates
+on:
+  push:
+    branches: [qa/yahoo-marketplace-candidates-20261125]
+permissions:
+  contents: read
+jobs:
+  compare-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Count exact matches and known shipping
+        env:
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
+          PYTHONPATH: scripts
+        run: |
+          curl -fsS --max-time 20 https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/candidates.json"
+          python - <<'PY'
+          import json, os
+          from collections import Counter
+          from pathlib import Path
+          from marketplace_comparison import REFILL
+          from marketplace_offers import Product, rakuten_offer, yahoo_offer
+          from yahoo_shopping import YahooShopping, YahooUnavailable
+          candidates = {
+              'dish': Product('4901301429940', 'キュキュット オレンジ 詰め替え', 1380, 'ml',
+                              (r'キュキュット', r'オレンジ', REFILL),
+                              r'クリア除菌|マスカット|グレープフルーツ|レモン|無香|ヴァーベナ|詰替.{0,10}本体'),
+              'conditioner': Product('4987107631077', 'ミノン 薬用コンディショナー 詰め替え', 380, 'ml',
+                                     (r'ミノン|minon', r'薬用コンディショナー', REFILL),
+                                     r'全身|ボディウォッシュ'),
+              'toilet-cleaner': Product('4901301424938', 'トイレマジックリン エレガントローズ 詰め替え', 300, 'ml',
+                                        (r'トイレ\s*マジックリン', r'エレガント\s*ローズ', REFILL),
+                                        r'ローズ以外|フレッシュハーブ|シトラス|ミント|本体'),
+          }
+          catalog = json.loads((Path(os.environ['RUNNER_TEMP']) / 'candidates.json').read_text())
+          try:
+              client = YahooShopping(os.getenv('YAHOO_APP_ID',''), os.getenv('YAHOO_AFFILIATE_ID',''))
+              for category, product in candidates.items():
+                  retail = [x for row in catalog['categories'][category]['items'] if (x := rakuten_offer(category, row, product))]
+                  hits = client.search(jan=product.jan)
+                  yahoo = [x for hit in hits if (x := yahoo_offer(category, hit, product, client.affiliate_link))]
+                  total = Counter(pack for pack, offer in yahoo if offer.total is not None)
+                  matched = sorted({pack for pack, offer in retail if offer.total is not None} & set(total))
+                  print(json.dumps({'category': category, 'rakuten': [pack for pack, offer in retail],
+                                    'api_hits': len(hits), 'yahoo_packs': dict(Counter(pack for pack, offer in yahoo)),
+                                    'yahoo_known_total_packs': dict(total), 'matched': matched}), flush=True)
+          except YahooUnavailable as err:
+              print(f'Yahoo verification unavailable: {err}')
+              raise SystemExit(1)
+          PY
