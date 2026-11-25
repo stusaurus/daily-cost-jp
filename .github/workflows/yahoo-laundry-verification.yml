@@ -1,0 +1,30 @@
+name: Verify Yahoo Shopping laundry integration
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/yahoo-laundry-verification.yml'
+      - 'scripts/yahoo_shopping*.py'
+      - 'scripts/marketplace_*.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  yahoo-api:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Yahoo Shopping and ValueCommerce with aggregate output
+        env:
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
+        run: |
+          curl --fail --silent --show-error --max-time 20 \
+            https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/rakuten-marketplace-catalog.json"
+          python scripts/yahoo_shopping_probe.py --catalog "$RUNNER_TEMP/rakuten-marketplace-catalog.json"

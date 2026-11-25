@@ -48,6 +48,7 @@ STEPS = (
     'step5_evaluation',
     'step6_seo_content',
     'verified_shop_comparison',
+    'marketplace_comparison',
     'build_laundry_cost_page',
     'buying_decision_summary',
     'tissue_five_box_choices',

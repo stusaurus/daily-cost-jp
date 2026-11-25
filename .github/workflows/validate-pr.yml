@@ -25,6 +25,8 @@ jobs:
           RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
           RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
           RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
           GA_MEASUREMENT_ID: G-GFVSZ8YDQ5
       - name: Validate real STEP5 purpose links in ACTIVE and fallback copies
         run: python scripts/step5_verify_product_links.py
@@ -49,6 +51,8 @@ jobs:
         run: |
           npx playwright install --with-deps chromium webkit
           node scripts/check_buying_decisions.cjs
+      - name: Verify cross-marketplace purchase choices with real API data
+        run: node scripts/check_marketplace_comparison.cjs
       - name: Exercise approved active display on an unpublished real-data copy
         run: |
           python scripts/prepare_buying_decision_qa.py site audit-results/buying-decisions-active
