@@ -208,11 +208,14 @@ CSS = """<style id="marketplace-comparison-style">
 .marketplace-products{display:grid;gap:14px;margin:16px 0}
 .marketplace-product{background:white;border:1px solid #d8e4de;border-radius:12px;padding:14px;min-width:0}
 .marketplace-product h3{margin:0 0 4px;font-size:17px;line-height:1.4}
-.marketplace-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
-.marketplace-totals div{display:flex;flex-direction:column;justify-content:space-between;padding:7px 8px;background:#f2f6f3;border-radius:6px;min-width:0}
-.marketplace-totals dt{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
-.marketplace-totals dd{margin:2px 0 0;font-size:clamp(15px,2.5vw,20px);font-weight:750;overflow-wrap:anywhere}
-.marketplace-totals .marketplace-leading-total{background:#d9eee3;color:#104b3b}
+.marketplace-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px;margin:10px 0}
+.marketplace-totals div{display:contents}
+.marketplace-totals dt,.marketplace-totals dd{background:#f2f6f3;min-width:0;overflow-wrap:anywhere}
+.marketplace-totals dt{grid-row:1;padding:7px 8px 0;border-radius:6px 6px 0 0;font-size:12px;line-height:1.35}
+.marketplace-totals dd{grid-row:2;padding:2px 8px 7px;border-radius:0 0 6px 6px;margin:0;font-size:clamp(15px,2.5vw,20px);font-weight:750}
+.marketplace-totals div:first-child>*{grid-column:1}
+.marketplace-totals div:last-child>*{grid-column:2}
+.marketplace-totals .marketplace-leading-total>*{background:#d9eee3;color:#104b3b}
 .marketplace-prices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
 .marketplace-offer{border:1px solid #d8e4de;border-radius:10px;padding:10px;min-width:0}
 .marketplace-offer h4{margin:0;font-size:15px}
