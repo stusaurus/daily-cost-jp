@@ -5,7 +5,7 @@ import math
 import re
 from urllib.parse import parse_qs
 
-from product_quality import category_rejection
+from product_quality import category_rejection, explicit_kitchen_paper_sheet_total
 from sale_quantity import normalize, parse_sale_quantity
 from comparison_units import toilet_ply_length
 from yahoo_shopping import safe_url
@@ -47,6 +47,8 @@ class Product:
     roll_length_m: int | None = None
     tissue_pairs: int | None = None
     rakuten_evidence: tuple[tuple[str, str], ...] = ()
+    kitchen_rolls: int | None = None
+    bottles_per_case: int | None = None
 
     @property
     def display_amount(self):
@@ -141,10 +143,19 @@ def package_quantity(category, title, product):
         if pairs != {product.tissue_pairs} or sheets - {product.tissue_pairs * 2}:
             return None
         text = re.sub(r"\d+\s*(?:組(?:\s*/\s*箱)?|枚)", "", text)
+    if product.kitchen_rolls:
+        dimensions = explicit_kitchen_paper_sheet_total(text)
+        if not dimensions:
+            return None
+        per_roll = product.amount // product.kitchen_rolls
+        if not re.match(rf"{per_roll}\s*(?:枚|カット)\s*x\s*{product.kitchen_rolls}\s*ロール",
+                        dimensions["evidence"]):
+            return None
+        return int(dimensions["quantity"]) // product.amount
     if product.unit not in MEASURE_UNITS:
         if category == "garbage-bag-45l":
             text = re.sub(r"\d+\s*x\s*\d+\s*cm|\d+\s*l(?=[^a-z]|$)", "", text)
-        text = re.sub(r"(?<=\d)\s*冊(?=\s|[)\]】]|$)", "袋", text)
+        text = re.sub(r"(?<=\d)\s*(?:冊|束)(?=\s|[)\]】]|$)", "袋", text)
         # A one-case offer may state the two quantities without a multiplication sign.
         text = re.sub(r"(\d+\s*枚)\s*(?:入り?|シングル)?\s*1\s*ケース\s*\[(\d+\s*パック)入(?:り)?\]",
                       r"\1x\2", text)
@@ -157,6 +168,12 @@ def package_quantity(category, title, product):
         return None
     # For example, a single retail JAN may be shared by each seller's 3-pack,
     # 6-pack or case. Never use the JAN itself as evidence for the sale count.
+    if product.bottles_per_case:
+        cases = re.search(r"(?<=l)\s*(?:ペットボトル)?\s*x\s*(\d+)\s*箱\s*\(\s*(\d+)\s*本\s*\)", text)
+        if cases:
+            if int(cases[1]) * product.bottles_per_case != int(cases[2]):
+                return None
+            text = text[:cases.start()] + "x" + cases[2] + "本" + text[cases.end():]
     if re.search(r"\d\s*(?:kg|ml|g|l)\s*x\s*\d+\s*(?:個|袋|本|パック)", text):
         text = re.sub(r"^\s*[【\[]1\s*ケース[】\]]", "", text, count=1)
     counts = {int(count) for count in PACK_COUNT.findall(text)}
@@ -172,7 +189,7 @@ def package_quantity(category, title, product):
     if not counts and re.search(r"セット|まとめ買い|ケース|詰め合わせ|複数", text):
         return None
     quantity = counts.pop() if counts else 1
-    return quantity if 1 <= quantity <= 24 else None
+    return quantity if 1 <= quantity <= (120 if category == "water" else 24) else None
 
 
 def rakuten_product_link(value, code):
@@ -228,7 +245,7 @@ def rakuten_identity(row, product):
 def verified_catalog_quantity(category, row, product, count):
     quantity = parse_sale_quantity(row.get("sale_quantity_label", ""))
     total = product.amount * count
-    if quantity:
+    if quantity and not product.kitchen_rolls:
         if product.unit in MEASURE_UNITS:
             return quantity["kind"] == MEASURE_UNITS[product.unit] and quantity.get("base_amount") == total
         return quantity["kind"] == "count" and quantity.get("count_unit") == product.unit and quantity["total_count"] == total

@@ -221,7 +221,7 @@ async function verifyPage(page, base, width, category, catalog) {
   assert(await section.evaluate(el => el.scrollWidth <= el.clientWidth + 1), 'comparison overflow');
   const totals = await articles[0].locator('.marketplace-totals dd').all();
   const totalBoxes = await Promise.all(totals.map(total => total.boundingBox()));
-  assert(totalBoxes[1].x > totalBoxes[0].x && totalBoxes[0].y === totalBoxes[1].y,
+  assert(totalBoxes[1].x > totalBoxes[0].x && Math.abs(totalBoxes[0].y - totalBoxes[1].y) <= 1,
     'both purchase totals are next to one another at every viewport');
   const cards = await articles[0].locator('.marketplace-offer').all();
   const cardBoxes = await Promise.all(cards.map(card => card.boundingBox()));

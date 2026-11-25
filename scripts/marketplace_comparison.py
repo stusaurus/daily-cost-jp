@@ -36,6 +36,9 @@ PRODUCTS = {
                                                     ("irisplaza-r:10109543", "/irisplaza-r/7162877"))),
     ),
     "water": (
+        Product("4986919990020", "温泉水99 1.9L ペットボトル", 1900, "ml",
+                (r"温泉水\s*99", r"ペットボトル"), r"炭酸|硬水|蛇口",
+                rakuten_evidence=(("onsensui99:10000186", "/onsensui99/2lx12_cook"),), bottles_per_case=6),
         Product("4571461292779", "水想い ナチュラルミネラルウォーター ラベルレス", 2000, "ml",
                 (r"水想い", r"ラベルレス", r"天然水|ナチュラルミネラルウォーター"), r"炭酸|硬水",
                 rakuten_items=("mizuomoi:10000004",)),
@@ -110,6 +113,9 @@ PRODUCTS = {
                                    ("alpha-net:10000004", "/alpha-net/020-prf-0013"))),
     ),
     "paper-towel": (
+        Product("4902092776497", "タウパー ライズ M 中判 200枚", 200, "枚",
+                (r"タウパー|towper", r"ライズ", r"中判|\bm\s*サイズ"), r"小判|大判|ダブル",
+                rakuten_evidence=(("daily-shop:10000130", "/daily-shop/10000130"),)),
         Product("4970570444213", "イットコライトタオル L200 ハード 中判 200枚", 200, "枚",
                 (r"イットコライトタオル", r"l\s*200", r"ハード"), r"小判|ダブル|ソフト",
                 rakuten_items=("ec-try:10001150",)),
@@ -156,6 +162,14 @@ PRODUCTS = {
         Product("4957434009009", "昭和紙工 ノンアルコール除菌ウェットティッシュ", 80, "枚",
                 (r"ノンアルコール", r"ウェットティッシュ|ウエットティッシュ", r"除菌"), r"厚手|大判"),
     ),
+    "kitchen-paper": (
+        Product("4901301369260", "花王 CHEF たっぷり吸収 M 100枚×2ロール", 200, "枚",
+                (r"シェフ|chef", r"たっぷり吸収", r"\bm(?:\s*サイズ)?\b|中判"), r"プレミアム|\bl\s*サイズ",
+                rakuten_evidence=(("livingplaza:10006445", "/livingplaza/10006445"),), kitchen_rolls=2),
+        Product("4901301377036", "花王 CHEF プレミアム L 100枚×2ロール", 200, "枚",
+                (r"シェフ|chef", r"プレミアム", r"\bl(?:\s*サイズ)?\b|大判"), r"たっぷり吸収|\bm\s*サイズ",
+                rakuten_evidence=(("livingplaza:10003988", "/livingplaza/10003988"),), kitchen_rolls=2),
+    ),
     "sink-net": (
         Product("4902493442984", "ボンスター ごみシャット 浅型 ストッキング水切りネット M-298", 50, "枚",
                 (r"浅型", r"ストッキング", r"ボンスター|ごみシャット|m[- ]?298"), r"深型|三角コーナー兼用",
@@ -188,7 +202,7 @@ CSS = """<style id="marketplace-comparison-style">
 .marketplace-product{background:white;border:1px solid #d8e4de;border-radius:12px;padding:14px;min-width:0}
 .marketplace-product h3{margin:0 0 4px;font-size:17px;line-height:1.4}
 .marketplace-totals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
-.marketplace-totals div{padding:7px 8px;background:#f2f6f3;border-radius:6px;min-width:0}
+.marketplace-totals div{display:flex;flex-direction:column;justify-content:space-between;padding:7px 8px;background:#f2f6f3;border-radius:6px;min-width:0}
 .marketplace-totals dt{font-size:12px;line-height:1.35;overflow-wrap:anywhere}
 .marketplace-totals dd{margin:2px 0 0;font-size:clamp(15px,2.5vw,20px);font-weight:750;overflow-wrap:anywhere}
 .marketplace-totals .marketplace-leading-total{background:#d9eee3;color:#104b3b}
@@ -309,6 +323,8 @@ def render(category, groups, updated, rakuten_updated):
         quantity = product.display_amount
         if product.unit in ("g", "ml"):
             quantity += f" × {count}個"
+        elif product.kitchen_rolls:
+            quantity = f"× {count}パック"
         elif product.amount == 1:
             quantity = f"{count:,}{product.unit}"
         elif count > 1:

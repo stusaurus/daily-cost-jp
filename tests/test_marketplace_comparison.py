@@ -107,6 +107,19 @@ class MarketplaceTest(unittest.TestCase):
         self.assertEqual(price_unit("tissue", tissue), (100, 200, "100組"))
         self.assertEqual(price_unit("water", PRODUCTS["water"][0]), (1000, 1, "1L"))
 
+    def test_bottles_inside_cases_and_kitchen_roll_dimensions(self):
+        water = PRODUCTS["water"][0]
+        title = "温泉水99 天然水 1.9Lペットボトル×2箱（12本）"
+        self.assertEqual(package_quantity("water", title, water), 12)
+        self.assertEqual(package_quantity("water", title.replace("×2箱（12本）", "×12本"), water), 12)
+        self.assertIsNone(package_quantity("water", title.replace("12本", "24本"), water))
+        kitchen = PRODUCTS["kitchen-paper"][0]
+        title = "花王 シェフ キッチンペーパー たっぷり吸収 M 100枚×2ロール×6袋"
+        self.assertEqual(package_quantity("kitchen-paper", title, kitchen), 6)
+        self.assertEqual(price_unit("kitchen-paper", kitchen), (1, 1, "1枚"))
+        self.assertIsNone(package_quantity("kitchen-paper", title.replace("100枚×2", "50枚×4"), kitchen))
+        self.assertIsNone(package_quantity("kitchen-paper", title + "×2ケース", kitchen))
+
     def test_verified_merchant_record_requires_matching_urls_and_independent_quantity(self):
         tissue = PRODUCTS["tissue"][0]
         pc = "https://item.rakuten.co.jp/kyoto23/10001789/"
