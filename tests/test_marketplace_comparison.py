@@ -82,6 +82,7 @@ class MarketplaceTest(unittest.TestCase):
         self.assertIsNone(package_quantity("dish", title.replace("1380mL", "770mL"), product))
         self.assertIsNone(package_quantity("dish", title.replace("オレンジ", "マスカット"), product))
         self.assertIsNone(package_quantity("dish", title + " マスカットも選べる", product))
+        self.assertIsNone(package_quantity("dish", title + " 本体同梱", product))
 
     def test_toilet_refill_rejects_other_fragrances_and_body_bottle(self):
         product = PRODUCTS["toilet-cleaner"][0]
