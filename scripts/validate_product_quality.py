@@ -281,7 +281,7 @@ def valid_exact_marketplace_link(attrs, rel, coverage):
     from marketplace_offers import package_quantity, rakuten_identity, rakuten_product_link
 
     category = attrs.get('data-category-id')
-    if category not in EXACT_RAKUTEN_CATEGORIES or rel != f'categories/{category}/index.html':
+    if rel != f'categories/{category}/index.html':
         return False
     if (attrs.get('data-marketplace') != 'rakuten' or attrs.get('target') != '_blank'
             or 'marketplace-buy' not in attrs.get('class', '').split()
@@ -294,6 +294,25 @@ def valid_exact_marketplace_link(attrs, rel, coverage):
     if record.get('status') != 'available':
         return False
     url_hash = sha256(href.encode('utf-8')).hexdigest()
+    from marketplace_discovery import package_profile, product_path
+    from marketplace_offers import valid_jan
+    for source in record.get('discovery', {}).get('sources', ()):
+        if (source.get('item_code') != code or source.get('url_sha256') != url_hash
+                or type(source.get('price')) is not int or source['price'] <= 0
+                or not valid_jan(source.get('jan'))):
+            continue
+        row = {**source, 'url': href}
+        basis = source.get('basis')
+        if (basis not in ('title', 'product_path', 'caption_jan')
+                or (basis == 'title' and source['jan'] not in source['name'])
+                or (basis == 'product_path' and source['jan'] not in product_path(row))):
+            continue
+        profile = package_profile(category, row)
+        if (profile and rakuten_identity(row, profile)
+                and package_quantity(category, row['name'], profile) == source['pack']):
+            return True
+    if category not in EXACT_RAKUTEN_CATEGORIES:
+        return False
     for source in record.get('rakuten_exact_sources', ()):
         if (source.get('item_code') != code or source.get('url_sha256') != url_hash
                 or type(source.get('price')) is not int or source['price'] <= 0):

@@ -278,7 +278,8 @@ async function main() {
           for (const category of categoryIds) {
             const page = await browser.newPage({ viewport: { width, height: 900 } });
             try {
-              const sources = categories[category].items.concat(coverage[category].rakuten_exact_sources || []);
+              const sources = categories[category].items.concat(coverage[category].rakuten_exact_sources || [],
+                coverage[category].discovery?.sources || []);
               const result = await verifyPage(page, base, width, category, sources);
               assert.equal(result.comparable || 0, coverage[category].comparable, 'coverage must match rendered pairs');
               if (result.comparable > 0) available.push(category);

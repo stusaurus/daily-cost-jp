@@ -5,6 +5,7 @@ site-live/
 .previous-observations.json
 quality-report.json
 quality-monitor-report.json
+marketplace-discovery-input.json
 
 # STEP7: financial inputs and reports belong outside every Git checkout.
 *.csv

@@ -18,6 +18,8 @@ from rakuten_request import fetch_json
 from product_display import clean_display_name
 
 ACQUISITION_REPORT = {}
+MARKETPLACE_EVIDENCE = {}
+
 
 
 # Rakuten Ichiba Item Search API output semantics (2026-07-01):
@@ -36,6 +38,13 @@ def normalize_item_with_correct_postage(raw, category):
         normalized["postage"] = "送料別"
     else:
         normalized["postage"] = "送料は商品ページで確認"
+    from marketplace_discovery import source_evidence
+    key = (category["id"], normalized["item_code"], normalized["name"], normalized["price"], normalized["url"])
+    proof = source_evidence(source, normalized)
+    if proof:
+        MARKETPLACE_EVIDENCE[key] = proof
+    else:
+        MARKETPLACE_EVIDENCE.pop(key, None)
     return normalized
 
 
@@ -260,6 +269,8 @@ def stable_published_ranking(category_id, ranked):
 
 def build_site_improved():
     ACQUISITION_REPORT.clear()
+    MARKETPLACE_EVIDENCE.clear()
+    discovery_pool = {}
     core.OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     updated_at = datetime.now(ZoneInfo("Asia/Tokyo"))
     category_results = []
@@ -283,6 +294,10 @@ def build_site_improved():
         # Existing top-12 and its downstream checkout/purpose selectors are
         # unaffected. Single/double 10m comparisons are a canonical parallel
         # view built from the *full* strictly validated acquisition pool.
+        discovery_pool[category["id"]] = [
+            {**row, **proof} for row in items if (proof := MARKETPLACE_EVIDENCE.get(
+                (category["id"], row.get("item_code"), row.get("name"), row.get("price"), row.get("url"))))
+        ]
         metric, ranked = core.choose_ranked_items(items)
         original_count = len(ranked)
         ranked = stable_published_ranking(category["id"], ranked)
@@ -389,6 +404,10 @@ def build_site_improved():
         "ranking_basis": "shipping_included_unit_price",
         "categories": serializable,
     }
+    # Only the current build reads this intermediate. Never deploy raw API descriptions.
+    (core.OUTPUT_DIR.parent / "marketplace-discovery-input.json").write_text(json.dumps({
+        "updated_at": public_data["updated_at"], "categories": discovery_pool,
+    }, ensure_ascii=False), encoding="utf-8")
     (core.OUTPUT_DIR / "data.json").write_text(
         json.dumps(public_data, ensure_ascii=False, indent=2),
         encoding="utf-8",

@@ -21,6 +21,9 @@ on:
       - "scripts/design/**"
       - "scripts/build_pipeline.py"
       - "scripts/marketplace_comparison.py"
+      - "scripts/marketplace_discovery.py"
+      - "scripts/marketplace_seeds.py"
+      - "scripts/marketplace_finder.py"
       - "scripts/marketplace_offers.py"
       - "scripts/marketplace_rakuten.py"
       - "scripts/check_marketplace_comparison.cjs"
@@ -118,6 +121,9 @@ concurrency:
 
 jobs:
   build:
+    concurrency:
+      group: daily-cost-marketplace-api
+      queue: max
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

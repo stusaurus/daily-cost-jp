@@ -14,6 +14,9 @@ permissions:
 
 jobs:
   yahoo-api:
+    concurrency:
+      group: daily-cost-marketplace-api
+      queue: max
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 4

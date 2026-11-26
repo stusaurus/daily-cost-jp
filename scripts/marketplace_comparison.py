@@ -8,6 +8,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from marketplace_offers import Product, cheapest_offer, price_unit, rakuten_offer, yahoo_offer
+from marketplace_discovery import discover
+from marketplace_finder import add_finder, anchor
 from marketplace_rakuten import refresh_exact
 from yahoo_shopping import YahooShopping, YahooUnavailable
 
@@ -356,11 +358,12 @@ def render(category, groups, updated, rakuten_updated):
             quantity = f"{count:,}{product.unit}"
         elif count > 1:
             quantity += f" × {count}パック"
+        title = product.label if product.label_includes_quantity else f"{product.label} {quantity}"
         entries.append(
             f'<article class="marketplace-product" data-jan="{product.jan}" data-pack="{count}"'
             f' data-unit-amount="{product.amount}" data-unit="{product.unit}"'
             f' data-price-scale="{scale}" data-price-factor="{factor}" data-price-unit="{unit}">'
-            f'<h3>{html.escape(product.label)} {quantity}</h3>'
+            f'<h3 id="{anchor(product.jan, count)}">{html.escape(title)}</h3>'
             f'<p><strong>{note}</strong></p>' + render_totals(rakuten, yahoo)
             + '<div class="marketplace-prices">' + "".join(render_offer(category, offer, product.amount * count * factor, scale, unit) for offer in (rakuten, yahoo))
             + '</div></article>'
@@ -421,9 +424,11 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
         for category, data in catalog["categories"].items()
     }
 
+    consumption = {"additional_rakuten_discovery_requests": 0}
+
     def result(status):
         payload = {"status": status, "catalog_updated_at": catalog.get("updated_at"),
-                   "categories": diagnostics}
+                   "categories": diagnostics, "api": consumption}
         (site / "marketplace-coverage.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
         )
@@ -441,7 +446,7 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
             diagnostics[category]["status"] = str(error)
         return result(str(error))
 
-    sections = {}
+    selected = {}
     errors = []
     for category in configured:
         entry = diagnostics[category]
@@ -471,7 +476,40 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
                      "url_sha256": hashlib.sha256(row["url"].encode("utf-8")).hexdigest()}
                     for row in exact if row["item_code"] in published_codes
                 ]
-            sections[category] = render(category, groups, now, now if exact else catalog_updated)
+            selected[category] = groups
+
+    input_path = site.parent / "marketplace-discovery-input.json"
+    if input_path.is_file():
+        snapshot = json.loads(input_path.read_text(encoding="utf-8"))
+        if snapshot.get("updated_at") != catalog.get("updated_at"):
+            raise ValueError("Discovery pool and catalog timestamps differ")
+        if not errors:
+            from marketplace_seeds import extend_current
+            from rakuten_request import request_count
+            pool = snapshot["categories"]
+            categories = {key: include[key] for key in configured}
+            if all(os.getenv(key) for key in ("RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID")):
+                initial_requests = request_count()
+                consumption["directory"] = extend_current(pool, categories)
+                consumption["additional_rakuten_discovery_requests"] = request_count() - initial_requests
+            before = client.requests
+            extra_groups, reports = discover(pool, categories, client)
+            for category, report in reports.items():
+                entry = diagnostics[category]
+                entry["discovery"] = report
+                additions = extra_groups.get(category, [])
+                if additions:
+                    selected.setdefault(category, []).extend(additions)
+                    entry["pairs"] += len(additions)
+                    entry["comparable"] += len(additions)
+                    entry["status"] = "available"
+                entry["yahoo_results"] += report["hits"]
+            consumption["discovery_yahoo_requests"] = client.requests - before
+        else:
+            consumption["discovery_status"] = "baseline_api_error"
+    consumption.update(yahoo_requests=client.requests, yahoo_cache_hits=client.cache_hits)
+    sections = {category: render(category, groups, now, catalog_updated)
+                for category, groups in selected.items()}
 
     available = [(category, catalog["categories"][category]["name"]) for category in sections]
     pages = {}
@@ -495,6 +533,9 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
         for path, entry_point in (("index.html", "home"), ("categories/index.html", "directory")):
             page = site / path
             pages[page] = insert_navigation(page.read_text(encoding="utf-8"), entry_point, available)
+    finder = site / "products/index.html"
+    if selected and finder.is_file():
+        pages[finder] = add_finder(finder.read_text(encoding="utf-8"), selected)
     for page, markup in pages.items():
         temp = page.with_suffix('.tmp')
         temp.write_text(markup, encoding="utf-8")
