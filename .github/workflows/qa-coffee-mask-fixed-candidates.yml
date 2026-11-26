@@ -1,0 +1,22 @@
+name: Audit fixed coffee and mask candidates
+on:
+  push:
+    branches: [qa/coffee-mask-fixed-candidates-20261126]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Query public catalog data using repository credentials
+        env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
+          YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
+          YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
+        run: python scripts/qa_coffee_mask_fixed_candidates.py
