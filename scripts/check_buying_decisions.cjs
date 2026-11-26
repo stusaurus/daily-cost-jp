@@ -52,6 +52,85 @@ function observedChoices(cid){
   return choices;
 }
 
+async function verifySoftener(browser,type,base,catalog,width,output){
+  const page=await browser.newPage({viewport:{width,height:1000}}),errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  const origin=new URL(base).origin;
+  await page.route('**/*',route=>new URL(route.request().url()).origin===origin?route.continue():route.abort());
+  try{
+    const response=await page.goto(base+'categories/softener/?test=1',{waitUntil:'domcontentloaded'});
+    assert.equal(response.status(),200);
+    const calculator=page.locator('#softener-wash-calculator');
+    const raw=catalog.categories.softener?.items||[];
+    if(!await calculator.count()){
+      assert.equal(raw.length,0,'softener calculator missing despite published catalog items');
+      return {browser:type.name(),width,category:'softener',status:'NO_CATALOG_ITEMS'};
+    }
+    assert.equal(await calculator.count(),1);
+    const rows=calculator.locator('[data-softener-row]');
+    assert.equal(await rows.count(),2);
+    const a=rows.nth(0),b=rows.nth(1);
+    const select=row=>row.locator('[data-softener-offer]');
+    const dose=row=>row.locator('[data-softener-dose]');
+    const result=row=>row.locator('[data-softener-result]');
+    const options=await select(a).locator('option[data-price]').evaluateAll(opts=>opts.map(o=>({
+      value:o.value,card:o.dataset.sourceCard,price:Number(o.dataset.price),amount:Number(o.dataset.amount),
+      unit:o.dataset.unit,text:o.textContent
+    })));
+    assert(options.length>0,'no verified offers');
+    const cards=await page.locator('article.product-card').evaluateAll(nodes=>nodes.map(card=>({
+      id:card.id,url:card.querySelector('a.buy-button')?.getAttribute('href'),
+      name:card.querySelector('h3')?.getAttribute('title'),
+      price:Number(card.querySelector('a.buy-button')?.dataset.shippingPrice)
+    })));
+    for(const opt of options){
+      assert(['g','ml'].includes(opt.unit)&&opt.price>0&&opt.amount>0);
+      // The rendered product name may have display-only campaign cleanup.
+      // Bind to the exact card and raw merchant URL instead, checking the
+      // accepted catalog's independent price/quantity arithmetic.
+      assert(opt.card&&/^softener-rank-\d+$/.test(opt.card),'missing source card identity');
+      const matches=cards.filter(c=>c.id===opt.card);
+      assert.equal(matches.length,1,'source card must be unique');
+      const c=matches[0];
+      assert.equal(c.price,opt.price,'source card price mismatch');
+      const offers=raw.filter(r=>r.url===c.url&&Number(r.price)===opt.price&&
+        r.postage==='送料込み'&&r.metric==='100'+opt.unit);
+      assert(offers.some(r=>Math.abs(Number(r.price)/Number(r.unit_price)*100-opt.amount)
+        <=Math.max(0.01,opt.amount*0.000101)), 'source catalog quantity mismatch: '+opt.card);
+    }
+    assert(await dose(a).isDisabled());
+    assert(await dose(b).isDisabled());
+    const first=options[0],second=options.at(-1);
+    await select(a).selectOption(first.value);
+    await select(b).selectOption(second.value);
+    const useA=Math.min(10,first.amount),useB=Math.min(20,second.amount);
+    assert.match(await a.locator('[data-softener-dose-label]').innerText(),new RegExp(first.unit));
+    assert.match(await b.locator('[data-softener-dose-label]').innerText(),new RegExp(second.unit));
+    await dose(a).fill(String(useA));await dose(b).fill(String(useB));
+    const money=n=>'¥'+n.toLocaleString('ja-JP',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const costA=first.price/first.amount*useA,costB=second.price/second.amount*useB;
+    assert((await result(a).innerText()).includes(money(costA)));
+    assert((await result(b).innerText()).includes(money(costB)));
+    const difference=calculator.locator('#softener-wash-difference');
+    const diff=Math.abs(costA-costB);
+    if(diff<0.005)assert.match(await difference.innerText(),/ほぼ同じ/);
+    else{
+      assert((await difference.innerText()).includes(money(diff)));
+      assert((await difference.innerText()).includes(costA<costB?'商品A':'商品B'));
+    }
+    await calculator.scrollIntoViewIfNeeded();
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'softener document overflow');
+    for(const el of await calculator.locator('select,input').all()){
+      const box=await el.boundingBox();assert(box&&box.width>0&&box.height>=44&&box.x>=0&&box.x+box.width<=width+1,'calculator input overflow or undersized touch target');
+    }
+    await page.screenshot({path:path.join(output,type.name()+'-softener-'+width+'.png')});
+    await dose(b).fill(String(second.amount+1));assert.equal(await difference.innerText(),'');
+    await select(a).selectOption('');assert(await dose(a).isDisabled());assert.equal(await dose(a).inputValue(),'');
+    assert.deepEqual(errors,[]);
+    return {browser:type.name(),width,category:'softener',status:'PASS',offers:options.length,costA,costB};
+  }finally{await page.close();}
+}
+
 async function main(){
   const output=process.env.BUYING_DECISION_QA_DIR||'qa-buying-decisions';
   const expectActive=process.env.BUYING_DECISION_EXPECT_ACTIVE==='true';
@@ -140,6 +219,11 @@ async function main(){
           await page.screenshot({path:path.join(output,`${type.name()}-${cid}-${width}.png`)});
           results.push({browser:type.name(),width,category:cid,status:'PASS',purpose_choices:purposeChoices.length,selected,operator_test:event.operator_test});
           await page.close();
+        }
+        for(const width of [320,390,1440]){
+          const result=await verifySoftener(browser,type,base,catalog,width,output);
+          results.push(result);
+          console.log('SOFTENER_CALCULATOR_QA '+JSON.stringify(result));
         }
       }finally{await browser.close();}
     }

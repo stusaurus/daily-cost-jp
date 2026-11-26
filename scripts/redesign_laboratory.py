@@ -211,7 +211,11 @@ def softener_wash_calculator(soup, category):
     rows = category.get('items', [])
     if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
         return ''
-    visible = {a['href'] for a in soup.select('article.product-card a.buy-button[href]')}
+    visible = {}
+    for card in soup.select('article.product-card[id]'):
+        link = card.select_one('a.buy-button[href]')
+        if link:
+            visible[link['href']] = card['id']
     options = []
     for item in filter_items('softener', rows):
         qty = parsed_quantity('softener', item['name'])
@@ -225,7 +229,7 @@ def softener_wash_calculator(soup, category):
             continue
         unit = 'g' if qty['metric'] == '100g' else 'ml'
         options.append(
-            f'<option value="{len(options)+1}" data-amount="{amount:g}" data-unit="{unit}" data-price="{int(price)}">'
+            f'<option value="{len(options)+1}" data-source-card="{esc(visible[item["url"]])}" data-amount="{amount:.12g}" data-unit="{unit}" data-price="{int(price)}">'
             f'{esc(clean_display_name(item["name"]))} ・ {amount:g}{unit} ・ ¥{int(price):,}</option>'
         )
     if not options:

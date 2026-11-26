@@ -131,12 +131,13 @@ class LaboratoryDesignTests(unittest.TestCase):
         wrong = item('wrong', '柔軟剤 詰め替え 800ml', '100ml', 560, 70)
         wrong['item_code'] = 'shop:other'
         soup = BeautifulSoup(''.join(
-            f'<article class="product-card"><a class="buy-button" href="{r["url"]}">楽天</a></article>'
-            for r in (a,b,wrong)), 'html.parser')
+            f'<article class="product-card" id="softener-rank-{i}"><a class="buy-button" href="{r["url"]}">楽天</a></article>'
+            for i,r in enumerate((a,b,wrong),1)), 'html.parser')
         result = BeautifulSoup(softener_wash_calculator(soup, {'items':[a,b,hidden,wrong]}), 'html.parser')
         self.assertEqual(len(result.select('[data-softener-row]')),2)
         for select in result.select('select'):
             opts = select.select('option[data-price]')
+            self.assertEqual([o['data-source-card'] for o in opts], ['softener-rank-1','softener-rank-2'])
             self.assertEqual([(o['data-amount'],o['data-unit'],o['data-price']) for o in opts],
                              [('1000','ml','500'),('600','g','480')])
         self.assertTrue(all(x.has_attr('disabled') for x in result.select('input')))
