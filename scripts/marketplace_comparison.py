@@ -484,9 +484,16 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
         if snapshot.get("updated_at") != catalog.get("updated_at"):
             raise ValueError("Discovery pool and catalog timestamps differ")
         if not errors:
+            from marketplace_seeds import extend_current
+            from rakuten_request import request_count
+            pool = snapshot["categories"]
+            categories = {key: include[key] for key in configured}
+            if all(os.getenv(key) for key in ("RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID")):
+                initial_requests = request_count()
+                consumption["directory"] = extend_current(pool, categories)
+                consumption["additional_rakuten_discovery_requests"] = request_count() - initial_requests
             before = client.requests
-            extra_groups, reports = discover(snapshot["categories"],
-                                             {key: include[key] for key in configured}, client)
+            extra_groups, reports = discover(pool, categories, client)
             for category, report in reports.items():
                 entry = diagnostics[category]
                 entry["discovery"] = report

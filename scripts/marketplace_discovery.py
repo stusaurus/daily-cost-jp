@@ -16,13 +16,17 @@ from sale_quantity import normalize, parse_sale_quantity
 from yahoo_shopping import YahooUnavailable, safe_url
 
 # One request per distinct JAN. The established profiles always run first.
-PER_CATEGORY = 12
-BUILD_BUDGET = 120
+PER_CATEGORY = 24
+BUILD_BUDGET = 300
 GTIN = re.compile(r"(?<!\d)\d{13}(?!\d)")
 CAPTION_JAN = re.compile(r"(?:jan(?:コード)?|バーコード)\s*[:：]?\s*(\d{13})(?!\d)", re.I)
 UNSAFE = re.compile(r"選択|選んで|いずれか|旧(?:型|商品|モデル|仕様|処方|デザイン|タイプ)|リニューアル|新旧|訳あり|福袋|ランダム|おまけ|景品|プレゼント付|種類指定不可|パッケージ.{0,8}(?:異なる|変更)|定期購入|定期便")
 PACK = re.compile(r"(?<![\d.])\d+\s*(?:ロール|パック|ケース|セット|枚|個|本|箱|袋)(?:入り?)?")
 DECORATION = re.compile(r"送料無料|送料込み|まとめ買い|ケース販売|ケース売り|公式ショップ|公式ストア|税込")
+UNKNOWN_PACK = re.compile(r"\d+\s*(?:点|組セット|コ組|缶|束|箱組|種類|個口)|[+＋]|(?:単品|セット)から|(?:色|柄|香り)指定不可")
+# Only seller boilerplate may surround a complete official directory name.
+NEUTRAL = re.compile(r"ケース販売|ケース売り|まとめ買い|セット販売|セット|パック販売|大容量|特大サイズ|"
+                     r"日用品|国内正規品|日本製|送料無料|送料込み|税込|単品販売|単品|日用雑貨")
 REFILL = re.compile(r"(?:詰|つ)め?(?:替|か)え?(?:用)?")
 
 def product_path(row):
@@ -56,7 +60,7 @@ def source_evidence(raw, row):
 def package_profile(category, row):
     name, jan = row["name"], row["jan"]
     text = normalize(name).lower()
-    if UNSAFE.search(text) or AMBIGUOUS.search(text) or category_rejection(category, text):
+    if UNSAFE.search(text) or UNKNOWN_PACK.search(text) or AMBIGUOUS.search(text) or category_rejection(category, text):
         return None
     tissue_pairs = roll_length = None
     if category == "tissue":
@@ -116,6 +120,25 @@ def comparable_names(left, right, jan, brand):
     return len(first_name) >= 3 and first_name == second_name
 
 
+def master_identity(row, title, profile, category):
+    master = row.get("master_name") or ""
+    if not master or not package_quantity(category, master, profile):
+        return False
+    normalized = identity_text(master, profile.jan)
+    brand = identity_text(row.get("master_brand") or "", profile.jan)
+    if len(normalized) < 4:
+        return False
+    def named(value):
+        value = identity_text(value, profile.jan)
+        if normalized not in value:
+            return False
+        remainder = value.replace(normalized, "", 1)
+        if len(brand) >= 2:
+            remainder = remainder.replace(brand, "")
+        return not NEUTRAL.sub("", remainder)
+    return named(row["name"]) and named(title)
+
+
 def candidates(category, rows, profiles, report):
     by_jan = defaultdict(list)
     existing = {profile.jan for profile in profiles}
@@ -138,15 +161,17 @@ def compare_jan(category, entries, hits, client, report):
         for hit in hits:
             name = hit.get("name")
             if (hit.get("janCode") != profile.jan or not isinstance(name, str)
-                    or explicit_jans(name) - {profile.jan} or UNSAFE.search(normalize(name))):
+                    or explicit_jans(name) - {profile.jan}
+                    or UNSAFE.search(normalize(name)) or UNKNOWN_PACK.search(normalize(name))):
                 report["reasons"]["identity_or_version_conflict"] += 1
                 continue
             if package_quantity(category, name, profile) != count:
                 report["reasons"]["package_or_category_conflict"] += 1
                 continue
             brand = hit.get("brand") or {}
-            if not comparable_names(row["name"], name, profile.jan,
-                                    brand.get("name") if isinstance(brand, dict) else ""):
+            if (not comparable_names(row["name"], name, profile.jan,
+                                     brand.get("name") if isinstance(brand, dict) else "")
+                    and not master_identity(row, name, profile, category)):
                 report["reasons"]["variant_needs_review"] += 1
                 continue
             result = yahoo_offer(category, hit, profile, client.affiliate_link)
@@ -156,6 +181,10 @@ def compare_jan(category, entries, hits, client, report):
             matched[count].append((profile, row, rakuten, result[1]))
     groups, sources = [], []
     for count, offers in sorted(matched.items()):
+        # One retail JAN and pack cannot authorize conflicting pack dimensions.
+        if len({(p.amount, p.unit, p.roll_length_m, p.tissue_pairs) for p, _, _, _ in offers}) != 1:
+            report["reasons"]["conflicting_dimensions"] += 1
+            continue
         # Each display pair must have passed the title comparison together.
         profile, row, r, y = min(offers, key=lambda item: (item[2].total + item[3].total,
                                                             item[2].total, item[2].code, item[3].code))
@@ -172,7 +201,7 @@ def discover(pool, include, client, budget=BUILD_BUDGET):
     for category, profiles in include.items():
         rows = pool.get(category, [])
         report = {"source_rows": len(rows), "eligible_jans": 0, "queried_jans": 0,
-                  "matched_jans": 0, "matched_pairs": 0, "hits": 0, "reasons": Counter(), "sources": []}
+                  "matched_jans": 0, "matched_pairs": 0, "hits": 0, "outcomes": Counter(), "reasons": Counter(), "sources": []}
         reports[category] = report
         queues[category] = candidates(category, rows, profiles, report)
         report["eligible_jans"] = len(queues[category])
@@ -193,8 +222,12 @@ def discover(pool, include, client, budget=BUILD_BUDGET):
             report["hits"] += len(hits)
             if not hits:
                 report["reasons"]["no_yahoo_hits"] += 1
+            previous_reviews = report["reasons"]["variant_needs_review"]
             selected, sources = compare_jan(category, entries, hits, client, report)
             groups[category].extend(selected)
+            outcome = ("matched" if selected else "needs_review" if report["reasons"]["variant_needs_review"] > previous_reviews
+                       else "no_yahoo_hits" if not hits else "no_match")
+            report["outcomes"][outcome] += 1
             report["sources"].extend(sources)
             report["matched_pairs"] += len(selected)
             report["matched_jans"] += int(bool(selected))

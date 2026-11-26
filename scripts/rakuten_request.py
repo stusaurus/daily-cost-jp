@@ -8,11 +8,20 @@ import urllib.error
 import urllib.request
 
 
+_requests = 0
+
+
+def request_count():
+    return _requests
+
+
 def fetch_json(request, opener=None, pause=None):
+    global _requests
     opener = opener or urllib.request.urlopen
     pause = pause or time.sleep
     for attempt in range(3):
         try:
+            _requests += 1
             with opener(request, timeout=30) as response:
                 return json.loads(response.read().decode('utf-8'))
         except urllib.error.HTTPError as exc:

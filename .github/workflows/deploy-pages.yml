@@ -22,6 +22,7 @@ on:
       - "scripts/build_pipeline.py"
       - "scripts/marketplace_comparison.py"
       - "scripts/marketplace_discovery.py"
+      - "scripts/marketplace_seeds.py"
       - "scripts/marketplace_finder.py"
       - "scripts/marketplace_offers.py"
       - "scripts/marketplace_rakuten.py"
