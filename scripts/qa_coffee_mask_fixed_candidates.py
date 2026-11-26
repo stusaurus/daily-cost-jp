@@ -1,55 +1,29 @@
-import json
-import re
-import time
+import json, os, time
 from urllib.error import HTTPError
-from urllib.parse import parse_qs, urlsplit
-from product_quality import category_rejection
-from sale_quantity import normalize
-from yahoo_shopping import YahooShopping, YahooUnavailable
+from urllib.parse import urlencode,urlsplit,parse_qs
+from urllib.request import Request
 from marketplace_offers import known_shipping
-import build_site_entry as rakuten
-import os
+from rakuten_request import fetch_json
+import build_site_entry as r
 
-def pc(row):
-    return urlsplit(parse_qs(urlsplit(row['url']).query).get('pc', [''])[0]).path
-
-models = {
- 'coffee': [('4901201157592', '職人の珈琲 深いコク スペシャルブレンド 280g'),
-            ('4901201157592', '4901201157592'),
-            ('4901201157592','スペシャルブレンド 280g'),
-            ('4901201150555','職人の珈琲 240g スペシャルブレンド')],
- 'mask': [('4967576540155', 'PN-NV65L 65枚 ふつう'),
-          ('4901957214853', 'フィッティ 7DAYS プラス 60枚 ふつう'),
-          ('4903111951376', '超快適マスク プリーツ ふつう 30枚 4903111951376'),
-          ('4903111579709', '超快適マスク プリーツ ふつう 30枚 4903111579709')]
+codes = {
+ 'coffee': ['drink-market:10097409','misono-support:10009266','nozomi-market:10005123'],
+ 'mask': ['kurasio-en:10000600','kurasio-en:10000602','kzstore:10000862','megadrug:10042504',
+          'tsuruha:10094980','tsuruha:10094981','denchiya-bekkan:10260570']
 }
-for cat, searches in models.items():
-    for jan, query in searches:
-        try:
-            raw=rakuten.fetch_page({'id':cat,'keyword':query,'_supplementary':True},1)
-        except HTTPError as e:
-            print('Rakuten error',cat,e.code,flush=True)
-            continue
-        rows=[]
-        for entry in raw:
-            row=rakuten.core.normalize_item(entry,{'id':cat,'kind':cat if cat=='coffee' else 'count','allowed_units':{'枚':'sheet'}})
-            if not row['item_code']:continue
-            if cat=='coffee' and ('280g' not in normalize(row['name']).lower() or 'スペシャル' not in row['name']):continue
-            if cat=='mask' and not re.search(r'65|60|30',row['name']):continue
-            content=entry.get('Item',entry)
-            rows.append([row['item_code'],pc(row),row['price'],row['postage'],row.get('metric'),row.get('sale_quantity_label'),row['name'][:145],known_shipping(content.get('itemCaption','')),category_rejection(cat,row['name'])])
-        print('RA',cat,jan,len(raw),json.dumps(rows[:26],ensure_ascii=False),flush=True)
-        time.sleep(1.4)
-yahoo=YahooShopping(os.environ['YAHOO_APP_ID'],os.environ['YAHOO_AFFILIATE_ID'])
-for cat, searches in models.items():
-    for jan in dict(searches):
-        try:
-            hits=yahoo.search(jan=jan,shipping='free')
-        except YahooUnavailable as e:
-            print('Yahoo error',cat,e,flush=True)
-            continue
-        rows=[]
-        for hit in hits:
-            terms=' '.join(str(hit.get(key) or '') for key in ('name','headLine','description'))
-            rows.append([hit['code'],hit['price'],hit.get('janCode')==jan,hit.get('shipping',{}).get('code'),hit.get('priceLabel',{}).get('taxable'),bool(yahoo.affiliate_link(hit)),known_shipping(terms),hit['name'][:145]])
-        print('YA',cat,jan,json.dumps(rows[:24],ensure_ascii=False),flush=True)
+for cat, entries in codes.items():
+ for code in entries:
+  params={"applicationId":r.core.APP_ID,"affiliateId":r.core.AFFILIATE_ID,
+          "itemCode":code,"availability":1,"hits":1,"formatVersion":2}
+  req=Request(r.core.API_URL+"?"+urlencode(params),headers={"accessKey":r.core.ACCESS_KEY,"Origin":"https://stusaurus.github.io","Referer":r.core.SITE_URL})
+  try: answer=fetch_json(req)
+  except HTTPError as error:
+   print('EX HTTP',cat,code,error.code,flush=True);continue
+  for raw in answer.get('Items',answer.get('items',[])):
+   item=raw.get('Item',raw)
+   caption=item.get('itemCaption','')
+   pc=urlsplit(parse_qs(urlsplit(item.get('affiliateUrl','')).query).get('pc',[''])[0])
+   mobile=urlsplit(parse_qs(urlsplit(item.get('affiliateUrl','')).query).get('m',[''])[0])
+   print('EX',cat,json.dumps([code,pc.path,mobile.path,item.get('itemPrice'),item.get('postageFlag'),
+      item.get('availability'),known_shipping(caption),item.get('itemName',''), len(caption)],ensure_ascii=False),flush=True)
+  time.sleep(1.3)
