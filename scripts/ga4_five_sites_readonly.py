@@ -188,6 +188,42 @@ def report(session, mapping, site, period, kind, operator_registered):
     return parse_report(raw['data'], dims, metric)
 
 
+# Scope this experiment to a single predeclared campaign and existing property mapping.
+PINTEREST_P01 = 'diaper_checkout_p01'
+PINTEREST_P01_START = '2026-11-27'
+
+
+def pinterest_p01_report(session, mapping, period):
+    if period[1] < PINTEREST_P01_START:
+        return {'status': 'BEFORE_SCHEDULED_PUBLICATION'}
+    date_range = [max(period[0], PINTEREST_P01_START), period[1]]
+    scope = filters('baby-cost-jp', mapping['stream_id'])
+    expressions = scope['andGroup']['expressions']
+    for field, value in (
+        ('sessionManualSource', 'pinterest'),
+        ('sessionManualMedium', 'organic_social'),
+        ('sessionManualCampaignName', PINTEREST_P01),
+    ):
+        expressions.append({'filter': {'fieldName': field, 'stringFilter': {
+            'matchType': 'EXACT', 'value': value, 'caseSensitive': True}}})
+    dimension = 'sessionManualCampaignName'
+    payload = {
+        'dateRanges': [{'startDate': date_range[0], 'endDate': date_range[1]}],
+        'dimensions': [{'name': dimension}],
+        'metrics': [{'name': 'sessions'}],
+        'dimensionFilter': scope, 'limit': LIMIT,
+    }
+    raw = api(session, 'post', DATA+'properties/'+mapping['property_id']+':runReport', payload)
+    if raw['status'] != 'OBSERVED':
+        return raw
+    result = parse_report(raw['data'], [dimension], 'sessions')
+    if result['status'] == 'OBSERVED_ROWS' and (
+        len(result['rows']) != 1 or result['rows'][0]['dimensions'] != [PINTEREST_P01]
+    ):
+        return {'status': 'INVALID_ROWS'}
+    return result
+
+
 def collect(session, today, public_reader=published_measurement):
     public_sites = {site: public_reader(site) for site in SITES}
     allowed_ids = {i for p in public_sites.values() for i in p.get('measurement_ids', [])}
@@ -235,6 +271,13 @@ def collect(session, today, public_reader=published_measurement):
                     entry['status'] = 'RATE_LIMITED_STOP'
                     return {'periods': periods, 'sites': sites, 'discovery': account_status, 'stream_access': streams,
                             'status': 'RATE_LIMITED_STOP'}
+            if site == 'baby-cost-jp':
+                results['pinterest_p01_sessions'] = pinterest_p01_report(session, mapping, period)
+                if results['pinterest_p01_sessions'].get('http_status') == 429:
+                    entry['status'] = 'RATE_LIMITED_STOP'
+                    entry['periods'][n] = results
+                    return {'periods': periods, 'sites': sites, 'discovery': account_status,
+                            'stream_access': streams, 'status': 'RATE_LIMITED_STOP'}
             entry['periods'][n] = results
     return {'source': 'GA4 Data API / read-only Admin API', 'generated_at_utc': dt.datetime.now(dt.timezone.utc).isoformat(),
             'periods': periods, 'sites': sites, 'discovery': account_status, 'stream_access': streams,
@@ -342,6 +385,19 @@ def markdown(data):
               'これらは独立した集計イベントです。検索→商品閲覧→楽天クリックの順序・離脱率は算出しません。',
               '個別の7日・28日集計と選択イベントは成果物JSONのfunnel_event_coverageに保存します。',
               '楽天確定成果は未接続。実利用者・成果報酬への換算は行いません。']
+    lines += ['', '## ベビー Pinterest P01（UTM完全一致、全運営者区分を含む）',
+              '対象: pinterest / organic_social / '+PINTEREST_P01,
+              '投稿予定日以前は集計しない。公開成功・実人数・外部クリック数とは別の指標。',
+              '|期間|セッション観測|', '|---|---|']
+    baby = next((s for s in data.get('sites', []) if s.get('site') == 'baby-cost-jp'), {})
+    for n in ('7', '28'):
+        result = baby.get('periods', {}).get(n, {}).get('pinterest_p01_sessions', {})
+        status = result.get('status', 'UNAVAILABLE')
+        if status == 'OBSERVED_ROWS':
+            value = str(result['rows'][0]['count'])+'件（全区分）'
+        else:
+            value = status
+        lines.append('|'+n+'日|'+value+'|')
     return '\n'.join(lines)
 
 
