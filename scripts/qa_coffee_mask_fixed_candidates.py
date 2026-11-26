@@ -15,7 +15,9 @@ def pc(row):
 
 models = {
  'coffee': [('4901201157592', '職人の珈琲 深いコク スペシャルブレンド 280g'),
-            ('4901201157592', 'UCC 280g 職人 スペシャルブレンド 12袋')],
+            ('4901201157592', '4901201157592'),
+            ('4901201157592','スペシャルブレンド 280g'),
+            ('4901201150555','職人の珈琲 240g スペシャルブレンド')],
  'mask': [('4967576540155', 'PN-NV65L 65枚 ふつう'),
           ('4901957214853', 'フィッティ 7DAYS プラス 60枚 ふつう'),
           ('4903111951376', '超快適マスク プリーツ ふつう 30枚 4903111951376'),
@@ -30,13 +32,13 @@ for cat, searches in models.items():
             continue
         rows=[]
         for entry in raw:
-            row=rakuten.core.normalize_item(entry,{'id':cat,'kind':cat if cat=='coffee' else 'count'})
+            row=rakuten.core.normalize_item(entry,{'id':cat,'kind':cat if cat=='coffee' else 'count','allowed_units':{'枚':'sheet'}})
             if not row['item_code']:continue
             if cat=='coffee' and ('280g' not in normalize(row['name']).lower() or 'スペシャル' not in row['name']):continue
             if cat=='mask' and not re.search(r'65|60|30',row['name']):continue
             content=entry.get('Item',entry)
             rows.append([row['item_code'],pc(row),row['price'],row['postage'],row.get('metric'),row.get('sale_quantity_label'),row['name'][:145],known_shipping(content.get('itemCaption','')),category_rejection(cat,row['name'])])
-        print('RA',cat,jan,json.dumps(rows[:21],ensure_ascii=False),flush=True)
+        print('RA',cat,jan,len(raw),json.dumps(rows[:26],ensure_ascii=False),flush=True)
         time.sleep(1.4)
 yahoo=YahooShopping(os.environ['YAHOO_APP_ID'],os.environ['YAHOO_AFFILIATE_ID'])
 for cat, searches in models.items():
