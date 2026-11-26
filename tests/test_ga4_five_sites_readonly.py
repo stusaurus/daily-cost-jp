@@ -211,4 +211,38 @@ class WeeklyFunnelEvidenceTests(unittest.TestCase):
         self.assertNotIn('analytics.write',src)
 
 
+class PinterestCampaignEvidenceTests(unittest.TestCase):
+    def test_before_launch_never_calls_api(self):
+        session = Session()
+        result = g.pinterest_p01_report(session, {'property_id':'552907444','stream_id':None},
+                                        ['2026-11-01','2026-11-26'])
+        self.assertEqual(result['status'], 'BEFORE_SCHEDULED_PUBLICATION')
+        self.assertEqual(session.calls, [])
+
+    def test_exact_scope_and_no_rows_not_zero(self):
+        session = Session()
+        result = g.pinterest_p01_report(session, {'property_id':'552907444','stream_id':'7'},
+                                        ['2026-11-23','2026-11-29'])
+        self.assertEqual(result['status'],'NO_REPORTED_ROWS')
+        self.assertNotIn('count', result)
+        _, url, payload = session.calls[0]
+        self.assertEqual(url, g.DATA+'properties/552907444:runReport')
+        self.assertEqual(payload['dateRanges'], [{'startDate':'2026-11-27','endDate':'2026-11-29'}])
+        values = {x['filter']['fieldName']:x['filter']['stringFilter']['value']
+                  for x in payload['dimensionFilter']['andGroup']['expressions']}
+        self.assertEqual(values, {'hostName':'stusaurus.github.io',
+            'pagePath':'/baby-cost-jp/', 'pageLocation':'https://stusaurus.github.io/baby-cost-jp/',
+            'streamId':'7', 'sessionManualSource':'pinterest',
+            'sessionManualMedium':'organic_social', 'sessionManualCampaignName':'diaper_checkout_p01'})
+
+    def test_unexpected_campaign_is_rejected(self):
+        class Returned(Session):
+            def post(self,url,json,**kwargs):
+                return Response({'dimensionHeaders':json['dimensions'],'metricHeaders':json['metrics'],
+                    'rowCount':1,'metadata':{'timeZone':'Asia/Tokyo'},
+                    'rows':[{'dimensionValues':[{'value':'unexpected'}],'metricValues':[{'value':'2'}]}]})
+        self.assertEqual(g.pinterest_p01_report(Returned(), {'property_id':'552907444','stream_id':None},
+                        ['2026-11-27','2026-11-29'])['status'],'INVALID_ROWS')
+
+
 if __name__=='__main__':unittest.main()
