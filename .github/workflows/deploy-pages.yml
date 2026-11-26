@@ -121,6 +121,9 @@ concurrency:
 
 jobs:
   build:
+    concurrency:
+      group: daily-cost-marketplace-api
+      queue: max
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

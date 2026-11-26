@@ -13,6 +13,13 @@ SEEDS_PER_CATEGORY = 12
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
 
 
+def directory_products(payload):
+    rows = payload.get("Products", payload.get("items"))
+    if not isinstance(rows, list):
+        raise ValueError("product_directory_schema")
+    return [row.get("Product", row) for row in rows if isinstance(row, dict)]
+
+
 def ranked_seeds(raw, excluded):
     by_jan = {}
     for product in raw:
@@ -82,7 +89,7 @@ def extend_current(pool, include):
         req = Request(PRODUCT_API_URL + "?" + urlencode(params),
                       headers={"accessKey": core.ACCESS_KEY, "Origin": "https://stusaurus.github.io",
                                "Referer": core.SITE_URL, "User-Agent": "daily-cost-jp/0.8"})
-        return fetch_json(req).get("items", [])
+        return directory_products(fetch_json(req))
 
     def listings(jan):
         return fetch_search_items({

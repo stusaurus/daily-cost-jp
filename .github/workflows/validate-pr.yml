@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   live-candidates:
+    concurrency:
+      group: daily-cost-marketplace-api
+      queue: max
     name: Build production pages without publishing
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-24.04

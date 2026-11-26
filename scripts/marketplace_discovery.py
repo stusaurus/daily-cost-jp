@@ -186,8 +186,13 @@ def compare_jan(category, entries, hits, client, report):
             report["reasons"]["conflicting_dimensions"] += 1
             continue
         # Each display pair must have passed the title comparison together.
-        profile, row, r, y = min(offers, key=lambda item: (item[2].total + item[3].total,
-                                                            item[2].total, item[2].code, item[3].code))
+        lowest_rakuten = min(item[2].total for item in offers)
+        lowest_yahoo = min(item[3].total for item in offers)
+        compatible = [item for item in offers if item[2].total == lowest_rakuten and item[3].total == lowest_yahoo]
+        if not compatible:
+            report["reasons"]["best_offers_have_conflicting_variants"] += 1
+            continue
+        profile, row, r, y = min(compatible, key=lambda item: (item[2].code, item[3].code))
         label = DECORATION.sub("", clean_display_name(row["name"]).replace(profile.jan, "")).strip()
         groups.append((replace(profile, label=label, label_includes_quantity=True), count, (r, y)))
         sources.append({key: row[key] for key in ("jan", "basis", "item_code", "price", "name", "metric")} |

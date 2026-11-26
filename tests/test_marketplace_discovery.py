@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from marketplace_discovery import discover, source_evidence
 from marketplace_finder import add_finder
-from marketplace_seeds import extend_pool
+from marketplace_seeds import directory_products, extend_pool
 from test_marketplace_comparison import MockYahoo, PRODUCT, RAKUTEN_ITEM, RAKUTEN_URL, YAHOO_URL, rakuten, yahoo
 from validate_product_quality import valid_exact_marketplace_link
 
@@ -73,6 +73,15 @@ class AutomaticDiscovery(unittest.TestCase):
         _, reports = discover({"laundry": [listing()]}, {"laundry": []}, MockYahoo(fails=True))
         self.assertEqual(reports["laundry"]["api_error"], "http_503")
         self.assertEqual(reports["laundry"]["outcomes"], {})
+
+    def test_real_directory_envelope_and_unknown_schema(self):
+        row = {"productCode": JAN, "salesItemCount": 3}
+        self.assertEqual(directory_products({"Products": [row]}), [row])
+        self.assertEqual(directory_products({"Products": [{"Product": row}]}), [row])
+        self.assertEqual(directory_products({"items": [row]}), [row])
+        self.assertEqual(directory_products({"Products": []}), [])
+        with self.assertRaises(ValueError):
+            directory_products({"count": 30})
 
     def test_directory_never_authorizes_a_search_result_by_query_alone(self):
         master = {"productName": TITLE, "productCode": JAN, "salesItemCount": 7, "reviewCount": 5}
