@@ -8,10 +8,10 @@ from urllib.parse import parse_qs
 
 from comparison_units import toilet_ply_length
 from marketplace_offers import (AMBIGUOUS, CAPACITY, CATALOG_UNITS, Product,
-                               explicit_jans, first, known_shipping, package_quantity,
+                               count_title, explicit_jans, first, known_shipping, package_quantity,
                                rakuten_offer, rakuten_product_link, valid_jan, yahoo_offer)
 from product_display import clean_display_name
-from product_quality import category_rejection
+from product_quality import category_rejection, explicit_kitchen_paper_sheet_total
 from sale_quantity import normalize, parse_sale_quantity
 from yahoo_shopping import YahooUnavailable, safe_url
 
@@ -66,7 +66,7 @@ def package_profile(category, row):
     text = normalize(name).lower()
     if UNSAFE.search(text) or UNKNOWN_PACK.search(text) or AMBIGUOUS.search(text) or category_rejection(category, text):
         return None
-    tissue_pairs = roll_length = None
+    tissue_pairs = roll_length = kitchen_rolls = None
     if category == "tissue":
         pairs = set(re.findall(r"(\d+)\s*組", text))
         if len(pairs) != 1:
@@ -88,8 +88,13 @@ def package_profile(category, row):
         amount, unit = sizes.pop()
         if amount != int(amount):
             return None
+    elif category == "kitchen-paper" and (dimensions := explicit_kitchen_paper_sheet_total(name)):
+        per_roll, rolls = re.match(r"(\d+)\s*(?:枚|カット)\s*x\s*(\d+)\s*ロール",
+                                   dimensions["evidence"], re.I).groups()
+        kitchen_rolls = int(rolls)
+        amount, unit = int(per_roll) * kitchen_rolls, "枚"
     else:
-        quantity = parse_sale_quantity(text)
+        quantity = parse_sale_quantity(count_title(category, text))
         if not quantity or quantity["kind"] != "count":
             return None
         unit = quantity["count_unit"]
@@ -99,7 +104,7 @@ def package_profile(category, row):
     if amount <= 0:
         return None
     return Product(jan, clean_display_name(name), int(amount), unit, (), "",
-                   roll_length_m=roll_length, tissue_pairs=tissue_pairs,
+                   roll_length_m=roll_length, tissue_pairs=tissue_pairs, kitchen_rolls=kitchen_rolls,
                    rakuten_evidence=((row["item_code"], product_path(row)),))
 
 
@@ -188,7 +193,7 @@ def compare_jan(category, entries, hits, client, report):
     groups, sources = [], []
     for count, offers in sorted(matched.items()):
         # One retail JAN and pack cannot authorize conflicting pack dimensions.
-        if len({(p.amount, p.unit, p.roll_length_m, p.tissue_pairs) for p, _, _, _ in offers}) != 1:
+        if len({(p.amount, p.unit, p.roll_length_m, p.tissue_pairs, p.kitchen_rolls) for p, _, _, _ in offers}) != 1:
             report["reasons"]["conflicting_dimensions"] += 1
             continue
         # Each display pair must have passed the title comparison together.
@@ -206,7 +211,7 @@ def compare_jan(category, entries, hits, client, report):
     return groups, sources
 
 
-def discover(pool, include, client, budget=BUILD_BUDGET):
+def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
     reports, queues = {}, {}
     groups = defaultdict(list)
     for category, profiles in include.items():
@@ -225,7 +230,13 @@ def discover(pool, include, client, budget=BUILD_BUDGET):
             budget -= 1
             report = reports[category]
             try:
-                hits = client.search(jan=entries[0][1].jan, shipping="free")
+                jan = entries[0][1].jan
+                hits = client.search(jan=jan, shipping="free")
+                extra = (keyword_hits or {}).get(category, {}).get(jan, [])
+                if extra:
+                    by_code = {hit["code"]: hit for hit in extra}
+                    by_code.update((hit["code"], hit) for hit in hits if isinstance(hit.get("code"), str))
+                    hits = list(by_code.values())
             except YahooUnavailable as error:
                 report["api_error"] = str(error)
                 return groups, reports

@@ -73,6 +73,7 @@ class YahooShopping:
         self._opener = build_opener(NoRedirect())
         self._last_request = float("-inf")
         self._cache = {}
+        self._limit = None
         self.requests = 0
         self.cache_hits = 0
 
@@ -80,13 +81,15 @@ class YahooShopping:
         filters = {"jan_code": jan} if jan else {"query": query}
         params = dict(filters, appid=self._app_id, affiliate_type="vc",
                       affiliate_id=self._prefix, in_stock="true", condition="new",
-                      sort="+price", results=results)
+                      sort="+price" if jan else "-score", results=results)
         if shipping:
             params["shipping"] = shipping
         key = jan, query, results, shipping
         if key in self._cache:
             self.cache_hits += 1
             return self._cache[key]
+        if self._limit:
+            raise YahooUnavailable(self._limit)
         for attempt in range(2):
             time.sleep(max(0, REQUEST_INTERVAL - (time.monotonic() - self._last_request)))
             self._last_request = time.monotonic()
@@ -99,6 +102,8 @@ class YahooShopping:
                 retry_after = error.headers.get("Retry-After", "") if error.headers else ""
                 wait = int(retry_after) if retry_after.isascii() and retry_after.isdigit() and len(retry_after) < 5 else 55
                 if error.code != 429 or attempt or wait > 60:
+                    if error.code in (401, 403, 429):
+                        self._limit = f"http_{error.code}"
                     raise YahooUnavailable(f"http_{error.code}") from None
                 time.sleep(max(wait, REQUEST_INTERVAL))
             except (URLError, OSError, ValueError, HTTPException):

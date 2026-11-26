@@ -488,12 +488,13 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
             from rakuten_request import request_count
             pool = snapshot["categories"]
             categories = {key: include[key] for key in configured}
+            keyword_hits = {}
             if all(os.getenv(key) for key in ("RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID")):
                 initial_requests = request_count()
-                consumption["directory"] = extend_current(pool, categories)
+                consumption["directory"], keyword_hits = extend_current(pool, categories, client)
                 consumption["additional_rakuten_discovery_requests"] = request_count() - initial_requests
             before = client.requests
-            extra_groups, reports = discover(pool, categories, client)
+            extra_groups, reports = discover(pool, categories, client, keyword_hits=keyword_hits)
             for category, report in reports.items():
                 entry = diagnostics[category]
                 entry["discovery"] = report

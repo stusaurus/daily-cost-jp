@@ -88,6 +88,16 @@ def price_unit(category, product):
     return 1, 1, "1" + product.unit
 
 
+def count_title(category, text):
+    if category == "garbage-bag-45l":
+        text = re.sub(r"\d+\s*x\s*\d+\s*cm|\d+\s*l(?=[^a-z]|$)", "", text)
+    text = re.sub(r"(?<=\d)\s*(?:冊|束)(?=\s|[)\]】]|$)", "袋", text)
+    # A one-case offer may state the two quantities without a multiplication sign.
+    text = re.sub(r"(\d+\s*枚)\s*(?:入り?|シングル)?\s*1\s*ケース\s*\[(\d+\s*パック)入(?:り)?\]",
+                  r"\1x\2", text)
+    return text
+
+
 def count_pack(text, product):
     parsed = parse_sale_quantity(text)
     if not parsed or parsed["kind"] != "count" or parsed["count_unit"] != product.unit:
@@ -154,13 +164,7 @@ def package_quantity(category, title, product):
             return None
         return int(dimensions["quantity"]) // product.amount
     if product.unit not in MEASURE_UNITS:
-        if category == "garbage-bag-45l":
-            text = re.sub(r"\d+\s*x\s*\d+\s*cm|\d+\s*l(?=[^a-z]|$)", "", text)
-        text = re.sub(r"(?<=\d)\s*(?:冊|束)(?=\s|[)\]】]|$)", "袋", text)
-        # A one-case offer may state the two quantities without a multiplication sign.
-        text = re.sub(r"(\d+\s*枚)\s*(?:入り?|シングル)?\s*1\s*ケース\s*\[(\d+\s*パック)入(?:り)?\]",
-                      r"\1x\2", text)
-        return count_pack(text, product)
+        return count_pack(count_title(category, text), product)
     sizes = set()
     dimension = {"kg": "g", "g": "g", "l": "ml", "ml": "ml"}
     for amount, unit in CAPACITY.findall(text):

@@ -1,22 +1,25 @@
 """Find additional in-stock retail listings using the official product directory."""
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import date
 from http.client import HTTPException
 import time
 from urllib.error import HTTPError, URLError
 
-from marketplace_discovery import source_evidence
-from marketplace_offers import valid_jan
-from product_quality import filter_items
+from marketplace_discovery import UNKNOWN_PACK, UNSAFE, source_evidence
+from marketplace_offers import AMBIGUOUS, explicit_jans, known_shipping, valid_jan
+from product_quality import category_rejection, filter_items
+from sale_quantity import normalize
+from yahoo_shopping import YahooUnavailable
 
 # Spread the acquisition budget across categories, including categories with few reviews.
 SEEDS_PER_CATEGORY = 20
+YAHOO_SEEDS_PER_CATEGORY = 8
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
 
 
 def directory_products(payload):
     rows = payload.get("Products", payload.get("items"))
-    if rows is None and payload.get("count") == 0:
+    if rows is None and payload.get("count") in (0, "0"):
         return []
     if not isinstance(rows, list):
         raise ValueError("product_directory_schema")
@@ -53,8 +56,45 @@ def select_seeds(seeds, previous, limit, day):
     return kept + remaining[:fixed] + (rotating[offset:] + rotating[:offset])[:available-fixed]
 
 
+def yahoo_leads(category, hits, affiliate_link):
+    """Return eligible seller listings keyed by GTIN. Their titles are never master data."""
+    grouped = defaultdict(list)
+    for hit in hits:
+        jan, title = hit.get("janCode"), hit.get("name")
+        terms = normalize(" ".join(str(hit.get(key) or "") for key in ("name", "headLine", "description")))
+        shipping, label = hit.get("shipping"), hit.get("priceLabel")
+        if (not valid_jan(jan) or len(jan) != 13 or len(set(jan)) <= 1
+                or not isinstance(title, str) or category_rejection(category, title)
+                or explicit_jans(title) - {jan} or UNSAFE.search(terms) or AMBIGUOUS.search(normalize(title))
+                or UNKNOWN_PACK.search(normalize(title)) or not known_shipping(terms)
+                or hit.get("inStock") is not True or hit.get("condition") != "new"
+                or not isinstance(shipping, dict) or shipping.get("code") != 2
+                or not isinstance(label, dict) or label.get("taxable") is not True
+                or type(hit.get("price")) is not int or hit["price"] <= 0 or not affiliate_link(hit)):
+            continue
+        grouped[jan].append(hit)
+    return dict(grouped)
+
+
+def collect_yahoo_leads(categories, client, day):
+    from candidate_acquisition import SUPPLEMENTAL_QUERIES
+    leads, stats = {}, {"categories": {}, "requests": 0}
+    before = client.requests
+    for category, config in categories.items():
+        queries = tuple(dict.fromkeys((config["keyword"], *SUPPLEMENTAL_QUERIES.get(category, ()))))
+        try:
+            hits = client.search(query=queries[day % len(queries)], shipping="free")
+        except YahooUnavailable as error:
+            stats["categories"][category] = {"error": str(error)}
+            break
+        leads[category] = yahoo_leads(category, hits, client.affiliate_link)
+        stats["categories"][category] = {"hits": len(hits), "eligible_jans": len(leads[category])}
+    stats["requests"] = client.requests - before
+    return leads, stats
+
+
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
-                per_category=SEEDS_PER_CATEGORY, previous=None, day=0):
+                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None):
     stats = {"product_searches": 0, "item_searches": 0, "categories": {}}
     for category, profiles in include.items():
         config = categories[category]
@@ -64,11 +104,25 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
         try:
             pause(1.2)
             stats["product_searches"] += 1
-            raw = directory(config, 1)
+            try:
+                raw = directory(config, 1)
+            except ValueError:
+                # A missing directory envelope does not invalidate independent Yahoo leads.
+                if not (keyword_hits or {}).get(category):
+                    raise
+                info["directory_error"] = "invalid_response"
+                raw = []
             seeds = ranked_seeds(raw, {profile.jan for profile in profiles})
             info["seeds"] = len(seeds)
             historical = set((previous or {}).get(category, ())) - {profile.jan for profile in profiles}
-            for seed in select_seeds(seeds, historical, per_category, day):
+            selected = select_seeds(seeds, historical, per_category, day)
+            excluded = {profile.jan for profile in profiles} | {seed["jan"] for seed in selected}
+            directory_by_jan = {seed["jan"]: seed for seed in seeds}
+            additional = [jan for jan in (keyword_hits or {}).get(category, {}) if jan not in excluded]
+            for jan in additional[:YAHOO_SEEDS_PER_CATEGORY]:
+                selected.append(directory_by_jan.get(jan, {"jan": jan, "name": "", "brand": ""}))
+            info["yahoo_only_lookups"] = min(len(additional), YAHOO_SEEDS_PER_CATEGORY)
+            for seed in selected:
                 pause(1.2)
                 stats["item_searches"] += 1
                 info["queried"] += 1
@@ -100,14 +154,14 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
     return stats
 
 
-def extend_current(pool, include):
+def extend_current(pool, include, client):
     from build_site_entry import core, fetch_search_items, normalize_item_with_correct_postage
     from build_site_products import PRODUCT_API_URL
     from rakuten_request import fetch_json
     from urllib.parse import urlencode
     from urllib.request import Request
     def directory(config, page):
-        params = {"applicationId": core.APP_ID, "keyword": config["name"], "page": page,
+        params = {"applicationId": core.APP_ID, "keyword": config["name"].split("（")[0], "page": page,
                   "hits": 30, "formatVersion": 2, "format": "json",
                   "elements": "productCode,productName,brandName,salesItemCount,reviewCount"}
         req = Request(PRODUCT_API_URL + "?" + urlencode(params),
@@ -131,7 +185,11 @@ def extend_current(pool, include):
                              if valid_jan(row.get("jan"))}
     except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
         previous = {}
-    return extend_pool(pool, include, directory=directory, listings=listings,
-                       previous=previous, day=date.today().toordinal(),
-                       normalize_item=normalize_item_with_correct_postage,
-                       categories={item["id"]: item for item in core.CATEGORIES})
+    day = date.today().toordinal()
+    categories = {item["id"]: item for item in core.CATEGORIES if item["id"] in include}
+    keyword_hits, keyword_stats = collect_yahoo_leads(categories, client, day)
+    stats = extend_pool(pool, include, directory=directory, listings=listings,
+                        previous=previous, day=day, keyword_hits=keyword_hits,
+                        normalize_item=normalize_item_with_correct_postage, categories=categories)
+    stats["yahoo_leads"] = keyword_stats
+    return stats, keyword_hits

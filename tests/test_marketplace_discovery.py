@@ -4,9 +4,9 @@ import sys
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-from marketplace_discovery import discover, source_evidence
+from marketplace_discovery import discover, package_profile, source_evidence
 from marketplace_finder import add_finder
-from marketplace_seeds import directory_products, extend_pool, select_seeds
+from marketplace_seeds import collect_yahoo_leads, directory_products, extend_pool, select_seeds, yahoo_leads
 from test_marketplace_comparison import MockYahoo, PRODUCT, RAKUTEN_ITEM, RAKUTEN_URL, YAHOO_URL, rakuten, yahoo
 from validate_product_quality import valid_exact_marketplace_link
 
@@ -73,6 +73,56 @@ class AutomaticDiscovery(unittest.TestCase):
         _, reports = discover({"laundry": [listing()]}, {"laundry": []}, MockYahoo(fails=True))
         self.assertEqual(reports["laundry"]["api_error"], "http_503")
         self.assertEqual(reports["laundry"]["outcomes"], {})
+
+    def test_yahoo_keyword_leads_require_both_stores_and_exact_package(self):
+        client = MockYahoo([])
+        hit = yahoo(name=TITLE)
+        invalid = [hit | override for override in ({"janCode": "0000000000000"}, {"price": 0},
+                   {"name": "柔軟剤 2000g"}, {"shipping": {"code": 3}}, {"description": "北海道は別途送料"},
+                   {"inStock": False}, {"url": YAHOO_URL.replace("pid=200", "pid=300")})]
+        self.assertEqual(yahoo_leads("laundry", invalid, client.affiliate_link), {})
+        leads = {"laundry": yahoo_leads("laundry", [hit], client.affiliate_link)}
+        pool = {}
+        stats = extend_pool(pool, {"laundry": []}, directory=lambda *_: [], listings=lambda _: [source()],
+                            normalize_item=lambda *_: listing(), categories={"laundry": {}}, pause=lambda _: None,
+                            keyword_hits=leads)
+        self.assertEqual(stats["categories"]["laundry"]["yahoo_only_lookups"], 1)
+        self.assertEqual(pool["laundry"][0]["master_name"], "")
+        groups, _ = discover(pool, {"laundry": []}, client, keyword_hits=leads)
+        self.assertEqual(groups["laundry"][0][1], 3)
+        self.assertFalse(discover({}, {"laundry": []}, client, keyword_hits=leads)[0]["laundry"])
+        changed = MockYahoo([hit | {"inStock": False}])
+        self.assertFalse(discover(pool, {"laundry": []}, changed, keyword_hits=leads)[0]["laundry"])
+        wrong_pack = {"laundry": {JAN: [hit | {"name": TITLE.replace("3袋", "6袋")}]}}
+        self.assertFalse(discover(pool, {"laundry": []}, client, keyword_hits=wrong_pack)[0]["laundry"])
+
+    def test_category_keyword_budget_and_provider_failure(self):
+        class Limited(MockYahoo):
+            def search(self, **params):
+                from yahoo_shopping import YahooUnavailable
+                self.requests += 1
+                if self.requests == 2:
+                    raise YahooUnavailable("http_429")
+                return [yahoo(name=TITLE)]
+        leads, stats = collect_yahoo_leads({k: {"keyword": k} for k in ["laundry", "dish", "mask"]}, Limited(), 0)
+        self.assertIn(JAN, leads["laundry"])
+        self.assertEqual(stats["requests"], 2)
+        self.assertEqual(stats["categories"]["dish"], {"error": "http_429"})
+
+    def test_counted_consumables_retain_dimensions(self):
+        from marketplace_offers import package_quantity
+        def profile(category, title):
+            return package_profile(category, listing() | {"name": title, "metric": "sheet"})
+        bag = "ポリ袋 ごみ袋 45L 半透明 65x80cm 10枚x10冊"
+        exact = profile("garbage-bag-45l", bag)
+        self.assertEqual((exact.amount, package_quantity("garbage-bag-45l", bag, exact)), (10, 10))
+        self.assertIsNone(profile("garbage-bag-45l", bag + " 70L"))
+        paper = "キッチンペーパー 100枚×2ロール×8袋"
+        exact = profile("kitchen-paper", paper)
+        self.assertEqual((exact.amount, exact.kitchen_rolls, package_quantity("kitchen-paper", paper, exact)), (200, 2, 8))
+        self.assertIsNone(package_quantity("kitchen-paper", paper.replace("100枚×2", "50枚×4"), exact))
+        self.assertIsNone(package_profile("dish", listing() | {
+            "name": "ペット用食器洗剤 詰め替え用 400ml", "metric": "100ml"}))
 
     def test_real_directory_envelope_and_unknown_schema(self):
         row = {"productCode": JAN, "salesItemCount": 3}
