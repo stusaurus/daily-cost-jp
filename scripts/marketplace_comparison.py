@@ -1,4 +1,5 @@
 """Render the marketplace comparison as an optional layer over the Rakuten build."""
+import hashlib
 import html
 import json
 import os
@@ -7,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from marketplace_offers import Product, cheapest_offer, price_unit, rakuten_offer, yahoo_offer
+from marketplace_rakuten import refresh_exact
 from yahoo_shopping import YahooShopping, YahooUnavailable
 
 MARKER = 'id="marketplace-comparison"'
@@ -190,7 +192,21 @@ PRODUCTS = {
                 (r"トイレ\s*マジックリン", r"エレガント\s*ローズ", REFILL),
                 r"ローズ以外|フレッシュハーブ|シトラス|ミント|本体"),
     ),
+    "coffee": (
+        Product("4901201157592", "UCC 職人の珈琲 深いコクのスペシャルブレンド コーヒー粉", 280, "g",
+                (r"職人の珈琲", r"深いコク", r"スペシャルブレンド"),
+                r"豆のまま|挽き方|ドリップバッグ|ワンドリップ|インスタント|カフェインレス|アソート",
+                rakuten_evidence=(("kusuriaoki-r:10051762", "/kusuriaoki-r/60000000015799"),)),
+    ),
+    "mask": (
+        Product("4901957214853", "フィッティ 7DAYSマスク EXプラス 不織布 ふつう ホワイト", 60, "枚",
+                (r"フィッティ|fitty", r"7\s*days|7デイズ", r"ex\s*(?:プラス|\+)", r"ふつう|普通", r"ホワイト|白"),
+                r"小さめ|大きめ|やや大き|大きい|学童|子供|子ども|キッズ|ピンク|黒|ブラック|グレー|選択|立体(?:型|マスク)",
+                rakuten_evidence=(("kzstore:10000862", "/kzstore/4901957214853"),)),
+    ),
 }
+
+EXACT_RAKUTEN_CATEGORIES = {"coffee", "mask"}
 
 NAV_CSS = """<style id="marketplace-navigation-style">
 #marketplace-navigation{margin:18px 0;padding:12px 15px;border:1px solid #cadfd6;border-radius:10px;background:#f1f8f5;color:#173c31}
@@ -332,7 +348,7 @@ def render(category, groups, updated, rakuten_updated):
         scale, factor, unit = price_unit(category, product)
         quantity = product.display_amount
         if product.unit in ("g", "ml"):
-            packs = "本" if category == "water" else "個"
+            packs = {"coffee": "袋", "water": "本"}.get(category, "個")
             quantity += f" × {count}{packs}"
         elif product.kitchen_rolls:
             quantity = f"× {count}パック"
@@ -388,7 +404,14 @@ def insert_navigation(markup, entry_point, categories):
             .replace("</head>", NAV_CSS + "\n</head>", 1))
 
 
-def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
+def comparison_rows(category, listings, profiles, *, exact_refresh=refresh_exact):
+    if category not in EXACT_RAKUTEN_CATEGORIES:
+        return listings, [], None
+    extra, status = exact_refresh(category, profiles)
+    return extra, extra, status
+
+
+def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_refresh=refresh_exact):
     now = now or datetime.now(timezone.utc)
     catalog = json.loads((site / "data.json").read_text(encoding="utf-8"))
     catalog_updated = timestamp(catalog.get("updated_at"))
@@ -426,6 +449,10 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
             entry["status"] = "yahoo_request_limit"
             continue
         rows = catalog["categories"][category].get("items", [])
+        rows, exact, exact_status = comparison_rows(category, rows, include[category], exact_refresh=exact_refresh)
+        if exact_status is not None:
+            entry["rakuten_exact_status"] = exact_status
+            entry["rakuten_exact_rows"] = len(exact)
         try:
             groups, candidates = select(category, rows, client, include=include)
         except YahooUnavailable as error:
@@ -437,7 +464,14 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS):
                      yahoo_results=sum(row["api_hits"] for row in candidates.values()),
                      status="available" if comparable else "no_rakuten_match" if not candidates else "no_comparable_pair")
         if comparable:
-            sections[category] = render(category, groups, now, catalog_updated)
+            if exact:
+                published_codes = {offers[0].code for _, _, offers in groups}
+                entry["rakuten_exact_sources"] = [
+                    {"item_code": row["item_code"], "price": row["price"], "name": row["name"],
+                     "url_sha256": hashlib.sha256(row["url"].encode("utf-8")).hexdigest()}
+                    for row in exact if row["item_code"] in published_codes
+                ]
+            sections[category] = render(category, groups, now, now if exact else catalog_updated)
 
     available = [(category, catalog["categories"][category]["name"]) for category in sections]
     pages = {}

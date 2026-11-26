@@ -1,5 +1,6 @@
 """Block deployment if any catalog/recommendation bypasses the shared filter."""
 from __future__ import annotations
+from hashlib import sha256
 import json
 import math
 from html.parser import HTMLParser
@@ -23,16 +24,19 @@ class Links(HTMLParser):
         self.external_contexts = []
         self.everyday_value_links = []
         self.tissue_five_box_links = []
+        self._marketplace_depth = 0
         self.display_names, self._name_tag, self._name_parts = [], None, []
 
     def handle_starttag(self, tag, attrs):
         a = dict(attrs)
         if tag in ('h2', 'h3') or (tag == 'span' and 'top-pick-name' in a.get('class', '').split()):
             self._name_tag, self._name_parts = tag, []
+        if tag == 'section' and (self._marketplace_depth or a.get('id') == 'marketplace-comparison'):
+            self._marketplace_depth += 1
         if tag == 'a' and (urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp'):
             self.external.append(a['href'])
         if tag == 'a' and ((urlsplit(a.get('href', '')).hostname or '').endswith('.rakuten.co.jp') or 'data-purchase-purpose' in a):
-            self.external_contexts.append((a['href'], a.get('data-category-id'), a.get('data-purchase-purpose')))
+            self.external_contexts.append((a, self._marketplace_depth > 0))
         if tag == 'a' and a.get('data-purchase-purpose') == 'everyday-value':
             self.everyday_value_links.append(a)
         if tag == 'a' and a.get('data-tissue-five-box-choice') is not None:
@@ -45,6 +49,8 @@ class Links(HTMLParser):
             self._name_parts.append(data)
 
     def handle_endtag(self, tag):
+        if tag == 'section' and self._marketplace_depth:
+            self._marketplace_depth -= 1
         if tag == self._name_tag:
             self.display_names.append(' '.join(''.join(self._name_parts).split()))
             self._name_tag = None
@@ -269,6 +275,35 @@ def valid_tissue_five_box_link(attrs, rel, payload):
     return False
 
 
+def valid_exact_marketplace_link(attrs, rel, coverage):
+    """Authorize a refreshed product only in its own category comparison."""
+    from marketplace_comparison import EXACT_RAKUTEN_CATEGORIES, PRODUCTS
+    from marketplace_offers import package_quantity, rakuten_identity, rakuten_product_link
+
+    category = attrs.get('data-category-id')
+    if category not in EXACT_RAKUTEN_CATEGORIES or rel != f'categories/{category}/index.html':
+        return False
+    if (attrs.get('data-marketplace') != 'rakuten' or attrs.get('target') != '_blank'
+            or 'marketplace-buy' not in attrs.get('class', '').split()
+            or not {'nofollow', 'sponsored', 'noopener'}.issubset(attrs.get('rel', '').split())):
+        return False
+    href, code = attrs.get('href'), attrs.get('data-marketplace-item')
+    if not rakuten_product_link(href, code):
+        return False
+    record = coverage.get(category, {})
+    if record.get('status') != 'available':
+        return False
+    url_hash = sha256(href.encode('utf-8')).hexdigest()
+    for source in record.get('rakuten_exact_sources', ()):
+        if (source.get('item_code') != code or source.get('url_sha256') != url_hash
+                or type(source.get('price')) is not int or source['price'] <= 0):
+            continue
+        row = {**source, 'url': href}
+        return any(rakuten_identity(row, product) and package_quantity(category, row.get('name'), product)
+                   for product in PRODUCTS[category])
+    return False
+
+
 def validate(root=Path('site'), report_path=Path('quality-report.json')):
     payload = json.loads((root / 'data.json').read_text(encoding='utf-8'))
     errors, accepted = validate_catalog(payload)
@@ -306,6 +341,11 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
     all_urls = {url for rows in accepted.values() for url in rows}
     today_urls = {row['url'] for row in today.get('items', [])}
     purpose_links = verified_purpose_links(payload)
+    marketplace_path = root / 'marketplace-coverage.json'
+    coverage = json.loads(marketplace_path.read_text(encoding='utf-8')) if marketplace_path.exists() else {}
+    if coverage and coverage.get('catalog_updated_at') != payload.get('updated_at'):
+        errors.append('Marketplace coverage does not match the current catalog')
+    exact_coverage = coverage.get('categories', {})
     # Includes top picks and product guides; general ranking has its own scope.
     for path in root.rglob('*.html'):
         rel = path.relative_to(root).as_posix()
@@ -338,13 +378,16 @@ def validate(root=Path('site'), report_path=Path('quality-report.json')):
                     or len(page.tissue_five_box_links) != len(expected)
                     or len(verified_five_box) != len(expected)):
                 errors.append(f'{rel}: tissue five-box merchant link not fully verified')
-        if any(url not in allowed and not (
-                can_render_purpose and
-                (url, cid, purpose) in purpose_links and (category_scope is None or cid == category_scope)
-               ) and not (
-                rel == 'categories/tissue/index.html' and (url, cid, purpose) in verified_five_box
-               ) for url, cid, purpose in page.external_contexts):
+        for attrs, within_marketplace in page.external_contexts:
+            url, cid, purpose = attrs['href'], attrs.get('data-category-id'), attrs.get('data-purchase-purpose')
+            slot = (url, cid, purpose)
+            if (url in allowed or (can_render_purpose and slot in purpose_links
+                                  and (category_scope is None or cid == category_scope))
+                    or (rel == 'categories/tissue/index.html' and slot in verified_five_box)
+                    or (within_marketplace and valid_exact_marketplace_link(attrs, rel, exact_coverage))):
+                continue
             errors.append(f'{rel}: rendered Rakuten link outside verified selection')
+            break
         if len(page.everyday_value_links) > 1 or any(
                 not valid_everyday_value_link(attrs, rel, payload)
                 for attrs in page.everyday_value_links):
