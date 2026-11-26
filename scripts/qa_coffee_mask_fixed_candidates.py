@@ -7,9 +7,9 @@ from rakuten_request import fetch_json
 import build_site_entry as r
 
 codes = {
- 'coffee': ['drink-market:10097409','misono-support:10009266','nozomi-market:10005123'],
- 'mask': ['kurasio-en:10000600','kurasio-en:10000602','kzstore:10000862','megadrug:10042504',
-          'tsuruha:10094980','tsuruha:10094981','denchiya-bekkan:10260570']
+ 'coffee': ['smilespoon:10040974','smilespoon:10040975','beisia:10184219','kusuriaoki-r:10051762',
+            'rakuten24:11356841','p-tano:10665494','drink-market:10089229','misonoya:10059844',
+            'nozomi-market:10050668']
 }
 for cat, entries in codes.items():
  for code in entries:
@@ -25,5 +25,5 @@ for cat, entries in codes.items():
    pc=urlsplit(parse_qs(urlsplit(item.get('affiliateUrl','')).query).get('pc',[''])[0])
    mobile=urlsplit(parse_qs(urlsplit(item.get('affiliateUrl','')).query).get('m',[''])[0])
    print('EX',cat,json.dumps([code,pc.path,mobile.path,item.get('itemPrice'),item.get('postageFlag'),
-      item.get('availability'),known_shipping(caption),item.get('itemName',''), len(caption)],ensure_ascii=False),flush=True)
+      item.get('availability'),known_shipping(caption),item.get('itemName',''), len(caption), bool(__import__('re').search(r'JAN[^0-9]{0,10}4901201157592',caption))],ensure_ascii=False),flush=True)
   time.sleep(1.3)
