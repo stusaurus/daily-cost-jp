@@ -20,10 +20,14 @@ PER_CATEGORY = 24
 BUILD_BUDGET = 300
 GTIN = re.compile(r"(?<!\d)\d{13}(?!\d)")
 CAPTION_JAN = re.compile(r"(?:jan(?:コード)?|バーコード)\s*[:：]?\s*(\d{13})(?!\d)", re.I)
-UNSAFE = re.compile(r"選択|選んで|いずれか|旧(?:型|商品|モデル|仕様|処方|デザイン|タイプ)|リニューアル|新旧|訳あり|福袋|ランダム|おまけ|景品|プレゼント付|種類指定不可|パッケージ.{0,8}(?:異なる|変更)|定期購入|定期便")
+UNSAFE = re.compile(r"選択|選んで|いずれか|旧(?:製品|型|商品|モデル|仕様|処方|デザイン|タイプ)|リニューアル|新旧|訳あり|福袋|ランダム|おまけ|景品|プレゼント付|種類指定不可|パッケージ.{0,8}(?:異なる|変更)|定期購入|定期便")
 PACK = re.compile(r"(?<![\d.])\d+\s*(?:ロール|パック|ケース|セット|枚|個|本|箱|袋)(?:入り?)?")
 DECORATION = re.compile(r"送料無料|送料込み|まとめ買い|ケース販売|ケース売り|公式ショップ|公式ストア|税込")
-UNKNOWN_PACK = re.compile(r"\d+\s*(?:点|組セット|コ組|缶|束|箱組|種類|個口)|[+＋]|(?:単品|セット)から|(?:色|柄|香り)指定不可")
+# Strip standalone sales language after checking quantities, never variant adjectives.
+PROMOTIONAL = re.compile(r"(?:単品販売|セット販売|販売セット|お買い得品|お買い得|"
+                         r"まとめて購入|国内正規流通品|日用消耗品|日用品雑貨|セット$)")
+
+UNKNOWN_PACK = re.compile(r"(?:[2-9]|[1-9]\d+)\s*(?:ヶ|ケ|箇|コ)\s*(?:入り?|組|セット)|\d+\s*(?:点|組セット|コ組|缶|束|箱組|種類|個口)|[+＋]|(?:単品|セット)から|(?:色|柄|香り)指定不可")
 # Only seller boilerplate may surround a complete official directory name.
 NEUTRAL = re.compile(r"ケース販売|ケース売り|まとめ買い|セット販売|セット|パック販売|大容量|特大サイズ|"
                      r"日用品|国内正規品|日本製|送料無料|送料込み|税込|単品販売|単品|日用雑貨")
@@ -107,7 +111,8 @@ def identity_text(name, jan):
     text = CAPACITY.sub(" ", text)
     text = PACK.sub(" ", text)
     text = re.sub(r"(?<![a-z])x(?=\s|$)", " ", text)
-    return re.sub(r"[\s【】()［］\[\]・,:：]", "", DECORATION.sub("", text))
+    text = re.sub(r"[\s【】()［］\[\]・,:：]", "", DECORATION.sub("", text))
+    return PROMOTIONAL.sub("", text)
 
 
 def comparable_names(left, right, jan, brand):
@@ -162,7 +167,8 @@ def compare_jan(category, entries, hits, client, report):
             name = hit.get("name")
             if (hit.get("janCode") != profile.jan or not isinstance(name, str)
                     or explicit_jans(name) - {profile.jan}
-                    or UNSAFE.search(normalize(name)) or UNKNOWN_PACK.search(normalize(name))):
+                    or UNSAFE.search(normalize(" ".join(str(hit.get(k) or "") for k in ("name", "headLine", "description"))))
+                    or UNKNOWN_PACK.search(normalize(name))):
                 report["reasons"]["identity_or_version_conflict"] += 1
                 continue
             if package_quantity(category, name, profile) != count:

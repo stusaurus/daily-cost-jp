@@ -1,5 +1,6 @@
 """Find additional in-stock retail listings using the official product directory."""
 from collections import Counter
+from datetime import date
 from http.client import HTTPException
 import time
 from urllib.error import HTTPError, URLError
@@ -9,12 +10,14 @@ from marketplace_offers import valid_jan
 from product_quality import filter_items
 
 # Spread the acquisition budget across categories, including categories with few reviews.
-SEEDS_PER_CATEGORY = 12
+SEEDS_PER_CATEGORY = 20
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
 
 
 def directory_products(payload):
     rows = payload.get("Products", payload.get("items"))
+    if rows is None and payload.get("count") == 0:
+        return []
     if not isinstance(rows, list):
         raise ValueError("product_directory_schema")
     return [row.get("Product", row) for row in rows if isinstance(row, dict)]
@@ -35,8 +38,23 @@ def ranked_seeds(raw, excluded):
     return sorted(by_jan.values(), key=lambda seed: (-seed["reviews"], -seed["sellers"], seed["jan"]))
 
 
+def select_seeds(seeds, previous, limit, day):
+    """Refresh confirmed JANs first and rotate a bounded slice of the other candidates."""
+    by_jan = {seed["jan"]: seed for seed in seeds}
+    kept = [by_jan.get(jan, {"jan": jan, "name": "", "brand": ""})
+            for jan in sorted(previous) if valid_jan(jan)][:24]
+    remaining = [seed for seed in seeds if seed["jan"] not in previous]
+    available = min(24 - len(kept), max(3, limit - len(kept)))
+    if len(remaining) <= available:
+        return kept + remaining
+    fixed = available // 2
+    rotating = remaining[fixed:]
+    offset = day * (available - fixed) % len(rotating)
+    return kept + remaining[:fixed] + (rotating[offset:] + rotating[:offset])[:available-fixed]
+
+
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
-                per_category=SEEDS_PER_CATEGORY):
+                per_category=SEEDS_PER_CATEGORY, previous=None, day=0):
     stats = {"product_searches": 0, "item_searches": 0, "categories": {}}
     for category, profiles in include.items():
         config = categories[category]
@@ -49,7 +67,8 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
             raw = directory(config, 1)
             seeds = ranked_seeds(raw, {profile.jan for profile in profiles})
             info["seeds"] = len(seeds)
-            for seed in seeds[:per_category]:
+            historical = set((previous or {}).get(category, ())) - {profile.jan for profile in profiles}
+            for seed in select_seeds(seeds, historical, per_category, day):
                 pause(1.2)
                 stats["item_searches"] += 1
                 info["queried"] += 1
@@ -63,7 +82,12 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
                     verified.append({**row, **proof, "master_name": seed["name"],
                                      "master_brand": seed["brand"]})
         except (HTTPError, HTTPException, OSError, URLError, TypeError, ValueError, KeyError, AttributeError) as error:
-            stats["stopped"] = f"http_{error.code}" if isinstance(error, HTTPError) else "network_or_response"
+            info["error"] = f"http_{error.code}" if isinstance(error, HTTPError) else type(error).__name__
+            # Stop on provider throttling/authentication failures. A malformed
+            # category result or one transient outage need not starve later categories.
+            if (isinstance(error, HTTPError) and error.code in (401, 403, 429)
+                    or sum("error" in item for item in stats["categories"].values()) >= 3):
+                stats["stopped"] = info["error"]
         accepted = filter_items(category, verified)
         info["verified_rows"] = len(accepted)
         info["reasons"]["catalog_quality"] += len(verified) - len(accepted)
@@ -97,6 +121,17 @@ def extend_current(pool, include):
             "keyword": jan, "availability": 1, "postageFlag": 1,
             "sort": "+itemPrice", "hits": 30, "formatVersion": 2, "format": "json", "elements": FIELDS,
         })
+    # Prior publication supplies lookup keys only. All prices, stock, terms, titles
+    # and affiliate destinations still come from this build's API responses.
+    from price_observations import fetch_public
+    previous = {}
+    try:
+        for key, entry in fetch_public("marketplace-coverage.json")["categories"].items():
+            previous[key] = {row["jan"] for row in entry.get("discovery", {}).get("sources", [])
+                             if valid_jan(row.get("jan"))}
+    except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
+        previous = {}
     return extend_pool(pool, include, directory=directory, listings=listings,
+                       previous=previous, day=date.today().toordinal(),
                        normalize_item=normalize_item_with_correct_postage,
                        categories={item["id"]: item for item in core.CATEGORIES})
