@@ -71,6 +71,10 @@ def fetch_page(category, page):
         # Independent purpose pool favors payment total, not review-led bulk.
         params['sort'] = '+itemPrice'
 
+    return fetch_search_items(params)
+
+
+def fetch_search_items(params):
     url = core.API_URL + "?" + urllib.parse.urlencode(params)
     request = urllib.request.Request(
         url,
@@ -83,6 +87,19 @@ def fetch_page(category, page):
     )
     payload = fetch_json(request)
     return payload.get("Items") or payload.get("items") or []
+
+
+def fetch_exact_marketplace_item(code):
+    return fetch_search_items({
+        "applicationId": core.APP_ID,
+        "affiliateId": core.AFFILIATE_ID,
+        "itemCode": code,
+        "availability": 1,
+        "hits": 1,
+        "formatVersion": 2,
+        "format": "json",
+        "elements": "itemName,itemCode,itemPrice,affiliateUrl,shopName,postageFlag,availability,itemCaption",
+    })
 
 
 def fetch_category(category):

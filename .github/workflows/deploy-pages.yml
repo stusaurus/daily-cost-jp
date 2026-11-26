@@ -22,6 +22,7 @@ on:
       - "scripts/build_pipeline.py"
       - "scripts/marketplace_comparison.py"
       - "scripts/marketplace_offers.py"
+      - "scripts/marketplace_rakuten.py"
       - "scripts/check_marketplace_comparison.cjs"
       - "scripts/yahoo_shopping.py"
       - "scripts/tissue_five_box_choices.py"

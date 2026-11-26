@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -52,7 +53,9 @@ async function checkOffer(card, marketplace, group, catalog) {
   const price = yen(values[0]);
   if (marketplace === 'rakuten') {
     assert.equal(url.hostname, 'hb.afl.rakuten.co.jp');
-    const match = catalog.find(entry => entry.item_code === item && entry.url === url.href);
+    const actualHash = createHash('sha256').update(url.href).digest('hex');
+    const match = catalog.find(entry => entry.item_code === item && (entry.url === url.href
+      || entry.url_sha256 === actualHash));
     assert(match, 'Rakuten link must be an approved catalogue offer');
     assert.equal(price, match.price);
     const evidence = [
@@ -275,7 +278,8 @@ async function main() {
           for (const category of categoryIds) {
             const page = await browser.newPage({ viewport: { width, height: 900 } });
             try {
-              const result = await verifyPage(page, base, width, category, categories[category].items);
+              const sources = categories[category].items.concat(coverage[category].rakuten_exact_sources || []);
+              const result = await verifyPage(page, base, width, category, sources);
               assert.equal(result.comparable || 0, coverage[category].comparable, 'coverage must match rendered pairs');
               if (result.comparable > 0) available.push(category);
               console.log(JSON.stringify({ browser: engine.name(), width, category, ...result }));

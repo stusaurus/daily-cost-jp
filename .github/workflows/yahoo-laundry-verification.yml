@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/yahoo-laundry-verification.yml'
       - 'scripts/yahoo_shopping*.py'
+      - 'scripts/build_site_entry.py'
       - 'scripts/marketplace_*.py'
   workflow_dispatch:
 
@@ -22,9 +23,13 @@ jobs:
           persist-credentials: false
       - name: Verify Yahoo Shopping and ValueCommerce with aggregate output
         env:
+          RAKUTEN_APPLICATION_ID: ${{ secrets.RAKUTEN_APPLICATION_ID }}
+          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
+          RAKUTEN_AFFILIATE_ID: ${{ secrets.RAKUTEN_AFFILIATE_ID }}
           YAHOO_APP_ID: ${{ secrets.YAHOO_APP_ID }}
           YAHOO_AFFILIATE_ID: ${{ secrets.YAHOO_AFFILIATE_ID }}
         run: |
           curl --fail --silent --show-error --max-time 20 \
             https://stusaurus.github.io/daily-cost-jp/data.json -o "$RUNNER_TEMP/rakuten-marketplace-catalog.json"
-          python scripts/yahoo_shopping_probe.py --catalog "$RUNNER_TEMP/rakuten-marketplace-catalog.json"
+          python scripts/yahoo_shopping_probe.py --catalog "$RUNNER_TEMP/rakuten-marketplace-catalog.json" \
+            --require-categories laundry softener dish toilet-cleaner coffee mask

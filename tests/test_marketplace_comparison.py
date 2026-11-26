@@ -9,8 +9,9 @@ from urllib.parse import quote, urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from marketplace_comparison import ANCHOR, MAIN, NAV_MARKER, PRODUCTS, apply, select
+from marketplace_comparison import ANCHOR, MAIN, NAV_MARKER, PRODUCTS, apply, comparison_rows, select
 from marketplace_offers import package_quantity, price_unit, rakuten_offer, yahoo_offer
+from marketplace_rakuten import exact_rakuten_row, refresh_exact
 from yahoo_shopping import YahooShopping, YahooUnavailable, affiliate_config
 
 PRODUCT = PRODUCTS["laundry"][0]
@@ -140,6 +141,40 @@ class MarketplaceTest(unittest.TestCase):
         self.assertIsNone(rakuten_offer("tissue", row | {"url": url.replace("10001789%2F", "10001788%2F", 1)}, tissue))
         self.assertIsNone(rakuten_offer("tissue", row | {"name": row["name"] + " 4901301440815"}, tissue))
         self.assertIsNone(rakuten_offer("tissue", row | {"sale_quantity_label": "5箱×6パック"}, tissue))
+
+    def test_exact_lookup_does_not_admit_separate_shipping_or_unavailable_products(self):
+        profile = PRODUCTS["coffee"][0]
+        code, item_path = profile.rakuten_evidence[0]
+        shop, item_id = code.split(":")
+        link = "https://hb.afl.rakuten.co.jp/hgc/test/?" + urlencode({
+            "pc": "https://item.rakuten.co.jp" + item_path + "/",
+            "m": f"http://m.rakuten.co.jp/{shop}/i/{item_id}/",
+        })
+        title = "UCC 職人の珈琲 深いコクのスペシャルブレンド 粉 280g×6個"
+        item = {"itemName": title, "itemCode": code, "itemPrice": 5472, "postageFlag": 0, "availability": 1,
+                "affiliateUrl": link, "shopName": "楽天のテスト店舗", "itemCaption": "レギュラーコーヒー（粉）"}
+        row = exact_rakuten_row("coffee", code, item, profile)
+        self.assertEqual(rakuten_offer("coffee", row, profile)[0], 6)
+        self.assertAlmostEqual(row["unit_price"], 5472 / 16.8)
+        for changes in ({"postageFlag": 1}, {"availability": 0}, {"itemCode": "other:10000000"},
+                        {"itemCaption": "沖縄への送料は別途料金です"}, {"itemName": title + " 挽き方が選べる"},
+                        {"itemName": title.replace("280g", "240g")}, {"itemName": title + "×2ケース"}):
+            self.assertIsNone(exact_rakuten_row("coffee", code, item | changes, profile))
+        fresh, status = refresh_exact("coffee", [profile], fetch=lambda _: [{"Item": item}])
+        self.assertEqual((fresh, status), ([row], "ok"))
+        # A listing that fails the exact refresh cannot fall back to the broad-category price.
+        self.assertEqual(comparison_rows("coffee", [row], [profile], exact_refresh=lambda *_: ([], "http_503")),
+                         ([], [], "http_503"))
+
+    def test_mask_rejects_variants_and_different_quantities(self):
+        profile = PRODUCTS["mask"][0]
+        title = "フィッティ 7DAYSマスク EXプラス ホワイト ふつう 60枚入"
+        self.assertEqual(package_quantity("mask", title, profile), 1)
+        self.assertEqual(package_quantity("mask", title + "×2箱", profile), 2)
+        for variant in ("小さめも選択可", "子ども用", "ピンク", "大きめ", "×2箱×2ケース"):
+            self.assertIsNone(package_quantity("mask", title + " " + variant, profile))
+        self.assertIsNone(package_quantity("mask", title.replace("60枚", "40枚"), profile))
+        self.assertEqual(price_unit("mask", profile), (1, 1, "1枚"))
 
     def test_yahoo_item_and_affiliate_identity(self):
         client = MockYahoo()
