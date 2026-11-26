@@ -49,6 +49,7 @@ class Product:
     rakuten_evidence: tuple[tuple[str, str], ...] = ()
     kitchen_rolls: int | None = None
     bottles_per_case: int | None = None
+    label_includes_quantity: bool = False
 
     @property
     def display_amount(self):

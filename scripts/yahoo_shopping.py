@@ -73,6 +73,8 @@ class YahooShopping:
         self._opener = build_opener(NoRedirect())
         self._last_request = float("-inf")
         self._cache = {}
+        self.requests = 0
+        self.cache_hits = 0
 
     def search(self, *, jan=None, query=None, results=50, shipping=None):
         filters = {"jan_code": jan} if jan else {"query": query}
@@ -83,10 +85,12 @@ class YahooShopping:
             params["shipping"] = shipping
         key = jan, query, results, shipping
         if key in self._cache:
+            self.cache_hits += 1
             return self._cache[key]
         for attempt in range(2):
             time.sleep(max(0, REQUEST_INTERVAL - (time.monotonic() - self._last_request)))
             self._last_request = time.monotonic()
+            self.requests += 1
             try:
                 with self._opener.open(f"{API}?{urlencode(params)}", timeout=12) as response:
                     payload = json.loads(response.read(3_000_000))
