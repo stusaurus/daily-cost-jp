@@ -6,7 +6,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from marketplace_discovery import discover, source_evidence
 from marketplace_finder import add_finder
-from marketplace_seeds import directory_products, extend_pool
+from marketplace_seeds import directory_products, extend_pool, select_seeds
 from test_marketplace_comparison import MockYahoo, PRODUCT, RAKUTEN_ITEM, RAKUTEN_URL, YAHOO_URL, rakuten, yahoo
 from validate_product_quality import valid_exact_marketplace_link
 
@@ -80,8 +80,30 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertEqual(directory_products({"Products": [{"Product": row}]}), [row])
         self.assertEqual(directory_products({"items": [row]}), [row])
         self.assertEqual(directory_products({"Products": []}), [])
+        self.assertEqual(directory_products({"count": 0}), [])
         with self.assertRaises(ValueError):
             directory_products({"count": 30})
+
+    def test_rotates_new_candidates_without_reusing_a_prior_offer(self):
+        seeds = [{"jan": str(i), "name": str(i), "brand": ""} for i in range(15)]
+        first = select_seeds(seeds, {JAN}, 6, 0)
+        second = select_seeds(seeds, {JAN}, 6, 1)
+        self.assertEqual(first[0], {"jan": JAN, "name": "", "brand": ""})
+        self.assertEqual(len(first), 6)
+        self.assertNotEqual(first, second)
+        self.assertEqual(first[:3], second[:3])
+
+    def test_category_schema_error_preserves_other_categories(self):
+        def directory(config, page):
+            if config == "first":
+                raise ValueError("product_directory_schema")
+            return []
+        result = extend_pool({}, {"laundry": [], "dish": []}, directory=directory,
+                             listings=lambda _: [], normalize_item=lambda *_: {},
+                             categories={"laundry": "first", "dish": "second"}, pause=lambda _: None)
+        self.assertEqual(result["categories"]["laundry"]["error"], "ValueError")
+        self.assertIn("dish", result["categories"])
+        self.assertNotIn("stopped", result)
 
     def test_directory_never_authorizes_a_search_result_by_query_alone(self):
         master = {"productName": TITLE, "productCode": JAN, "salesItemCount": 7, "reviewCount": 5}
