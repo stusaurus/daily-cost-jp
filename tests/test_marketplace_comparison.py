@@ -1,5 +1,6 @@
 """Regression coverage for exact packs, money, and optional Yahoo failure."""
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 import json
 from pathlib import Path
 import sys
@@ -162,6 +163,17 @@ class MarketplaceTest(unittest.TestCase):
             self.assertIsNone(exact_rakuten_row("coffee", code, item | changes, profile))
         fresh, status = refresh_exact("coffee", [profile], fetch=lambda _: [{"Item": item}])
         self.assertEqual((fresh, status), ([row], "ok"))
+        from validate_product_quality import valid_exact_marketplace_link
+        coverage = {"coffee": {"status": "available", "rakuten_exact_sources": [
+            {"item_code": code, "name": title, "price": 5472, "url_sha256": sha256(link.encode()).hexdigest()}
+        ]}}
+        attrs = {"data-category-id": "coffee", "data-marketplace": "rakuten", "target": "_blank",
+                 "class": "marketplace-buy", "rel": "sponsored nofollow noopener", "href": link,
+                 "data-marketplace-item": code}
+        self.assertTrue(valid_exact_marketplace_link(attrs, "categories/coffee/index.html", coverage))
+        self.assertFalse(valid_exact_marketplace_link(attrs, "index.html", coverage))
+        self.assertFalse(valid_exact_marketplace_link(attrs | {"href": link + "&other=1"},
+                                                      "categories/coffee/index.html", coverage))
         # A listing that fails the exact refresh cannot fall back to the broad-category price.
         self.assertEqual(comparison_rows("coffee", [row], [profile], exact_refresh=lambda *_: ([], "http_503")),
                          ([], [], "http_503"))
