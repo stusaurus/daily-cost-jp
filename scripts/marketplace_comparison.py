@@ -398,6 +398,14 @@ def navigation(entry_point, categories):
     )
 
 
+def add_credit(markup):
+    if CREDIT in markup:
+        return markup
+    if markup.count("</footer>") != 1:
+        raise ValueError("Marketplace credit footer changed")
+    return markup.replace("</footer>", CREDIT + "\n</footer>", 1)
+
+
 def insert_navigation(markup, entry_point, categories):
     if NAV_MARKER in markup:
         return markup
@@ -424,9 +432,12 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
         for category, data in catalog["categories"].items()
     }
 
+    from rakuten_request import request_count
+    initial_rakuten = request_count()
     consumption = {"additional_rakuten_discovery_requests": 0}
 
     def result(status):
+        consumption["marketplace_rakuten_requests"] = request_count() - initial_rakuten
         payload = {"status": status, "catalog_updated_at": catalog.get("updated_at"),
                    "categories": diagnostics, "api": consumption}
         (site / "marketplace-coverage.json").write_text(
@@ -448,13 +459,20 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
 
     selected = {}
     errors = []
+    rakuten_limit = None
     for category in configured:
         entry = diagnostics[category]
         if errors and errors[-1] in ("http_403", "http_429"):
             entry["status"] = "yahoo_request_limit"
             continue
         rows = catalog["categories"][category].get("items", [])
-        rows, exact, exact_status = comparison_rows(category, rows, include[category], exact_refresh=exact_refresh)
+        if rakuten_limit and category in EXACT_RAKUTEN_CATEGORIES:
+            rows, exact, exact_status = [], [], rakuten_limit
+        else:
+            rows, exact, exact_status = comparison_rows(category, rows, include[category], exact_refresh=exact_refresh)
+            if exact_status in ("http_401", "http_403", "http_429"):
+                rakuten_limit = exact_status
+                consumption["rakuten_limit"] = exact_status
         if exact_status is not None:
             entry["rakuten_exact_status"] = exact_status
             entry["rakuten_exact_rows"] = len(exact)
@@ -485,11 +503,10 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
             raise ValueError("Discovery pool and catalog timestamps differ")
         if not errors:
             from marketplace_seeds import extend_current
-            from rakuten_request import request_count
             pool = snapshot["categories"]
             categories = {key: include[key] for key in configured}
             keyword_hits = {}
-            if all(os.getenv(key) for key in ("RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID")):
+            if not rakuten_limit and all(os.getenv(key) for key in ("RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID")):
                 initial_requests = request_count()
                 consumption["directory"], keyword_hits = extend_current(pool, categories, client)
                 consumption["additional_rakuten_discovery_requests"] = request_count() - initial_requests
@@ -527,7 +544,7 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
         if markup.count(anchor) != 1:
             raise ValueError("marketplace section anchor changed")
         markup = markup.replace(anchor, section + "\n" + anchor, 1)
-        markup = markup.replace('</footer>', CREDIT + '\n</footer>', 1)
+        markup = add_credit(markup)
         markup = markup.replace('</head>', CSS + '\n</head>', 1)
         pages[page] = insert_navigation(markup, "category", [(category, "")])
     if available:
@@ -536,7 +553,7 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
             pages[page] = insert_navigation(page.read_text(encoding="utf-8"), entry_point, available)
     finder = site / "products/index.html"
     if selected and finder.is_file():
-        pages[finder] = add_finder(finder.read_text(encoding="utf-8"), selected)
+        pages[finder] = add_credit(add_finder(finder.read_text(encoding="utf-8"), selected))
     for page, markup in pages.items():
         temp = page.with_suffix('.tmp')
         temp.write_text(markup, encoding="utf-8")

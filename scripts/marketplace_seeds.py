@@ -14,6 +14,8 @@ from yahoo_shopping import YahooUnavailable
 
 # Spread the acquisition budget across categories, including categories with few reviews.
 HISTORY_DAYS = 3
+RECOVERY_DAYS = 7
+RECOVERY_PER_CATEGORY = 3
 SEEDS_PER_CATEGORY = 20
 YAHOO_SEEDS_PER_CATEGORY = 8
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
@@ -39,6 +41,7 @@ def ranked_seeds(raw, excluded):
                 or not name.strip() or not product.get("salesItemCount")):
             continue
         by_jan[jan] = {"jan": jan, "name": name, "brand": str(product.get("brandName") or ""),
+                       "maker": str(product.get("makerName") or ""),
                        "sellers": int(product["salesItemCount"]), "reviews": int(product.get("reviewCount") or 0)}
     return sorted(by_jan.values(), key=lambda seed: (-seed["reviews"], -seed["sellers"], seed["jan"]))
 
@@ -98,7 +101,7 @@ def collect_yahoo_leads(categories, client, day):
 
 
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
-                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None):
+                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None, confirmed=None):
     stats = {"product_searches": 0, "item_searches": 0, "categories": {}}
     for category, profiles in include.items():
         config = categories[category]
@@ -107,6 +110,9 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
         recent = {jan: stamp for jan, stamp in (history or {}).get(category, {}).items()
                   if valid_jan(jan) and type(stamp) is int and day - HISTORY_DAYS < stamp <= day}
         info["lookup_days"] = dict(recent)
+        confirmed_days = {jan: stamp for jan, stamp in (confirmed or {}).get(category, {}).items()
+                          if valid_jan(jan) and type(stamp) is int and day - RECOVERY_DAYS < stamp <= day}
+        info["prior_match_days"] = confirmed_days
         verified = []
         try:
             pause(1.2)
@@ -133,7 +139,14 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
             seeds = ranked_seeds(raw, {profile.jan for profile in profiles})
             info["seeds"] = len(seeds)
             historical = set((previous or {}).get(category, ())) - {profile.jan for profile in profiles}
-            selected = select_seeds(seeds, historical, per_category, day, recent)
+            # A temporarily missing offer can return on a later day. Recheck only its JAN,
+            # against both live APIs, within the normal listing budget.
+            recoverable = sorted((jan for jan in confirmed_days if jan not in historical
+                                  and jan not in {profile.jan for profile in profiles} and recent.get(jan) != day),
+                                 key=lambda jan: (-confirmed_days[jan], jan))
+            recovery = recoverable[:min(RECOVERY_PER_CATEGORY, max(0, per_category - len(historical) - 3))]
+            selected = select_seeds(seeds, historical | set(recovery), per_category, day, recent)
+            info["recovery_lookups"] = len(recovery)
             excluded = {profile.jan for profile in profiles} | {seed["jan"] for seed in selected}
             directory_by_jan = {seed["jan"]: seed for seed in seeds}
             additional = [jan for jan in (keyword_hits or {}).get(category, {}) if jan not in excluded]
@@ -155,7 +168,8 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
                         info["reasons"]["unverified_listing"] += 1
                         continue
                     verified.append({**row, **proof, "master_name": seed["name"],
-                                     "master_brand": seed["brand"]})
+                                     "prior_match": seed["jan"] in historical,
+                                     "master_brand": seed["brand"], "master_maker": seed.get("maker", "")})
         except (HTTPError, HTTPException, OSError, URLError, TypeError, ValueError, KeyError, AttributeError) as error:
             info["error"] = f"http_{error.code}" if isinstance(error, HTTPError) else type(error).__name__
             # Stop on provider throttling/authentication failures. A malformed
@@ -186,7 +200,7 @@ def extend_current(pool, include, client):
     def directory(config, page):
         params = {"applicationId": core.APP_ID, "keyword": config["name"].split("（")[0], "page": page,
                   "hits": 30, "formatVersion": 2, "format": "json",
-                  "elements": "productCode,productName,brandName,salesItemCount,reviewCount"}
+                  "elements": "productCode,productName,brandName,makerName,salesItemCount,reviewCount"}
         req = Request(PRODUCT_API_URL + "?" + urlencode(params),
                       headers={"accessKey": core.ACCESS_KEY, "Origin": "https://stusaurus.github.io",
                                "Referer": core.SITE_URL, "User-Agent": "daily-cost-jp/0.8"})
@@ -201,7 +215,7 @@ def extend_current(pool, include, client):
     # Prior publication supplies lookup keys only. All prices, stock, terms, titles
     # and affiliate destinations still come from this build's API responses.
     from price_observations import fetch_public
-    previous, coverage, history = {}, {}, {}
+    previous, coverage, history, confirmed = {}, {}, {}, {}
     try:
         last_build = fetch_public("marketplace-coverage.json")
         entries = last_build["categories"]
@@ -210,16 +224,22 @@ def extend_current(pool, include, client):
                 coverage[key] = entry["comparable"]
             previous[key] = {row["jan"] for row in entry.get("discovery", {}).get("sources", [])
                              if valid_jan(row.get("jan"))}
+        stamp = datetime.fromisoformat(last_build["catalog_updated_at"]).date().toordinal()
         directory_stats = last_build.get("api", {}).get("directory", {}).get("categories", {})
+        for key, winners in previous.items():
+            prior = directory_stats.get(key, {}).get("prior_match_days", {})
+            confirmed[key] = dict(prior) if isinstance(prior, dict) else {}
+            confirmed[key].update(dict.fromkeys(winners, stamp))
         history = {key: value["lookup_days"] for key, value in directory_stats.items()
                    if isinstance(value.get("lookup_days"), dict)}
     except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
-        previous, coverage, history = {}, {}, {}
+        previous, coverage, history, confirmed = {}, {}, {}, {}
     day = datetime.now(ZoneInfo("Asia/Tokyo")).date().toordinal()
     categories = {item["id"]: item for item in core.CATEGORIES if item["id"] in include}
     keyword_hits, keyword_stats = collect_yahoo_leads(categories, client, day)
     stats = extend_pool(pool, include, directory=directory, listings=listings,
-                        previous=previous, day=day, keyword_hits=keyword_hits, coverage=coverage, history=history,
+                        previous=previous, day=day, keyword_hits=keyword_hits, coverage=coverage,
+                        history=history, confirmed=confirmed,
                         normalize_item=normalize_item_with_correct_postage, categories=categories)
     stats["yahoo_leads"] = keyword_stats
     return stats, keyword_hits

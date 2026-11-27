@@ -26,7 +26,10 @@ def add_finder(markup, selected):
       const input = document.getElementById('q');
       const section = document.getElementById('verified-marketplace-results');
       const rows = Array.from(section.querySelectorAll('li'));
-      const fold = value => value.normalize('NFKC').toLowerCase().replace(/\\s+/g, '');
+      const fold = value => value.normalize('NFKC').toLowerCase()
+        .replace(/[ァ-ヶ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+        .replace(/(?:詰|つ)め?(?:替|換|か)え?(?:用)?/g, '詰替')
+        .replace(/\\s+/g, '');
       const names = rows.map(row => fold(row.textContent + row.dataset.jan));
       function filter() {
         const tokens = input.value.trim().normalize('NFKC').split(/\\s+/).map(fold).filter(Boolean);
