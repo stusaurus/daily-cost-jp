@@ -19,7 +19,9 @@ from yahoo_shopping import YahooUnavailable, safe_url
 PER_CATEGORY = 24
 BUILD_BUDGET = 300
 GTIN = re.compile(r"(?<!\d)\d{13}(?!\d)")
-CAPTION_JAN = re.compile(r"(?:jan(?:コード)?|バーコード)\s*[:：]?\s*(\d{13})(?!\d)", re.I)
+CAPTION_JAN = re.compile(r"(?:jan(?:コード|番号)?|バーコード)\s*[】):：/／]?\s*[:：]?\s*(\d{13})(?!\d)", re.I)
+# Retailer specifications sometimes separate the JAN label and value with table cells.
+SPEC_TAG = re.compile(r"</?(?:td|th|tr|dl|dt|dd|br|span)\b[^>]*>", re.I)
 UNSAFE = re.compile(r"選択|選んで|いずれか|旧(?:製品|型|商品|モデル|仕様|処方|デザイン|タイプ)|リニューアル|新旧|訳あり|福袋|ランダム|おまけ|景品|プレゼント付|種類指定不可|パッケージ.{0,8}(?:異なる|変更)|定期購入|定期便")
 PACK = re.compile(r"(?<![\d.])\d+\s*(?:ロール|パック|ケース|セット|枚|個|本|箱|袋)(?:入り?)?")
 DECORATION = re.compile(r"送料無料|送料込み|まとめ買い|ケース販売|ケース売り|公式ショップ|公式ストア|税込")
@@ -31,7 +33,15 @@ UNKNOWN_PACK = re.compile(r"(?:[2-9]|[1-9]\d+)\s*(?:ヶ|ケ|箇|コ)\s*(?:入り
 # Only seller boilerplate may surround a complete official directory name.
 NEUTRAL = re.compile(r"ケース販売|ケース売り|まとめ買い|セット販売|セット|パック販売|大容量|特大サイズ|"
                      r"日用品|国内正規品|日本製|送料無料|送料込み|税込|単品販売|単品|日用雑貨")
-REFILL = re.compile(r"(?:詰|つ)め?(?:替|か)え?(?:用)?")
+REFILL = re.compile(r"(?:詰|つ)め?(?:替|換|か)え?(?:用)?|(?:レフィル|リフィル)")
+# Generic category labels may accompany an intact directory product name.
+# Keep material, format, scent, size, model and formula words in both seller titles.
+CATEGORY_LABELS = {
+    "dish": "食器用洗剤", "laundry": "衣料用洗剤", "softener": "柔軟剤",
+    "shampoo": "シャンプー", "conditioner": "コンディショナー", "hand-soap": "ハンドソープ",
+    "bath-cleaner": "浴室用洗剤", "toilet-cleaner": "トイレ用洗剤", "toothbrush": "歯ブラシ",
+    "mouthwash": "マウスウォッシュ", "toothpaste": "歯磨き粉", "body-soap": "ボディソープ",
+}
 
 def product_path(row):
     url = safe_url(row.get("url"))
@@ -49,7 +59,7 @@ def source_evidence(raw, row):
         return None
     title, caption = normalize(title), normalize(caption)
     path = product_path(row)
-    labelled = set(CAPTION_JAN.findall(caption))
+    labelled = set(CAPTION_JAN.findall(SPEC_TAG.sub(" ", caption)))
     path_codes = set(GTIN.findall(path))
     codes = set(GTIN.findall(title)) | path_codes | labelled
     # Arbitrary internal IDs in prose cannot supply the identity.
@@ -132,19 +142,22 @@ def comparable_names(left, right, jan, brand):
 
 def master_identity(row, title, profile, category):
     master = row.get("master_name") or ""
-    if not master or not package_quantity(category, master, profile):
+    if (not master or category_rejection(category, title) or category_rejection(category, row["name"])
+            or not package_quantity(category, master, profile, directory_name=True)):
         return False
     normalized = identity_text(master, profile.jan)
-    brand = identity_text(row.get("master_brand") or "", profile.jan)
-    if len(normalized) < 4:
+    extra_labels = [identity_text(row.get(key) or "", profile.jan) for key in ("master_brand", "master_maker")]
+    extra_labels.append(CATEGORY_LABELS.get(category, ""))
+    extra_labels = sorted({label for label in extra_labels if len(label) >= 2}, key=len, reverse=True)
+    if len(normalized) < 4 or normalized in extra_labels:
         return False
     def named(value):
         value = identity_text(value, profile.jan)
         if normalized not in value:
             return False
         remainder = value.replace(normalized, "", 1)
-        if len(brand) >= 2:
-            remainder = remainder.replace(brand, "")
+        for label in extra_labels:
+            remainder = remainder.replace(label, "")
         return not NEUTRAL.sub("", remainder)
     return named(row["name"]) and named(title)
 
@@ -162,6 +175,7 @@ def candidates(category, rows, profiles, report):
             continue
         by_jan[row["jan"]].append((row, profile, result))
     return sorted(by_jan.values(), key=lambda entries: (
+        not any(row.get("prior_match") for row, _, _ in entries),
         -max(row.get("review_count", 0) for row, _, _ in entries), entries[0][1].jan))
 
 
@@ -204,7 +218,10 @@ def compare_jan(category, entries, hits, client, report):
             report["reasons"]["best_offers_have_conflicting_variants"] += 1
             continue
         profile, row, r, y = min(compatible, key=lambda item: (item[2].code, item[3].code))
-        label = DECORATION.sub("", clean_display_name(row["name"]).replace(profile.jan, "")).strip()
+        label = clean_display_name(row["name"])
+        label = re.sub(rf"[（(]{profile.jan}[-_]{count}[)）]", "", label)
+        label = DECORATION.sub("", label.replace(profile.jan, ""))
+        label = re.sub(r"【\s*】|\(\s*\)|（\s*）|\[\s*\]", "", label).strip()
         groups.append((replace(profile, label=label, label_includes_quantity=True), count, (r, y)))
         sources.append({key: row[key] for key in ("jan", "basis", "item_code", "price", "name", "metric")} |
                        {"pack": count, "url_sha256": hashlib.sha256(r.url.encode()).hexdigest()})

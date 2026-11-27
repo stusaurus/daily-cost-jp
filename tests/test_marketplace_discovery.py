@@ -109,6 +109,46 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertEqual(stats["requests"], 2)
         self.assertEqual(stats["categories"]["dish"], {"error": "http_429"})
 
+    def test_rakuten_limit_suppresses_further_exact_fetches_and_directory_queries(self):
+        from datetime import datetime, timezone
+        import json
+        import tempfile
+        from unittest.mock import Mock, patch
+        from marketplace_comparison import apply, EXACT_RAKUTEN_CATEGORIES
+        keys = sorted(EXACT_RAKUTEN_CATEGORIES)[:2]
+        now = datetime.now(timezone.utc)
+        catalog = {"updated_at": now.isoformat(), "categories": {k: {"items": []} for k in keys}}
+        fetch = Mock(return_value=([], "http_429"))
+        with tempfile.TemporaryDirectory() as work:
+            site = Path(work) / "site"
+            site.mkdir()
+            (site / "data.json").write_text(json.dumps(catalog))
+            (site.parent / "marketplace-discovery-input.json").write_text(json.dumps(catalog | {
+                "categories": {k: [] for k in keys}}))
+            with patch.dict("os.environ", dict.fromkeys(
+                    ["RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID"], "test")), \
+                    patch("marketplace_seeds.extend_current") as extra, \
+                    patch("price_observations.fetch_public") as prior:
+                from zoneinfo import ZoneInfo
+                day = now.astimezone(ZoneInfo("Asia/Tokyo")).date().toordinal()
+                prior.return_value = {
+                    "catalog_updated_at": now.isoformat(),
+                    "categories": {k: {"discovery": {"sources": [{"jan": JAN}]}} for k in keys},
+                    "api": {"directory": {"categories": {k: {"lookup_days": {JAN: day}} for k in keys}}},
+                }
+                result = apply(site, now=now, include={k: [] for k in keys}, exact_refresh=fetch, client=MockYahoo([]))
+                prior.assert_called_once_with("marketplace-coverage.json")
+                for key in keys:
+                    retained = result["api"]["directory"]["categories"][key]
+                    self.assertEqual(retained["lookup_days"], {JAN: day})
+                    self.assertEqual(retained["prior_match_days"], {JAN: day})
+                    self.assertEqual(retained["status"], "not_processed")
+                    self.assertEqual(retained["verified_rows"], 0)
+        fetch.assert_called_once()
+        extra.assert_not_called()
+        self.assertEqual(result["api"]["rakuten_limit"], "http_429")
+        self.assertTrue(all(r["rakuten_exact_status"] == "http_429" for r in result["categories"].values()))
+
     def test_counted_consumables_retain_dimensions(self):
         from marketplace_offers import package_quantity
         def profile(category, title):
@@ -123,6 +163,25 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertIsNone(package_quantity("kitchen-paper", paper.replace("100枚×2", "50枚×4"), exact))
         self.assertIsNone(package_profile("dish", listing() | {
             "name": "ペット用食器洗剤 詰め替え用 400ml", "metric": "100ml"}))
+
+    def test_structured_jan_field_requires_one_current_catalog_number(self):
+        caption = f"<table><tr><th>JANコード</th><td>{JAN}</td></tr></table>"
+        self.assertEqual(source_evidence(source(itemCaption=caption), listing())["jan"], JAN)
+        for invalid in [caption.replace("JANコード", "店舗管理番号"),
+                        caption.replace("</th>", "</th><td>別製品</td>"),
+                        caption + " JAN：4901301466235"]:
+            self.assertIsNone(source_evidence(source(itemCaption=invalid), listing()))
+
+    def test_master_maker_can_accompany_a_full_product_name_but_never_mask_a_variant(self):
+        master = "テストシリーズ 部屋干し 詰替 2000g"
+        retail = "花王 " + master + " 衣料用洗剤 ×3袋"
+        other = "衣料用洗剤 テストシリーズ 部屋干し リフィル 2000g×3袋"
+        row = listing() | {"name": retail, "master_name": master, "master_maker": "花王"}
+        groups, _ = run([yahoo(name=other)], [row])
+        self.assertEqual(len(groups["laundry"]), 1)
+        for wrong in [other.replace("部屋干し", "無香料"), other + " ローズ", other.replace("3袋", "2袋"),
+                      other.replace("リフィル", "本体"), other + " 他社製", other.replace("衣料用洗剤", "台所用洗剤")]:
+            self.assertFalse(run([yahoo(name=wrong)], [row])[0]["laundry"], wrong)
 
     def test_real_directory_envelope_and_unknown_schema(self):
         row = {"productCode": JAN, "salesItemCount": 3}
@@ -160,6 +219,44 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertEqual(result["item_searches"], 1)
         self.assertEqual(result["categories"]["laundry"]["lookup_days"], {JAN: 10})
         self.assertNotEqual(directory.call_args_list[0], directory.call_args_list[1])
+
+    def test_previously_missing_product_must_be_reacquired_and_old_history_expires(self):
+        from unittest.mock import Mock
+        search = Mock(return_value=[])
+        pool = {}
+        stats = extend_pool(pool, {"laundry": []}, directory=lambda *_: [], listings=search,
+                            categories={"laundry": {}}, normalize_item=lambda *_: listing(), pause=lambda _: None,
+                            confirmed={"laundry": {JAN: 9, "4901301466235": 1}}, day=10)
+        self.assertEqual(stats["categories"]["laundry"]["prior_match_days"], {JAN: 9})
+        self.assertEqual(stats["categories"]["laundry"]["recovery_lookups"], 1)
+        search.assert_called_once_with(JAN)
+        self.assertEqual(pool["laundry"], [])
+        search.reset_mock()
+        extend_pool(pool, {"laundry": []}, directory=lambda *_: [], listings=search,
+                    categories={"laundry": {}}, normalize_item=lambda *_: listing(), pause=lambda _: None,
+                    confirmed={"laundry": {JAN: 9}}, history={"laundry": {JAN: 10}}, day=10)
+        search.assert_not_called()
+
+    def test_rate_limit_preserves_unprocessed_category_history_without_offers(self):
+        from urllib.error import HTTPError
+        from unittest.mock import Mock
+        directory = Mock(side_effect=HTTPError("https://example.test", 429, "limit", {}, None))
+        listings = Mock()
+        pool = {}
+        info = extend_pool(pool, {"laundry": [], "dish": []}, directory=directory,
+                           listings=listings, normalize_item=lambda *_: listing(),
+                           categories={"laundry": {}, "dish": {}}, pause=lambda _: None,
+                           day=10, history={"dish": {JAN: 9, "4901301466235": 7}},
+                           confirmed={"dish": {JAN: 6, "4901301466235": 3}})
+        self.assertEqual(info["stopped"], "http_429")
+        directory.assert_called_once()
+        listings.assert_not_called()
+        skipped = info["categories"]["dish"]
+        self.assertEqual(skipped["status"], "not_processed")
+        self.assertEqual(skipped["lookup_days"], {JAN: 9})
+        self.assertEqual(skipped["prior_match_days"], {JAN: 6})
+        self.assertEqual(skipped["verified_rows"], 0)
+        self.assertNotIn("dish", pool)
 
     def test_category_schema_error_preserves_other_categories(self):
         def directory(config, page):
