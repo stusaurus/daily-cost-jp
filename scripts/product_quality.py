@@ -50,7 +50,7 @@ EXCLUDED = {
     'toilet-paper': r'ホルダー|カバー|収納|ペーパーポット|トイレブラシ|シングル.*ダブル|ダブル.*シングル',
     'tissue': r'ウェット|ウエット|おしり|手口|除菌シート|ペーパータオル|キッチンペーパー|ティッシュ(?:ケース|ボックス|カバー|ホルダー)|シートバック|収納ポケット',
     'laundry': r'柔軟剤(?!不要|不使用|なし)|衣料用漂白剤|ワイドハイター|ブライト\s*strong|洗濯槽|食器|台所|ジェルボール|ポッド|洗剤シート',
-    'dish': r'ハンドソープ|洗濯|食洗機|食器洗い(?:乾燥)?機|ディッシュウォッシャー|リンス剤',
+    'dish': r'ペット用|犬用|猫用|ハンドソープ|洗濯|食洗機|食器洗い(?:乾燥)?機|ディッシュウォッシャー|リンス剤',
     'water': r'炭酸|スパークリング|ウォーターサーバー|水筒|浄水器|化粧水|精製水|サプリ|ペット用|犬用|猫用',
     'coffee': r'コーヒーメーカー|ドリッパー|フィルター|コーヒーミル|マグカップ|インスタント|スティック|ドリップバッグ|ドリップパック|カプセル|生豆|コーヒーかす|ボトルコーヒー',
     'softener': r'柔軟剤(?:不要|不使用|なし)|柔軟剤入り|洗濯(?:用)?(?:洗剤|石けん)|芳香剤|香りづけ|香り付け|ビーズ',
@@ -163,6 +163,10 @@ def category_rejection(category_id, title):
         return 'restricted_purchase'
     if re.search(r'中古|定期(?:購入|便|コース)|初回(?:限定|価格)|クーポン(?:適用|利用|使用)(?:後|で)|クーポン後(?:価格|の価格)', text):
         return 'conditional_or_used_price'
+    if category_id == 'garbage-bag-45l':
+        volumes = re.findall(r'(?<![\d.])(\d+(?:\.\d+)?)\s*l(?![a-z])', text)
+        if not volumes or any(float(volume) != 45 for volume in volumes):
+            return 'wrong_bag_capacity'
     if ACCESSORY.search(text):
         return 'accessory'
     if MIXED.search(text):
