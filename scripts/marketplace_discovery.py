@@ -244,7 +244,8 @@ def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
     for category, profiles in include.items():
         rows = pool.get(category, [])
         report = {"source_rows": len(rows), "eligible_jans": 0, "queried_jans": 0,
-                  "matched_jans": 0, "matched_pairs": 0, "hits": 0, "outcomes": Counter(), "reasons": Counter(), "sources": []}
+                  "matched_jans": 0, "matched_pairs": 0, "hits": 0, "outcomes": Counter(), "reasons": Counter(),
+                  "sources": [], "unmatched_jans": []}
         reports[category] = report
         queues[category] = candidates(category, rows, profiles, report)
         report["eligible_jans"] = len(queues[category])
@@ -269,6 +270,7 @@ def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
                 return groups, reports
             report["queried_jans"] += 1
             report["hits"] += len(hits)
+            before_reasons = report["reasons"].copy()
             if not hits:
                 report["reasons"]["no_yahoo_hits"] += 1
             previous_reviews = report["reasons"]["variant_needs_review"]
@@ -277,6 +279,14 @@ def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
             outcome = ("matched" if selected else "needs_review" if report["reasons"]["variant_needs_review"] > previous_reviews
                        else "no_yahoo_hits" if not hits else "no_match")
             report["outcomes"][outcome] += 1
+            if not selected:
+                # Bounded by the existing JAN lookup budget. Diagnostic counts
+                # describe this JAN only; no seller payloads, URLs or offer data.
+                report["unmatched_jans"].append({
+                    "jan": jan, "outcome": outcome, "rakuten_rows": len(entries),
+                    "yahoo_hits": len(hits),
+                    "reasons": dict(report["reasons"] - before_reasons),
+                })
             report["sources"].extend(sources)
             report["matched_pairs"] += len(selected)
             report["matched_jans"] += int(bool(selected))
