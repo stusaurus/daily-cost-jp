@@ -160,7 +160,7 @@ def product_page(products, updated_at):
 <meta name="description" content="欲しい商品名・ブランド・JANコードから楽天価格ナビの購入可能な最低価格を検索。毎朝自動更新。">
 <link rel="canonical" href="{core.SITE_URL}products/">
 <style>{PRODUCTS_CSS}</style></head><body>
-<header class="hero"><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 商品検索</div><span class="eyebrow">毎朝自動更新</span><h1>欲しい商品、そのまま検索</h1><p class="lead">安い商品に乗り換えるのではなく、<strong>欲しいブランド・製品そのもの</strong>の楽天価格を探せます。商品名・ブランド名・JANコードで検索してください。</p></div></header>
+<header class="hero"><div class="wrap"><div class="crumb"><a href="../">日用品コスパ比較</a> › 商品検索</div><span class="eyebrow">毎朝自動更新</span><h1>欲しい商品、そのまま検索</h1><p class="lead">商品名・ブランド名・JANコードを入力してください。両モールで同じ容量・個数を確認できた商品には、<strong>楽天市場とYahoo!ショッピングの送料込み総額</strong>を比べるリンクが表示されます。</p></div></header>
 <main class="wrap"><section class="search-box"><div class="search-row"><input id="q" type="search" enterkeyhint="search" autocomplete="off" placeholder="例：おしりセレブ / アリエール / JANコード"><button id="searchBtn" type="button">検索</button></div><div class="examples"><button class="chip" data-q="おしりセレブ">おしりセレブ</button><button class="chip" data-q="アリエール">アリエール</button><button class="chip" data-q="ボールド">ボールド</button><button class="chip" data-q="キレイキレイ">キレイキレイ</button></div></section><div class="status" id="status">本日の検索対象：{count:,}製品</div><section class="grid" id="results"></section><p class="note">最終更新：{updated_at.strftime('%Y年%m月%d日 %H:%M')}（日本時間）<br>※表示する「最低価格」は楽天の商品価格ナビ製品検索APIの購入可能な最低価格（中古を除く値を優先）です。送料・クーポン・ポイント条件は含めていないため、最終的な支払額はリンク先で必ず確認してください。現在は日用品カテゴリから毎朝取得した製品スナップショットを検索しています。</p></main>
 <script>
 const PRODUCTS={safe_json}; const q=document.getElementById('q'), results=document.getElementById('results'), status=document.getElementById('status');

@@ -14,7 +14,7 @@ class LaundryIntentMetadataTests(unittest.TestCase):
         t=seo.SEARCH_TARGETS["laundry"]
         self.assertIn("安い店", t["title"])
         self.assertIn("単価ランキング", t["title"])
-        self.assertIn("掲載店比較", t["title"])
+        self.assertIn("楽天・Yahoo!の送料込み価格比較", t["title"])
         self.assertIn("楽天全店の最安値は保証しません", t["description"])
         self.assertIn("送料込み支払総額", t["lead"])
         for unit in ("100g", "100ml"):

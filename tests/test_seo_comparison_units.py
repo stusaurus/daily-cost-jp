@@ -185,7 +185,7 @@ class SeoComparisonUnitsTests(unittest.TestCase):
         from improve_category_seo import SEARCH_TARGETS, render_search_copy
         target = SEARCH_TARGETS["laundry"]
         self.assertIn("単価ランキング", target["title"])
-        self.assertIn("掲載店比較", target["title"])
+        self.assertIn("楽天・Yahoo!の送料込み価格比較", target["title"])
         self.assertIn("安い店は？", target["title"])
         description = render_search_copy(target["description"], "100g")
         self.assertIn("送料込み100gあたりの単価", description)
@@ -213,7 +213,7 @@ class SeoComparisonUnitsTests(unittest.TestCase):
             with patch.object(module, "SITE_DIR", root):
                 self.assertTrue(module.enhance_page("laundry", "洗濯洗剤", "🧴", "洗濯洗剤", payload))
             page = path.read_text(encoding="utf-8")
-            self.assertIn("洗濯洗剤の安い店は？楽天送料込み単価ランキングと掲載店比較", page)
+            self.assertIn("洗濯洗剤の安い店は？楽天・Yahoo!の送料込み価格比較と楽天の単価ランキング", page)
             self.assertIn("送料込み100gあたりの単価", page)
             self.assertIn('data-fixture="ranking">¥120／100g', page)
             self.assertEqual(page.count('<link rel="canonical"'), 0)

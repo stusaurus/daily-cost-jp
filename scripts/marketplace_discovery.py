@@ -231,7 +231,7 @@ def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
             report = reports[category]
             try:
                 jan = entries[0][1].jan
-                hits = client.search(jan=jan, shipping="free")
+                hits = client.search(jan=jan, shipping="free", results=100)
                 extra = (keyword_hits or {}).get(category, {}).get(jan, [])
                 if extra:
                     by_code = {hit["code"]: hit for hit in extra}

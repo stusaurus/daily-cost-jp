@@ -46,7 +46,7 @@ class MockYahoo(YahooShopping):
         self.hits = [yahoo()] if hits is None else hits
         self.fails = fails
 
-    def search(self, *, jan, shipping=None):
+    def search(self, *, jan, shipping=None, results=50):
         if self.fails:
             raise YahooUnavailable("http_503")
         return self.hits if jan == PRODUCT.jan else []
