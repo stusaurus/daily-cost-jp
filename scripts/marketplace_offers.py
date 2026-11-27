@@ -5,7 +5,7 @@ import math
 import re
 from urllib.parse import parse_qs
 
-from product_quality import category_rejection, explicit_kitchen_paper_sheet_total
+from product_quality import category_rejection, kitchen_roll_package
 from sale_quantity import normalize, parse_sale_quantity
 from comparison_units import toilet_ply_length
 from yahoo_shopping import safe_url
@@ -158,15 +158,12 @@ def package_quantity(category, title, product, *, directory_name=False):
             return None
         text = re.sub(r"\d+\s*(?:組(?:\s*/\s*箱)?|枚)", "", text)
     if product.kitchen_rolls:
-        dimensions = explicit_kitchen_paper_sheet_total(text)
-        if not dimensions:
-            return None
+        dimensions = kitchen_roll_package(text)
         per_roll = product.amount // product.kitchen_rolls
-        if not re.match(rf"{per_roll}\s*(?:枚|カット)\s*x\s*{product.kitchen_rolls}\s*ロール",
-                        dimensions["evidence"]):
-            return None
-        return int(dimensions["quantity"]) // product.amount
+        return dimensions[2] if dimensions and dimensions[:2] == (per_roll, product.kitchen_rolls) else None
     if product.unit not in MEASURE_UNITS:
+        if category == "sink-net":
+            text = text.replace("ケース販売", "")
         return count_pack(count_title(category, text), product)
     sizes = set()
     dimension = {"kg": "g", "g": "g", "l": "ml", "ml": "ml"}

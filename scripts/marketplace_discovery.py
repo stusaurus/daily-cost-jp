@@ -11,7 +11,7 @@ from marketplace_offers import (AMBIGUOUS, CAPACITY, CATALOG_UNITS, Product,
                                count_title, explicit_jans, first, known_shipping, package_quantity,
                                rakuten_offer, rakuten_product_link, valid_jan, yahoo_offer)
 from product_display import clean_display_name
-from product_quality import category_rejection, explicit_kitchen_paper_sheet_total
+from product_quality import category_rejection, kitchen_roll_package
 from sale_quantity import normalize, parse_sale_quantity
 from yahoo_shopping import YahooUnavailable, safe_url
 
@@ -98,11 +98,9 @@ def package_profile(category, row):
         amount, unit = sizes.pop()
         if amount != int(amount):
             return None
-    elif category == "kitchen-paper" and (dimensions := explicit_kitchen_paper_sheet_total(name)):
-        per_roll, rolls = re.match(r"(\d+)\s*(?:枚|カット)\s*x\s*(\d+)\s*ロール",
-                                   dimensions["evidence"], re.I).groups()
-        kitchen_rolls = int(rolls)
-        amount, unit = int(per_roll) * kitchen_rolls, "枚"
+    elif category == "kitchen-paper" and (dimensions := kitchen_roll_package(name)):
+        per_roll, kitchen_rolls, _ = dimensions
+        amount, unit = per_roll * kitchen_rolls, "枚"
     else:
         quantity = parse_sale_quantity(count_title(category, text))
         if not quantity or quantity["kind"] != "count":
@@ -118,11 +116,21 @@ def package_profile(category, row):
                    rakuten_evidence=((row["item_code"], product_path(row)),))
 
 
-def identity_text(name, jan):
+def identity_text(name, jan, category=None):
     # Retain all product words, formula, size, fragrance, model and manufacturer.
     # Remove only presentation and quantities which are checked independently.
     text = normalize(clean_display_name(name)).lower().replace(jan, "")
     text = REFILL.sub("詰替", text)
+    if category == "toothbrush":
+        text = re.sub(r"歯ブラシ|ハブラシ|はぶらし", "ハブラシ", text)
+    if category == "tissue":
+        text = re.sub(r"ティシュー|ティッシュ|ティシュ", "ティシュ", text)
+    if category in ("kitchen-paper", "tissue"):
+        text = re.sub(r"(?<![\d.])(\d+)\s*枚重ね", r"重ね-\1", text)
+    if category == "kitchen-paper":
+        text = re.sub(r"(?<=\d)\s*カット", "枚", text)
+    if category == "sink-net":
+        text = re.sub(r"(?<=\d)\s*冊", "袋", text)
     text = CAPACITY.sub(" ", text)
     text = PACK.sub(" ", text)
     text = re.sub(r"(?<![a-z])x(?=\s|$)", " ", text)
@@ -130,8 +138,8 @@ def identity_text(name, jan):
     return PROMOTIONAL.sub("", text)
 
 
-def comparable_names(left, right, jan, brand):
-    first_name, second_name = identity_text(left, jan), identity_text(right, jan)
+def comparable_names(left, right, jan, brand, category=None):
+    first_name, second_name = identity_text(left, jan, category), identity_text(right, jan, category)
     if isinstance(brand, str) and len(brand.strip()) >= 2:
         maker = identity_text(brand, jan)
         if maker:
@@ -145,14 +153,14 @@ def master_identity(row, title, profile, category):
     if (not master or category_rejection(category, title) or category_rejection(category, row["name"])
             or not package_quantity(category, master, profile, directory_name=True)):
         return False
-    normalized = identity_text(master, profile.jan)
+    normalized = identity_text(master, profile.jan, category)
     extra_labels = [identity_text(row.get(key) or "", profile.jan) for key in ("master_brand", "master_maker")]
     extra_labels.append(CATEGORY_LABELS.get(category, ""))
     extra_labels = sorted({label for label in extra_labels if len(label) >= 2}, key=len, reverse=True)
     if len(normalized) < 4 or normalized in extra_labels:
         return False
     def named(value):
-        value = identity_text(value, profile.jan)
+        value = identity_text(value, profile.jan, category)
         if normalized not in value:
             return False
         remainder = value.replace(normalized, "", 1)
@@ -172,6 +180,7 @@ def candidates(category, rows, profiles, report):
         result = rakuten_offer(category, row, profile) if profile else None
         if not result or result[1].total is None:
             report["reasons"]["rakuten_spec_or_offer"] += 1
+            report["reasons"]["rakuten_offer" if profile else "rakuten_spec"] += 1
             continue
         by_jan[row["jan"]].append((row, profile, result))
     return sorted(by_jan.values(), key=lambda entries: (
@@ -195,7 +204,7 @@ def compare_jan(category, entries, hits, client, report):
                 continue
             brand = hit.get("brand") or {}
             if (not comparable_names(row["name"], name, profile.jan,
-                                     brand.get("name") if isinstance(brand, dict) else "")
+                                     brand.get("name") if isinstance(brand, dict) else "", category)
                     and not master_identity(row, name, profile, category)):
                 report["reasons"]["variant_needs_review"] += 1
                 continue
@@ -224,7 +233,8 @@ def compare_jan(category, entries, hits, client, report):
         label = re.sub(r"【\s*】|\(\s*\)|（\s*）|\[\s*\]", "", label).strip()
         groups.append((replace(profile, label=label, label_includes_quantity=True), count, (r, y)))
         sources.append({key: row[key] for key in ("jan", "basis", "item_code", "price", "name", "metric")} |
-                       {"pack": count, "url_sha256": hashlib.sha256(r.url.encode()).hexdigest()})
+                       {"pack": count, "url_sha256": hashlib.sha256(r.url.encode()).hexdigest(),
+                        "retail_keyword": bool(row.get("retail_keyword"))})
     return groups, sources
 
 
