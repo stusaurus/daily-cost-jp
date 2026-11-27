@@ -437,6 +437,10 @@ def apply(site=Path("site"), *, client=None, now=None, include=PRODUCTS, exact_r
     consumption = {"additional_rakuten_discovery_requests": 0}
 
     def result(status):
+        if "directory" not in consumption and (consumption.get("rakuten_limit")
+                                                or consumption.get("discovery_status") == "baseline_api_error"):
+            from marketplace_seeds import preserve_directory_history
+            consumption["directory"] = preserve_directory_history(configured, now)
         consumption["marketplace_rakuten_requests"] = request_count() - initial_rakuten
         payload = {"status": status, "catalog_updated_at": catalog.get("updated_at"),
                    "categories": diagnostics, "api": consumption}

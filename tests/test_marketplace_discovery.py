@@ -127,8 +127,23 @@ class AutomaticDiscovery(unittest.TestCase):
                 "categories": {k: [] for k in keys}}))
             with patch.dict("os.environ", dict.fromkeys(
                     ["RAKUTEN_APPLICATION_ID", "RAKUTEN_ACCESS_KEY", "RAKUTEN_AFFILIATE_ID"], "test")), \
-                    patch("marketplace_seeds.extend_current") as extra:
+                    patch("marketplace_seeds.extend_current") as extra, \
+                    patch("price_observations.fetch_public") as prior:
+                from zoneinfo import ZoneInfo
+                day = now.astimezone(ZoneInfo("Asia/Tokyo")).date().toordinal()
+                prior.return_value = {
+                    "catalog_updated_at": now.isoformat(),
+                    "categories": {k: {"discovery": {"sources": [{"jan": JAN}]}} for k in keys},
+                    "api": {"directory": {"categories": {k: {"lookup_days": {JAN: day}} for k in keys}}},
+                }
                 result = apply(site, now=now, include={k: [] for k in keys}, exact_refresh=fetch, client=MockYahoo([]))
+                prior.assert_called_once_with("marketplace-coverage.json")
+                for key in keys:
+                    retained = result["api"]["directory"]["categories"][key]
+                    self.assertEqual(retained["lookup_days"], {JAN: day})
+                    self.assertEqual(retained["prior_match_days"], {JAN: day})
+                    self.assertEqual(retained["status"], "not_processed")
+                    self.assertEqual(retained["verified_rows"], 0)
         fetch.assert_called_once()
         extra.assert_not_called()
         self.assertEqual(result["api"]["rakuten_limit"], "http_429")
@@ -221,6 +236,27 @@ class AutomaticDiscovery(unittest.TestCase):
                     categories={"laundry": {}}, normalize_item=lambda *_: listing(), pause=lambda _: None,
                     confirmed={"laundry": {JAN: 9}}, history={"laundry": {JAN: 10}}, day=10)
         search.assert_not_called()
+
+    def test_rate_limit_preserves_unprocessed_category_history_without_offers(self):
+        from urllib.error import HTTPError
+        from unittest.mock import Mock
+        directory = Mock(side_effect=HTTPError("https://example.test", 429, "limit", {}, None))
+        listings = Mock()
+        pool = {}
+        info = extend_pool(pool, {"laundry": [], "dish": []}, directory=directory,
+                           listings=listings, normalize_item=lambda *_: listing(),
+                           categories={"laundry": {}, "dish": {}}, pause=lambda _: None,
+                           day=10, history={"dish": {JAN: 9, "4901301466235": 7}},
+                           confirmed={"dish": {JAN: 6, "4901301466235": 3}})
+        self.assertEqual(info["stopped"], "http_429")
+        directory.assert_called_once()
+        listings.assert_not_called()
+        skipped = info["categories"]["dish"]
+        self.assertEqual(skipped["status"], "not_processed")
+        self.assertEqual(skipped["lookup_days"], {JAN: 9})
+        self.assertEqual(skipped["prior_match_days"], {JAN: 6})
+        self.assertEqual(skipped["verified_rows"], 0)
+        self.assertNotIn("dish", pool)
 
     def test_category_schema_error_preserves_other_categories(self):
         def directory(config, page):

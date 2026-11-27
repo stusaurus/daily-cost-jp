@@ -100,19 +100,32 @@ def collect_yahoo_leads(categories, client, day):
     return leads, stats
 
 
+def bounded_days(values, day, window):
+    if not isinstance(values, dict):
+        return {}
+    return {jan: stamp for jan, stamp in values.items()
+            if valid_jan(jan) and type(stamp) is int and day - window < stamp <= day}
+
+
+def history_stats(include, history, confirmed, day):
+    """Carry only bounded JAN/date evidence even when no API lookup can run."""
+    return {"product_searches": 0, "item_searches": 0, "categories": {
+        category: {"status": "not_processed", "seeds": 0, "queried": 0,
+                   "verified_rows": 0, "reasons": Counter(),
+                   "lookup_days": bounded_days((history or {}).get(category), day, HISTORY_DAYS),
+                   "prior_match_days": bounded_days((confirmed or {}).get(category), day, RECOVERY_DAYS)}
+        for category in include}}
+
+
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
                 per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None, confirmed=None):
-    stats = {"product_searches": 0, "item_searches": 0, "categories": {}}
+    stats = history_stats(include, history, confirmed, day)
     for category, profiles in include.items():
         config = categories[category]
-        info = {"seeds": 0, "queried": 0, "verified_rows": 0, "reasons": Counter()}
-        stats["categories"][category] = info
-        recent = {jan: stamp for jan, stamp in (history or {}).get(category, {}).items()
-                  if valid_jan(jan) and type(stamp) is int and day - HISTORY_DAYS < stamp <= day}
-        info["lookup_days"] = dict(recent)
-        confirmed_days = {jan: stamp for jan, stamp in (confirmed or {}).get(category, {}).items()
-                          if valid_jan(jan) and type(stamp) is int and day - RECOVERY_DAYS < stamp <= day}
-        info["prior_match_days"] = confirmed_days
+        info = stats["categories"][category]
+        info.pop("status")
+        recent = dict(info["lookup_days"])
+        confirmed_days = info["prior_match_days"]
         verified = []
         try:
             pause(1.2)
@@ -191,6 +204,39 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
     return stats
 
 
+def read_prior_state():
+    # Prior publication supplies lookup keys only. All prices, stock, terms, titles
+    # and affiliate destinations still come from this build's API responses.
+    from price_observations import fetch_public
+    previous, coverage, history, confirmed = {}, {}, {}, {}
+    try:
+        last_build = fetch_public("marketplace-coverage.json")
+        entries = last_build["categories"]
+        for key, entry in entries.items():
+            if type(entry.get("comparable")) is int:
+                coverage[key] = entry["comparable"]
+            previous[key] = {row["jan"] for row in entry.get("discovery", {}).get("sources", [])
+                             if valid_jan(row.get("jan"))}
+        stamp = datetime.fromisoformat(last_build["catalog_updated_at"]).astimezone(ZoneInfo("Asia/Tokyo")).date().toordinal()
+        directory_stats = last_build.get("api", {}).get("directory", {}).get("categories", {})
+        for key, winners in previous.items():
+            prior = directory_stats.get(key, {}).get("prior_match_days", {})
+            confirmed[key] = dict(prior) if isinstance(prior, dict) else {}
+            confirmed[key].update(dict.fromkeys(winners, stamp))
+        history = {key: value["lookup_days"] for key, value in directory_stats.items()
+                   if isinstance(value.get("lookup_days"), dict)}
+    except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
+        previous, coverage, history, confirmed = {}, {}, {}, {}
+    return previous, coverage, history, confirmed
+
+
+def preserve_directory_history(include, now):
+    """Do not recover stale offers when directory acquisition was skipped."""
+    _, _, history, confirmed = read_prior_state()
+    day = now.astimezone(ZoneInfo("Asia/Tokyo")).date().toordinal()
+    return history_stats(include, history, confirmed, day)
+
+
 def extend_current(pool, include, client):
     from build_site_entry import core, fetch_search_items, normalize_item_with_correct_postage
     from build_site_products import PRODUCT_API_URL
@@ -212,28 +258,7 @@ def extend_current(pool, include, client):
             "keyword": jan, "availability": 1, "postageFlag": 1,
             "sort": "+itemPrice", "hits": 30, "formatVersion": 2, "format": "json", "elements": FIELDS,
         })
-    # Prior publication supplies lookup keys only. All prices, stock, terms, titles
-    # and affiliate destinations still come from this build's API responses.
-    from price_observations import fetch_public
-    previous, coverage, history, confirmed = {}, {}, {}, {}
-    try:
-        last_build = fetch_public("marketplace-coverage.json")
-        entries = last_build["categories"]
-        for key, entry in entries.items():
-            if type(entry.get("comparable")) is int:
-                coverage[key] = entry["comparable"]
-            previous[key] = {row["jan"] for row in entry.get("discovery", {}).get("sources", [])
-                             if valid_jan(row.get("jan"))}
-        stamp = datetime.fromisoformat(last_build["catalog_updated_at"]).date().toordinal()
-        directory_stats = last_build.get("api", {}).get("directory", {}).get("categories", {})
-        for key, winners in previous.items():
-            prior = directory_stats.get(key, {}).get("prior_match_days", {})
-            confirmed[key] = dict(prior) if isinstance(prior, dict) else {}
-            confirmed[key].update(dict.fromkeys(winners, stamp))
-        history = {key: value["lookup_days"] for key, value in directory_stats.items()
-                   if isinstance(value.get("lookup_days"), dict)}
-    except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
-        previous, coverage, history, confirmed = {}, {}, {}, {}
+    previous, coverage, history, confirmed = read_prior_state()
     day = datetime.now(ZoneInfo("Asia/Tokyo")).date().toordinal()
     categories = {item["id"]: item for item in core.CATEGORIES if item["id"] in include}
     keyword_hits, keyword_stats = collect_yahoo_leads(categories, client, day)
