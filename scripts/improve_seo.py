@@ -42,12 +42,12 @@ def improve_products() -> None:
     html = replace_once(
         html,
         "<title>商品名から楽天の今日の最安値を探す | 日用品コスパ比較</title>",
-        "<title>楽天の送料込み最安値を商品名で検索 | 日用品コスパ比較</title>",
+        "<title>商品名・JANで探す｜楽天市場とYahoo!ショッピングの送料込み価格比較 | 日用品コスパ比較</title>",
     )
     html = replace_once(
         html,
         '<meta name="description" content="欲しい商品名・ブランド・JANコードから楽天価格ナビの購入可能な最低価格を検索。毎朝自動更新。">',
-        '<meta name="description" content="アリエール・ボールド・おしりセレブなど、欲しい商品名・ブランド・JANコードから楽天市場を検索。同一商品と確認できた送料込み購入候補の最安値を表示します。">',
+        '<meta name="description" content="商品名・ブランド名・JANコードで日用品を検索。同じ容量・販売個数を確認できた商品の楽天市場とYahoo!ショッピングの送料込み総額を比較できます。楽天市場の販売候補も検索できます。">',
     )
     PRODUCTS.write_text(html, encoding="utf-8")
 

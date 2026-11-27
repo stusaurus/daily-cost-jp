@@ -143,6 +143,24 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertNotEqual(first, second)
         self.assertEqual(first[:3], second[:3])
 
+    def test_lookup_history_prioritizes_winners_and_previously_unsearched_jans(self):
+        other = "4901301466235"
+        seeds = [{"jan": jan, "name": "商品", "brand": ""} for jan in [JAN, other, "next1", "next2", "next3"]]
+        selected = select_seeds(seeds, {JAN}, 4, 0, {other: 1, JAN: 1})
+        self.assertEqual([seed["jan"] for seed in selected], [JAN, "next1", "next2", "next3"])
+
+    def test_underserved_category_extra_query_and_bounded_history(self):
+        from unittest.mock import Mock
+        directory = Mock(side_effect=[[], [{"productCode": JAN, "productName": TITLE, "salesItemCount": 7}]])
+        result = extend_pool({}, {"laundry": []}, directory=directory, listings=lambda _: [],
+                             normalize_item=lambda *_: {}, categories={"laundry": {"name": "洗濯洗剤"}},
+                             pause=lambda _: None, day=10, coverage={"laundry": 2},
+                             history={"laundry": {"4901301466235": 6}})
+        self.assertEqual(result["product_searches"], 2)
+        self.assertEqual(result["item_searches"], 1)
+        self.assertEqual(result["categories"]["laundry"]["lookup_days"], {JAN: 10})
+        self.assertNotEqual(directory.call_args_list[0], directory.call_args_list[1])
+
     def test_category_schema_error_preserves_other_categories(self):
         def directory(config, page):
             if config == "first":

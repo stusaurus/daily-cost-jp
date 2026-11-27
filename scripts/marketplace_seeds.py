@@ -1,6 +1,7 @@
 """Find additional in-stock retail listings using the official product directory."""
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from http.client import HTTPException
 import time
 from urllib.error import HTTPError, URLError
@@ -12,6 +13,7 @@ from sale_quantity import normalize
 from yahoo_shopping import YahooUnavailable
 
 # Spread the acquisition budget across categories, including categories with few reviews.
+HISTORY_DAYS = 3
 SEEDS_PER_CATEGORY = 20
 YAHOO_SEEDS_PER_CATEGORY = 8
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
@@ -41,19 +43,21 @@ def ranked_seeds(raw, excluded):
     return sorted(by_jan.values(), key=lambda seed: (-seed["reviews"], -seed["sellers"], seed["jan"]))
 
 
-def select_seeds(seeds, previous, limit, day):
+def select_seeds(seeds, previous, limit, day, recent=None):
     """Refresh confirmed JANs first and rotate a bounded slice of the other candidates."""
     by_jan = {seed["jan"]: seed for seed in seeds}
     kept = [by_jan.get(jan, {"jan": jan, "name": "", "brand": ""})
             for jan in sorted(previous) if valid_jan(jan)][:24]
     remaining = [seed for seed in seeds if seed["jan"] not in previous]
     available = min(24 - len(kept), max(3, limit - len(kept)))
-    if len(remaining) <= available:
-        return kept + remaining
-    fixed = available // 2
-    rotating = remaining[fixed:]
-    offset = day * (available - fixed) % len(rotating)
-    return kept + remaining[:fixed] + (rotating[offset:] + rotating[:offset])[:available-fixed]
+    if len(remaining) > available:
+        fixed = available // 2
+        rotating = remaining[fixed:]
+        offset = day * (available - fixed) % len(rotating)
+        remaining = remaining[:fixed] + rotating[offset:] + rotating[:offset]
+    if recent:
+        remaining.sort(key=lambda seed: recent.get(seed["jan"], 0))
+    return kept + remaining[:available]
 
 
 def yahoo_leads(category, hits, affiliate_link):
@@ -94,12 +98,15 @@ def collect_yahoo_leads(categories, client, day):
 
 
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
-                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None):
+                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None):
     stats = {"product_searches": 0, "item_searches": 0, "categories": {}}
     for category, profiles in include.items():
         config = categories[category]
         info = {"seeds": 0, "queried": 0, "verified_rows": 0, "reasons": Counter()}
         stats["categories"][category] = info
+        recent = {jan: stamp for jan, stamp in (history or {}).get(category, {}).items()
+                  if valid_jan(jan) and type(stamp) is int and day - HISTORY_DAYS < stamp <= day}
+        info["lookup_days"] = dict(recent)
         verified = []
         try:
             pause(1.2)
@@ -112,13 +119,25 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
                     raise
                 info["directory_error"] = "invalid_response"
                 raw = []
+            if category in (coverage or {}) and coverage[category] < 5:
+                from candidate_acquisition import SUPPLEMENTAL_QUERIES
+                alternatives = SUPPLEMENTAL_QUERIES.get(category, ())
+                if alternatives:
+                    pause(1.2)
+                    stats["product_searches"] += 1
+                    query = alternatives[day % len(alternatives)]
+                    try:
+                        raw = raw + directory({**config, "name": query}, 1)
+                    except ValueError:
+                        info["alternate_directory_error"] = "invalid_response"
             seeds = ranked_seeds(raw, {profile.jan for profile in profiles})
             info["seeds"] = len(seeds)
             historical = set((previous or {}).get(category, ())) - {profile.jan for profile in profiles}
-            selected = select_seeds(seeds, historical, per_category, day)
+            selected = select_seeds(seeds, historical, per_category, day, recent)
             excluded = {profile.jan for profile in profiles} | {seed["jan"] for seed in selected}
             directory_by_jan = {seed["jan"]: seed for seed in seeds}
             additional = [jan for jan in (keyword_hits or {}).get(category, {}) if jan not in excluded]
+            additional.sort(key=lambda jan: recent.get(jan, 0))
             for jan in additional[:YAHOO_SEEDS_PER_CATEGORY]:
                 selected.append(directory_by_jan.get(jan, {"jan": jan, "name": "", "brand": ""}))
             info["yahoo_only_lookups"] = min(len(additional), YAHOO_SEEDS_PER_CATEGORY)
@@ -126,7 +145,9 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
                 pause(1.2)
                 stats["item_searches"] += 1
                 info["queried"] += 1
-                for raw_item in listings(seed["jan"]):
+                fresh = listings(seed["jan"])
+                info["lookup_days"][seed["jan"]] = day
+                for raw_item in fresh:
                     source = raw_item.get("Item", raw_item)
                     row = normalize_item(raw_item, config)
                     proof = source_evidence(source, row)
@@ -142,7 +163,9 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
             if (isinstance(error, HTTPError) and error.code in (401, 403, 429)
                     or sum("error" in item for item in stats["categories"].values()) >= 3):
                 stats["stopped"] = info["error"]
-        accepted = filter_items(category, verified)
+        quality_report = {}
+        accepted = filter_items(category, verified, quality_report)
+        info["catalog_exclusions"] = quality_report[category]["reasons"]
         info["verified_rows"] = len(accepted)
         info["reasons"]["catalog_quality"] += len(verified) - len(accepted)
         # The fresh JAN request wins when the reviewed category query returned the same item.
@@ -178,18 +201,25 @@ def extend_current(pool, include, client):
     # Prior publication supplies lookup keys only. All prices, stock, terms, titles
     # and affiliate destinations still come from this build's API responses.
     from price_observations import fetch_public
-    previous = {}
+    previous, coverage, history = {}, {}, {}
     try:
-        for key, entry in fetch_public("marketplace-coverage.json")["categories"].items():
+        last_build = fetch_public("marketplace-coverage.json")
+        entries = last_build["categories"]
+        for key, entry in entries.items():
+            if type(entry.get("comparable")) is int:
+                coverage[key] = entry["comparable"]
             previous[key] = {row["jan"] for row in entry.get("discovery", {}).get("sources", [])
                              if valid_jan(row.get("jan"))}
+        directory_stats = last_build.get("api", {}).get("directory", {}).get("categories", {})
+        history = {key: value["lookup_days"] for key, value in directory_stats.items()
+                   if isinstance(value.get("lookup_days"), dict)}
     except (OSError, HTTPException, TypeError, KeyError, ValueError, AttributeError):
-        previous = {}
-    day = date.today().toordinal()
+        previous, coverage, history = {}, {}, {}
+    day = datetime.now(ZoneInfo("Asia/Tokyo")).date().toordinal()
     categories = {item["id"]: item for item in core.CATEGORIES if item["id"] in include}
     keyword_hits, keyword_stats = collect_yahoo_leads(categories, client, day)
     stats = extend_pool(pool, include, directory=directory, listings=listings,
-                        previous=previous, day=day, keyword_hits=keyword_hits,
+                        previous=previous, day=day, keyword_hits=keyword_hits, coverage=coverage, history=history,
                         normalize_item=normalize_item_with_correct_postage, categories=categories)
     stats["yahoo_leads"] = keyword_stats
     return stats, keyword_hits
