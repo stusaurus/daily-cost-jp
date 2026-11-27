@@ -258,6 +258,58 @@ class AutomaticDiscovery(unittest.TestCase):
         self.assertEqual(skipped["verified_rows"], 0)
         self.assertNotIn("dish", pool)
 
+    def test_priority_retail_search_replaces_speculation_and_binds_each_item_to_its_jan(self):
+        from unittest.mock import Mock
+        other = "4901301466235"
+        directory = Mock(return_value=[{"productCode": other, "productName": "ティシュー", "salesItemCount": 4}])
+        listings = Mock(return_value=[])
+        name = "日本製紙クレシア スコッティ ティシュー 200組 5箱パック"
+        jan = "4901750417352"
+        retail = Mock(return_value=[source(itemName=name, itemCaption=f"JANコード：{jan}")])
+        row = listing() | {"name": name, "metric": "box", "price": 1500, "unit_price": 300}
+        pool = {}
+        result = extend_pool(pool, {"tissue": []}, directory=directory, listings=listings, retail=retail,
+                             normalize_item=lambda *_: row, categories={"tissue": {"name": "ティッシュ"}},
+                             previous={"tissue": {JAN}}, coverage={"tissue": 1}, pause=lambda _: None)
+        self.assertEqual(result["item_searches"], 2)
+        self.assertEqual(directory.call_args_list[0].args[0]["name"], "箱 ティシュー")
+        self.assertEqual(directory.call_args_list[1].args[0]["name"], "スコッティ ティシュー")
+        listings.assert_called_once_with(JAN)
+        retail.assert_called_once_with("ティシュー 5箱 200組")
+        self.assertEqual(result["categories"]["tissue"]["retail_keyword_verified"], 1)
+        self.assertEqual(pool["tissue"][0]["jan"], jan)
+        self.assertEqual(pool["tissue"][0]["master_name"], "")
+
+    def test_verified_spelling_keeps_physical_and_variant_evidence(self):
+        from marketplace_discovery import comparable_names
+        from marketplace_offers import package_quantity
+        from product_quality import category_rejection, parsed_quantity
+        tissue = "スコッティ ティシュー 400枚 (200組) 5箱パック"
+        profile = package_profile("tissue", listing() | {"name": tissue, "metric": "box"})
+        self.assertEqual(package_quantity("tissue", tissue.replace("ティシュー", "ティッシュ"), profile), 1)
+        self.assertIsNone(package_quantity("tissue", tissue.replace("400枚", "300枚"), profile))
+        self.assertIsNone(package_quantity("tissue", tissue.replace("5箱", "3箱"), profile))
+        self.assertFalse(comparable_names("4列 歯ブラシ 1本 ふつう", "3列 ハブラシ 1本 ふつう", JAN, "", "toothbrush"))
+        self.assertTrue(comparable_names("4列 歯ブラシ 1本 ふつう", "4列 ハブラシ 1本 ふつう", JAN, "", "toothbrush"))
+        coffee = "レギュラーコーヒー 中細挽き 280g"
+        self.assertIsNone(category_rejection("coffee", coffee))
+        self.assertIsNotNone(category_rejection("coffee", coffee + " ドリップバッグ"))
+
+        sink = "ケース販売 水切りネット ブルー 排水口用 2000枚(50枚×40冊) 台所"
+        profile = package_profile("sink-net", listing() | {"name": sink, "metric": "sheet"})
+        self.assertEqual(package_quantity("sink-net", sink.replace("冊", "袋"), profile), 40)
+        self.assertIsNone(package_quantity("sink-net", sink.replace("2000枚", "2400枚"), profile))
+        self.assertIsNotNone(category_rejection("sink-net", sink + " ホルダー付き"))
+
+        paper = "エリエール キッチンタオル 無漂白 50カット 48ロール（2ロール×24パック）"
+        profile = package_profile("kitchen-paper", listing() | {"name": paper, "metric": "sheet"})
+        self.assertEqual(parsed_quantity("kitchen-paper", paper)["quantity"], 2400)
+        self.assertEqual(package_quantity("kitchen-paper", paper, profile), 24)
+        self.assertIsNone(package_quantity("kitchen-paper", paper.replace("48ロール", "40ロール"), profile))
+        self.assertIsNone(package_quantity("kitchen-paper", paper + " 2ケース", profile))
+        self.assertIsNone(package_quantity("kitchen-paper", paper.replace("2ロール×24", "4ロール×12"), profile))
+        self.assertFalse(comparable_names(paper + " 1枚重ね", paper + " 2枚重ね", JAN, "", "kitchen-paper"))
+
     def test_category_schema_error_preserves_other_categories(self):
         def directory(config, page):
             if config == "first":

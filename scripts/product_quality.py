@@ -24,7 +24,7 @@ REQUIRED = {
     'laundry': (r'洗濯(?:用)?洗剤|衣料用洗剤|洗濯用.*(?:石けん|石鹸)|アタック|アリエール|ボールド|エマール',),
     'dish': (r'食器(?:用)?\s*洗剤|台所(?:用)?\s*洗剤|キュキュット|(?:除菌)?ジョイ|チャーミー',),
     'water': (r'ミネラルウォーター|天然水|ナチュラルウォーター|クリスタルガイザー|飲料水|軟水',),
-    'coffee': (r'コーヒー|珈琲', r'豆|粉|焙煎'),
+    'coffee': (r'コーヒー|珈琲', r'豆|粉|焙煎|[細粗中]挽き'),
     'softener': (r'柔軟剤',),
     'shampoo': (r'シャンプー',),
     'conditioner': (r'コンディショナー|リンス',),
@@ -141,6 +141,40 @@ def explicit_kitchen_paper_sheet_total(title):
             'confidence': 0.99, 'evidence': match.group(0)}
 
 
+def kitchen_roll_package(title):
+    """Return sheets per roll, rolls per retail pack and packs per sale."""
+    text = normalize(title).lower().replace("ロ−ル", "ロール").replace("ロ-ル", "ロール")
+    text = re.sub(r"(?<![\d.])[12]\s*枚重ね", "", text)
+    if ambiguous_quantity(title):
+        return None
+    case_text = re.sub(r"(ロール\s*x\s*\d+)\s*ケース販売", r"\1", text)
+    cases = re.findall(r"(?<![\d.])(\d+(?:\.\d+)?)\s*(?:箱|ケース)", case_text)
+    if len(cases) > 1 or cases and cases != ["1"]:
+        return None
+    explicit = explicit_kitchen_paper_sheet_total(text)
+    if explicit:
+        per, rolls = map(int, re.match(r"(\d+)\s*(?:枚|カット)\s*x\s*(\d+)", explicit["evidence"]).groups())
+        return per, rolls, int(explicit["quantity"]) // (per * rolls)
+    # Sellers also state the case total first, followed by rolls per pack and pack count.
+    case = r"(?<![\d.])(\d+)\s*(?:枚|カット)\s+(\d+)\s*ロール\s*\(\s*(\d+)\s*ロール\s*x\s*(\d+)\s*(?:パック|袋)\s*\)"
+    single = r"(?<![\d.])(\d+)\s*(?:枚|カット)\s*x\s*(\d+)\s*ロール"
+    if match := re.search(case, text):
+        per, total_rolls, rolls, packs = map(int, match.groups())
+        if total_rolls != rolls * packs:
+            return None
+    elif match := re.search(single, text):
+        per, rolls = map(int, match.groups())
+        packs = 1
+    else:
+        return None
+    rest = text[:match.start()] + text[match.end():]
+    if (not 0 < per * rolls * packs <= 100000 or not 1 <= packs <= 120
+            or re.search(r"x\s*\d|\d+\s*(?:枚|カット|ロール|巻|袋|パック|個|箱|セット|ケース)", rest)
+            or (packs == 1 and re.search(r"ケース|複数|まとめ買い|セット", rest))):
+        return None
+    return per, rolls, packs
+
+
 def category_rejection(category_id, title):
     if category_id not in REQUIRED:
         return 'unknown_category'
@@ -171,7 +205,8 @@ def category_rejection(category_id, title):
         return 'accessory'
     if MIXED.search(text):
         return 'mixed_bundle'
-    if re.search(EXCLUDED[category_id], text, re.I):
+    category_text = text.replace('ケース販売', '') if category_id == 'sink-net' else text
+    if re.search(EXCLUDED[category_id], category_text, re.I):
         return 'wrong_use_or_type'
     # Three new sheet categories measure the number of *individual sheets*.
     # Titles such as "80枚 3パック" are not 80 sheets total. Without a
@@ -186,7 +221,7 @@ def category_rejection(category_id, title):
             rf'\d+\s*{sheet_term}(?:入|入り)?\s*x\s*\d+(?:ロール|巻|袋|パック|個|セット)?(?![\da-z])', text, re.I))
         if not has_explicit_sheet_count:
             return 'missing_sheet_count'
-        nested = explicit_kitchen_paper_sheet_total(title) if category_id == 'kitchen-paper' else None
+        nested = kitchen_roll_package(title) if category_id == 'kitchen-paper' else None
         if not nested and (len(outer_packs) > 1 or len(re.findall(r'x\s*\d+', text, re.I)) > 1
                 or re.search(r'\d+\s*ケース', text)):
             return 'multiple_unverified_pack_levels'
@@ -211,7 +246,11 @@ def category_rejection(category_id, title):
     if category_id=='tissue' and not evidence:
         # Literal product type plus explicit pairs and corroborated box total;
         # never recognize a product from its brand name alone.
-        evidence=bool(re.search(r'ティシュー',text) and re.search(r'\d+\s*組',text) and explicit_tissue_box_total(text))
+        boxes = re.findall(r'(?<![\d.])\d+\s*箱', text)
+        simple_boxes = len(boxes) == 1 and not re.search(r'合計|ポリ袋|レジ袋|空箱|箱なし', text)
+        evidence = bool(re.search(r'ティシュー|ティシュ|ティッシュ', text)
+                        and re.search(r'(?<![\d.])\d+\s*組', text)
+                        and (simple_boxes or explicit_tissue_box_total(text)))
     if not evidence:
         return 'missing_category_evidence'
     return None
@@ -417,8 +456,10 @@ def safer_parse_count_quantity(title, allowed_units):
         explicit=explicit_tissue_box_total(title)
         if explicit:return explicit
     if allowed_units==COUNT_UNITS['kitchen-paper']:
-        explicit=explicit_kitchen_paper_sheet_total(title)
-        if explicit:return explicit
+        if package := kitchen_roll_package(title):
+            per, rolls, packs = package
+            return {"metric": "sheet", "quantity": float(per * rolls * packs),
+                    "confidence": 0.99, "evidence": f"{per}枚x{rolls}ロールx{packs}袋"}
     units_re = "|".join(re.escape(unit) for unit in allowed_units)
 
     explicit_matches = list(re.finditer(

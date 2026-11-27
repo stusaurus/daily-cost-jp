@@ -21,6 +21,35 @@ YAHOO_SEEDS_PER_CATEGORY = 8
 FIELDS = "itemName,itemCaption,itemCode,itemPrice,shopName,affiliateUrl,availability,postageFlag,reviewCount"
 
 
+# Product names used in the directory omit seller packaging and shipping language.
+# Retail searches target configurations that households can actually order.
+DISCOVERY_QUERIES = {
+    "tissue": (("箱 ティシュー", "スコッティ ティシュー", "ネピア ティシュ"),
+               ("ティシュー 5箱 200組", "ボックスティッシュ 5箱", "ティシュー 3箱 200組")),
+    "coffee": (("レギュラーコーヒー 粉", "レギュラーコーヒー 豆", "職人の珈琲 粉"),
+               ("レギュラーコーヒー 粉 まとめ買い", "珈琲 豆 500g", "職人の珈琲 粉 280g")),
+    "toothbrush": (("手用 ハブラシ", "クリニカ ハブラシ", "システマ ハブラシ", "歯ブラシ コンパクト"),
+                   ("ハブラシ コンパクト ふつう 1本", "歯ブラシ ふつう 3本", "ハブラシ コンパクト やわらかめ")),
+    "kitchen-paper": (("キッチンタオル", "クッキングペーパー", "キッチンペーパー"),
+                      ("キッチンタオル 2ロール 100カット", "キッチンタオル 4ロール 50カット", "キッチンペーパー シート")),
+    "sink-net": (("水切りネット", "排水口 水切り ストッキング", "三角コーナー 水切りネット"),
+                 ("排水口 水切りネット 50枚", "排水口 ストッキング 水切りネット", "浅型 水切りネット 30枚")),
+    "toilet-paper": (("トイレットロール", "トイレットペーパー"), ("トイレットペーパー ダブル 12ロール", "トイレットペーパー シングル 12ロール")),
+    "water": (("ミネラルウォーター", "天然水"), ("天然水 2L 6本", "ミネラルウォーター 500ml 24本")),
+    "paper-towel": (("ペーパータオル", "ハンドタオル ペーパー"), ("ペーパータオル 200枚", "ペーパータオル 小判 200枚")),
+    "garbage-bag-45l": (("ごみ袋 45L", "ポリ袋 45L"), ("ごみ袋 45L 30枚", "ポリ袋 45L 半透明 100枚")),
+    "mask": (("不織布 マスク", "プリーツ 不織布マスク"), ("不織布マスク ふつう 30枚", "不織布マスク 小さめ 50枚")),
+    "cotton-swab": (("紙軸 綿棒", "抗菌 綿棒"), ("紙軸 綿棒 200本", "ベビー 綿棒 紙軸")),
+    "wet-wipes": (("除菌 ウェットティッシュ", "除菌 ウェットシート"), ("除菌 ウェットティッシュ 詰め替え 80枚", "ノンアルコール 除菌 ウェットティッシュ")),
+}
+PRIORITY_SEARCH = {"tissue", "coffee", "toothbrush", "kitchen-paper", "sink-net"}
+
+
+def retail_query(category, day):
+    queries = DISCOVERY_QUERIES[category][1]
+    return queries[day % len(queries)]
+
+
 def directory_products(payload):
     rows = payload.get("Products", payload.get("items"))
     if rows is None and payload.get("count") in (0, "0"):
@@ -88,7 +117,8 @@ def collect_yahoo_leads(categories, client, day):
     leads, stats = {}, {"categories": {}, "requests": 0}
     before = client.requests
     for category, config in categories.items():
-        queries = tuple(dict.fromkeys((config["keyword"], *SUPPLEMENTAL_QUERIES.get(category, ()))))
+        queries = DISCOVERY_QUERIES[category][1] if category in DISCOVERY_QUERIES else tuple(
+            dict.fromkeys((config["keyword"], *SUPPLEMENTAL_QUERIES.get(category, ()))))
         try:
             hits = client.search(query=queries[day % len(queries)], shipping="free")
         except YahooUnavailable as error:
@@ -118,7 +148,7 @@ def history_stats(include, history, confirmed, day):
 
 
 def extend_pool(pool, include, *, directory, listings, normalize_item, categories, pause=time.sleep,
-                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None, confirmed=None):
+                per_category=SEEDS_PER_CATEGORY, previous=None, day=0, keyword_hits=None, coverage=None, history=None, confirmed=None, retail=None):
     stats = history_stats(include, history, confirmed, day)
     for category, profiles in include.items():
         config = categories[category]
@@ -130,8 +160,11 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
         try:
             pause(1.2)
             stats["product_searches"] += 1
+            targeted = (coverage or {}).get(category, 0) < 5 and category in DISCOVERY_QUERIES
+            master = DISCOVERY_QUERIES[category][0] if targeted else ()
+            primary = {**config, "name": master[0]} if master else config
             try:
-                raw = directory(config, 1)
+                raw = directory(primary, 1)
             except ValueError:
                 # A missing directory envelope does not invalidate independent Yahoo leads.
                 if not (keyword_hits or {}).get(category):
@@ -140,7 +173,7 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
                 raw = []
             if category in (coverage or {}) and coverage[category] < 5:
                 from candidate_acquisition import SUPPLEMENTAL_QUERIES
-                alternatives = SUPPLEMENTAL_QUERIES.get(category, ())
+                alternatives = master[1:] if master else SUPPLEMENTAL_QUERIES.get(category, ())
                 if alternatives:
                     pause(1.2)
                     stats["product_searches"] += 1
@@ -167,22 +200,44 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
             for jan in additional[:YAHOO_SEEDS_PER_CATEGORY]:
                 selected.append(directory_by_jan.get(jan, {"jan": jan, "name": "", "brand": ""}))
             info["yahoo_only_lookups"] = min(len(additional), YAHOO_SEEDS_PER_CATEGORY)
-            for seed in selected:
+            protected = historical | set(recovery) | (keyword_hits or {}).get(category, {}).keys()
+            requests = [(seed["jan"], seed) for seed in selected]
+            if retail and targeted and category in PRIORITY_SEARCH:
+                # Replace only a speculative directory JAN. Keep every
+                # previous winner, recovery candidate and two-market lead.
+                for index in range(len(selected) - 1, -1, -1):
+                    if selected[index]["jan"] not in protected:
+                        requests[index] = (retail_query(category, day), None)
+                        break
+            for query, seed in requests:
                 pause(1.2)
                 stats["item_searches"] += 1
                 info["queried"] += 1
-                fresh = listings(seed["jan"])
-                info["lookup_days"][seed["jan"]] = day
+                if seed is None:
+                    info["retail_keyword_searches"] = 1
+                    fresh = retail(query)
+                    info["retail_keyword_hits"] = len(fresh)
+                else:
+                    fresh = listings(query)
+                    info["lookup_days"][query] = day
+                    if not fresh:
+                        info["reasons"]["empty_jan_lookup"] += 1
+                info["listing_rows"] = info.get("listing_rows", 0) + len(fresh)
                 for raw_item in fresh:
                     source = raw_item.get("Item", raw_item)
                     row = normalize_item(raw_item, config)
                     proof = source_evidence(source, row)
-                    if not proof or proof["jan"] != seed["jan"]:
+                    if not proof:
                         info["reasons"]["unverified_listing"] += 1
                         continue
-                    verified.append({**row, **proof, "master_name": seed["name"],
-                                     "prior_match": seed["jan"] in historical,
-                                     "master_brand": seed["brand"], "master_maker": seed.get("maker", "")})
+                    jan = proof["jan"]
+                    if seed and jan != query:
+                        info["reasons"]["different_jan"] += 1
+                        continue
+                    metadata = seed or directory_by_jan.get(jan, {})
+                    verified.append({**row, **proof, "master_name": metadata.get("name", ""),
+                                     "prior_match": jan in historical, "retail_keyword": seed is None,
+                                     "master_brand": metadata.get("brand", ""), "master_maker": metadata.get("maker", "")})
         except (HTTPError, HTTPException, OSError, URLError, TypeError, ValueError, KeyError, AttributeError) as error:
             info["error"] = f"http_{error.code}" if isinstance(error, HTTPError) else type(error).__name__
             # Stop on provider throttling/authentication failures. A malformed
@@ -194,6 +249,7 @@ def extend_pool(pool, include, *, directory, listings, normalize_item, categorie
         accepted = filter_items(category, verified, quality_report)
         info["catalog_exclusions"] = quality_report[category]["reasons"]
         info["verified_rows"] = len(accepted)
+        info["retail_keyword_verified"] = sum(row["retail_keyword"] for row in accepted)
         info["reasons"]["catalog_quality"] += len(verified) - len(accepted)
         # The fresh JAN request wins when the reviewed category query returned the same item.
         rows = {row["item_code"]: row for row in pool.get(category, [])}
@@ -252,11 +308,11 @@ def extend_current(pool, include, client):
                                "Referer": core.SITE_URL, "User-Agent": "daily-cost-jp/0.8"})
         return directory_products(fetch_json(req))
 
-    def listings(jan):
+    def listings(keyword, *, sort="+itemPrice"):
         return fetch_search_items({
             "applicationId": core.APP_ID, "affiliateId": core.AFFILIATE_ID,
-            "keyword": jan, "availability": 1, "postageFlag": 1,
-            "sort": "+itemPrice", "hits": 30, "formatVersion": 2, "format": "json", "elements": FIELDS,
+            "keyword": keyword, "availability": 1, "postageFlag": 1,
+            "sort": sort, "hits": 30, "formatVersion": 2, "format": "json", "elements": FIELDS,
         })
     previous, coverage, history, confirmed = read_prior_state()
     day = datetime.now(ZoneInfo("Asia/Tokyo")).date().toordinal()
@@ -264,7 +320,7 @@ def extend_current(pool, include, client):
     keyword_hits, keyword_stats = collect_yahoo_leads(categories, client, day)
     stats = extend_pool(pool, include, directory=directory, listings=listings,
                         previous=previous, day=day, keyword_hits=keyword_hits, coverage=coverage,
-                        history=history, confirmed=confirmed,
+                        history=history, confirmed=confirmed, retail=lambda query: listings(query, sort="-reviewCount"),
                         normalize_item=normalize_item_with_correct_postage, categories=categories)
     stats["yahoo_leads"] = keyword_stats
     return stats, keyword_hits
