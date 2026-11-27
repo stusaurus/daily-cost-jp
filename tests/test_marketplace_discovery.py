@@ -67,6 +67,28 @@ class AutomaticDiscovery(unittest.TestCase):
                          {"description": "沖縄は別途送料"}, {"url": YAHOO_URL.replace("pid=200", "pid=300")}):
             self.assertFalse(run([yahoo(name=TITLE, **override)])[0]["laundry"])
 
+    def test_unmatched_jan_diagnostics_are_bounded_and_do_not_reuse_offers(self):
+        wrong = yahoo(name=TITLE + " ローズの香り")
+        groups, reports = run([wrong])
+        report = reports["laundry"]
+        self.assertFalse(groups["laundry"])
+        self.assertEqual(report["unmatched_jans"], [{
+            "jan": JAN, "outcome": "needs_review", "rakuten_rows": 1,
+            "yahoo_hits": 1, "reasons": {"variant_needs_review": 1},
+        }])
+        self.assertEqual(report["outcomes"], {"needs_review": 1})
+        _, missing = run([])
+        self.assertEqual(missing["laundry"]["unmatched_jans"], [{
+            "jan": JAN, "outcome": "no_yahoo_hits", "rakuten_rows": 1,
+            "yahoo_hits": 0, "reasons": {"no_yahoo_hits": 1},
+        }])
+        _, matched = run([yahoo(name=TITLE)])
+        self.assertEqual(matched["laundry"]["unmatched_jans"], [])
+        _, failed = discover({"laundry": [listing()]}, {"laundry": []}, MockYahoo(fails=True))
+        self.assertEqual(failed["laundry"]["unmatched_jans"], [])
+        _, bounded = discover({"laundry": [listing()]}, {"laundry": []}, MockYahoo([]), budget=0)
+        self.assertEqual(bounded["laundry"]["unmatched_jans"], [])
+
     def test_cached_profiles_excluded_and_api_error_is_not_no_match(self):
         _, reports = discover({"laundry": [listing()]}, {"laundry": [PRODUCT]}, MockYahoo())
         self.assertEqual(reports["laundry"]["eligible_jans"], 0)
