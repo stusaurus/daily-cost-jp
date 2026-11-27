@@ -131,10 +131,13 @@ def count_pack(text, product):
     return None
 
 
-def package_quantity(category, title, product):
+def package_quantity(category, title, product, *, directory_name=False):
     """Require independent title evidence for variant, per-unit size and pack."""
     text = normalize(title).lower()
     rejection = category_rejection(category, text)
+    if directory_name and rejection == "missing_category_evidence":
+        # Retail titles on both marketplaces must still independently pass their category checks.
+        rejection = None
     if rejection == "missing_category_evidence" and category in ("body-soap", "coffee", "mask", "tissue", "toothbrush", "toilet-paper"):
         rejection = category_rejection(category, product.label + " " + text)
     if (not valid_jan(product.jan) or AMBIGUOUS.search(text)

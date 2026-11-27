@@ -181,6 +181,7 @@ async function verifyPage(page, base, width, category, catalog) {
   const articles = await section.locator('.marketplace-product').all();
   const identities = new Set();
   let comparable = 0;
+  const finderTargets = [];
   for (const article of articles) {
     const group = await article.evaluate(el => ({
       jan: el.dataset.jan, pack: Number(el.dataset.pack),
@@ -213,6 +214,9 @@ async function verifyPage(page, base, width, category, catalog) {
       assert.match(note, /送料が未確定/);
     } else {
       comparable++;
+      const anchor = 'compare-' + group.jan + '-' + group.pack;
+      assert.equal(await article.locator('h3').getAttribute('id'), anchor);
+      finderTargets.push(prefix + 'categories/' + category + '/#' + anchor);
       if (rakuten === yahoo) assert.match(note, /同じ/);
       else {
         assert(note.includes(rakuten < yahoo ? '楽天市場' : 'Yahoo!ショッピング'));
@@ -253,7 +257,31 @@ async function verifyPage(page, base, width, category, catalog) {
       'Yahoo event must stay out of the existing Rakuten report');
   }
   assert.deepEqual(pageErrors, []);
-  return { status: 'pass', pairs: articles.length, comparable };
+  return { status: 'pass', pairs: articles.length, comparable, finderTargets };
+}
+
+async function verifyFinder(page, base, targets, categoryIds) {
+  const origin = new URL(base).origin;
+  await page.context().route('**/*', route =>
+    new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  const first = targets[0];
+  const jan = first.split('#compare-')[1].split('-')[0];
+  const response = await page.goto(base + 'products/?test=1&q=' + jan, {waitUntil: 'domcontentloaded'});
+  assert.equal(response.status(), 200);
+  const section = page.locator('#verified-marketplace-results');
+  const all = await section.locator('li a').evaluateAll(links => links.map(a => a.getAttribute('href')));
+  const inScope = all.filter(href => categoryIds.includes(href.split('/categories/')[1]?.split('/')[0]));
+  assert.deepEqual(inScope.sort(), [...targets].sort(), 'finder and category packages differ');
+  const link = section.locator('a[href="' + first + '"]');
+  await link.waitFor({state: 'visible'});
+  await page.locator('#q').fill('この商品名は存在しないテスト');
+  assert.equal(await section.isVisible(), false);
+  await page.locator('#q').fill(jan.replace(/\d/g, d => String.fromCharCode(d.charCodeAt(0) + 0xfee0)));
+  await link.waitFor({state: 'visible'});
+  assert(await page.locator('footer a[href="https://developer.yahoo.co.jp/sitemap/"]').isVisible());
+  await link.click();
+  await page.locator('#' + first.split('#')[1]).waitFor({state: 'visible'});
+  assert.equal(new URL(page.url()).hash, '#' + first.split('#')[1], 'finder opened another package');
 }
 
 async function main() {
@@ -275,6 +303,7 @@ async function main() {
       try {
         for (const width of [320, 390, 1440]) {
           const available = [];
+          const finderTargets = [];
           for (const category of categoryIds) {
             const page = await browser.newPage({ viewport: { width, height: 900 } });
             try {
@@ -282,8 +311,20 @@ async function main() {
                 coverage[category].discovery?.sources || []);
               const result = await verifyPage(page, base, width, category, sources);
               assert.equal(result.comparable || 0, coverage[category].comparable, 'coverage must match rendered pairs');
-              if (result.comparable > 0) available.push(category);
-              console.log(JSON.stringify({ browser: engine.name(), width, category, ...result }));
+              if (result.comparable > 0) {
+                available.push(category);
+                finderTargets.push(...result.finderTargets);
+              }
+              console.log(JSON.stringify({ browser: engine.name(), width, category, status: result.status, pairs: result.pairs, comparable: result.comparable }));
+            } finally {
+              await page.close();
+            }
+          }
+          if (finderTargets.length) {
+            const page = await browser.newPage({viewport: {width, height: 900}});
+            try {
+              await verifyFinder(page, base, finderTargets, categoryIds);
+              console.log(JSON.stringify({browser: engine.name(), width, entry: 'finder', pairs: finderTargets.length}));
             } finally {
               await page.close();
             }
