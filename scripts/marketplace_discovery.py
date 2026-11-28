@@ -249,45 +249,51 @@ def discover(pool, include, client, budget=BUILD_BUDGET, *, keyword_hits=None):
         reports[category] = report
         queues[category] = candidates(category, rows, profiles, report)
         report["eligible_jans"] = len(queues[category])
-    # Round robin preserves a query opportunity for every eligible category.
-    for index in range(PER_CATEGORY):
-        for category, queue in queues.items():
-            if not budget or index >= len(queue):
-                continue
-            entries = queue[index]
-            budget -= 1
-            report = reports[category]
-            try:
-                jan = entries[0][1].jan
-                hits = client.search(jan=jan, shipping="free", results=100)
-                extra = (keyword_hits or {}).get(category, {}).get(jan, [])
-                if extra:
-                    by_code = {hit["code"]: hit for hit in extra}
-                    by_code.update((hit["code"], hit) for hit in hits if isinstance(hit.get("code"), str))
-                    hits = list(by_code.values())
-            except YahooUnavailable as error:
-                report["api_error"] = str(error)
-                return groups, reports
-            report["queried_jans"] += 1
-            report["hits"] += len(hits)
-            before_reasons = report["reasons"].copy()
-            if not hits:
-                report["reasons"]["no_yahoo_hits"] += 1
-            previous_reviews = report["reasons"]["variant_needs_review"]
-            selected, sources = compare_jan(category, entries, hits, client, report)
-            groups[category].extend(selected)
-            outcome = ("matched" if selected else "needs_review" if report["reasons"]["variant_needs_review"] > previous_reviews
-                       else "no_yahoo_hits" if not hits else "no_match")
-            report["outcomes"][outcome] += 1
-            if not selected:
-                # Bounded by the existing JAN lookup budget. Diagnostic counts
-                # describe this JAN only; no seller payloads, URLs or offer data.
-                report["unmatched_jans"].append({
-                    "jan": jan, "outcome": outcome, "rakuten_rows": len(entries),
-                    "yahoo_hits": len(hits),
-                    "reasons": dict(report["reasons"] - before_reasons),
-                })
-            report["sources"].extend(sources)
-            report["matched_pairs"] += len(selected)
-            report["matched_jans"] += int(bool(selected))
+    # Preserve the original fair round-robin allocation for the first 24
+    # rounds. Then use any spare global budget for the remaining candidates,
+    # in the same round-robin order, without skipping earlier confirmed JANs.
+    rounds = max((len(queue) for queue in queues.values()), default=0)
+    for start, stop in ((0, min(PER_CATEGORY, rounds)), (PER_CATEGORY, rounds)):
+        for index in range(start, stop):
+            for category, queue in queues.items():
+                if budget <= 0:
+                    return groups, reports
+                if index >= len(queue):
+                    continue
+                entries = queue[index]
+                budget -= 1
+                report = reports[category]
+                try:
+                    jan = entries[0][1].jan
+                    hits = client.search(jan=jan, shipping="free", results=100)
+                    extra = (keyword_hits or {}).get(category, {}).get(jan, [])
+                    if extra:
+                        by_code = {hit["code"]: hit for hit in extra}
+                        by_code.update((hit["code"], hit) for hit in hits if isinstance(hit.get("code"), str))
+                        hits = list(by_code.values())
+                except YahooUnavailable as error:
+                    report["api_error"] = str(error)
+                    return groups, reports
+                report["queried_jans"] += 1
+                report["hits"] += len(hits)
+                before_reasons = report["reasons"].copy()
+                if not hits:
+                    report["reasons"]["no_yahoo_hits"] += 1
+                previous_reviews = report["reasons"]["variant_needs_review"]
+                selected, sources = compare_jan(category, entries, hits, client, report)
+                groups[category].extend(selected)
+                outcome = ("matched" if selected else "needs_review" if report["reasons"]["variant_needs_review"] > previous_reviews
+                           else "no_yahoo_hits" if not hits else "no_match")
+                report["outcomes"][outcome] += 1
+                if not selected:
+                    # Bounded by the existing JAN lookup budget. Diagnostic counts
+                    # describe this JAN only; no seller payloads, URLs or offer data.
+                    report["unmatched_jans"].append({
+                        "jan": jan, "outcome": outcome, "rakuten_rows": len(entries),
+                        "yahoo_hits": len(hits),
+                        "reasons": dict(report["reasons"] - before_reasons),
+                    })
+                report["sources"].extend(sources)
+                report["matched_pairs"] += len(selected)
+                report["matched_jans"] += int(bool(selected))
     return groups, reports
