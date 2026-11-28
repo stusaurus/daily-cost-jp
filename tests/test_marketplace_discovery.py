@@ -89,6 +89,41 @@ class AutomaticDiscovery(unittest.TestCase):
         _, bounded = discover({"laundry": [listing()]}, {"laundry": []}, MockYahoo([]), budget=0)
         self.assertEqual(bounded["laundry"]["unmatched_jans"], [])
 
+    def test_unused_global_budget_reaches_candidates_beyond_category_cap(self):
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        from marketplace_discovery import PER_CATEGORY
+        queues = {
+            "dish": [[({}, SimpleNamespace(jan=f"dish-{i}"), None)]
+                     for i in range(PER_CATEGORY + 3)],
+            "tissue": [[({}, SimpleNamespace(jan=f"tissue-{i}"), None)]
+                       for i in range(2)],
+        }
+        include = dict.fromkeys(queues, [])
+        expected_prefix = ["dish-0", "tissue-0", "dish-1", "tissue-1"]
+        with patch("marketplace_discovery.candidates",
+                   side_effect=lambda category, *_: queues[category]), \
+                patch("marketplace_discovery.compare_jan", return_value=([], [])):
+            client = Mock()
+            client.search.return_value = []
+            _, reports = discover({}, include, client, budget=PER_CATEGORY + 5)
+            order = [call.kwargs["jan"] for call in client.search.call_args_list]
+            self.assertEqual(order[:4], expected_prefix)
+            self.assertEqual(order[-3:], [f"dish-{i}" for i in range(PER_CATEGORY, PER_CATEGORY + 3)])
+            self.assertEqual(len(order), PER_CATEGORY + 5)
+            self.assertEqual(reports["dish"]["queried_jans"], PER_CATEGORY + 3)
+            self.assertEqual(reports["tissue"]["queried_jans"], 2)
+            self.assertEqual(len(set(order)), len(order))
+            client.reset_mock()
+            _, limited = discover({}, include, client, budget=PER_CATEGORY + 3)
+            self.assertEqual(client.search.call_count, PER_CATEGORY + 3)
+            self.assertEqual(limited["dish"]["queried_jans"], PER_CATEGORY + 1)
+            self.assertEqual(limited["tissue"]["queried_jans"], 2)
+            client.reset_mock()
+            _, empty = discover({}, include, client, budget=0)
+            client.search.assert_not_called()
+            self.assertEqual(empty["dish"]["queried_jans"], 0)
+
     def test_cached_profiles_excluded_and_api_error_is_not_no_match(self):
         _, reports = discover({"laundry": [listing()]}, {"laundry": [PRODUCT]}, MockYahoo())
         self.assertEqual(reports["laundry"]["eligible_jans"], 0)
